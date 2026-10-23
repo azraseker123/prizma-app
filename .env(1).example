@@ -1,0 +1,2 @@
+# Do not put secret AI API keys or Supabase service role keys in the mobile app.
+# Public Expo environment variables can be read by app users.

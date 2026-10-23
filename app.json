@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "PRİZMA",
+    "slug": "prizma-app",
+    "scheme": "prizma",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.prizma.styleassistant",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [],
+    "extra": {}
+  }
+}
