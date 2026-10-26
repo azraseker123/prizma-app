@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from './supabase';
+import AuthScreen from './AuthScreen';
+
 import {
   SafeAreaView, StatusBar, View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Platform,
@@ -32,11 +36,44 @@ function ActionCard({ symbol, title, description, background, onPress }: {
 }
 
 export default function App() {
+  
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        setSession(newSession);
+        setAuthLoading(false);
+      }
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   const [tab, setTab] = useState<Tab>('Ana Sayfa');
   const [notice, setNotice] = useState('');
   const open = (target: Tab) => { setNotice(''); setTab(target); };
   const demo = () => setNotice('Bu özellik sonraki geliştirme günlerinde eklenecek.');
+  if (authLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Text style={{ textAlign: 'center', marginTop: 100 }}>
+          PRİZMA hazırlanıyor... ✦
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
+  if (!session) {
+    return <AuthScreen />;
+  }
+  
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={C.background} />
