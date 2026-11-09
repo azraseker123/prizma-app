@@ -1,3 +1,5 @@
+import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
+import PrizmaConfirm from './PrizmaConfirm';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -10,10 +12,15 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Modal,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 import * as ImagePicker from 'expo-image-picker';
-import { decode } from 'base64-arraybuffer';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { decode, encode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
 type WardrobeItem = {
@@ -37,6 +44,12 @@ type Props = {
   userId: string;
 };
 
+type Outfit = {
+  id: string;
+  name: string;
+  item_ids: string[];
+};
+
 const C = {
   navy: '#0B1436',
   lavender: '#A78BFA',
@@ -49,7 +62,14 @@ const C = {
   rose: '#C05D78',
 };
 
-const SEASONS = ['Tüm Mevsimler', 'İlkbahar', 'Yaz', 'Sonbahar', 'Kış', 'Dört Mevsim'];
+const SEASONS = [
+  'Tüm Mevsimler',
+  'İlkbahar',
+  'Yaz',
+  'Sonbahar',
+  'Kış',
+  'Dört Mevsim',
+];
 
 const CATEGORIES = [
   'Tümü',
@@ -64,6 +84,28 @@ const CATEGORIES = [
 ];
 
 export default function WardrobeScreen({ userId }: Props) {
+
+  const [notice, setNotice] = useState<{
+    type: NoticeType;
+    title: string;
+    message: string;
+  } | null>(null);
+
+  const showNotice = (
+    type: NoticeType,
+    title: string,
+    message: string
+  ) => {
+    setNotice({ type, title, message });
+  };
+
+
+  const [confirmTarget, setConfirmTarget] = useState<
+    { type: 'item' | 'outfit'; id: string; name: string } | null
+  >(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+
+  const [photoSheetVisible, setPhotoSheetVisible] = useState(false);
   const [items, setItems] = useState<WardrobeItemWithImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,28 +117,36 @@ export default function WardrobeScreen({ userId }: Props) {
   const [selectedImage, setSelectedImage] =
     useState<ImagePicker.ImagePickerAsset | null>(null);
 
+  const [existingImageUrl, setExistingImageUrl] =
+    useState<string | null>(null);
+
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Üst Giyim');
   const [color, setColor] = useState('');
   const [notes, setNotes] = useState('');
+  const [season, setSeason] = useState('Dört Mevsim');
+
   const [activeFilter, setActiveFilter] = useState('Tümü');
   const [search, setSearch] = useState('');
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [seasonFilter, setSeasonFilter] = useState('Tüm Mevsimler');
   const [colorFilter, setColorFilter] = useState('');
-  const [season, setSeason] = useState('Dört Mevsim');
-  const [detailItem, setDetailItem] = useState<WardrobeItemWithImage | null>(null);
-  const [outfits, setOutfits] = useState<{id:string; name:string; item_ids:string[]}[]>([]);
+
+  const [detailItem, setDetailItem] =
+    useState<WardrobeItemWithImage | null>(null);
+
+  const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [outfitName, setOutfitName] = useState('');
-  const [editingOutfitId, setEditingOutfitId] = useState<string | null>(null);
+  const [editingOutfitId, setEditingOutfitId] =
+    useState<string | null>(null);
   const [outfitSelected, setOutfitSelected] = useState<string[]>([]);
   const [showOutfitBuilder, setShowOutfitBuilder] = useState(false);
+
   const [removingBackground, setRemovingBackground] = useState(false);
 
-  const [existingImageUrl, setExistingImageUrl] =
-    useState<string | null>(null);
-
-  // KAYITLI KIYAFETLERİ YÜKLE
+  // --------------------------------------------------
+  // GARDIROBU YÜKLE
+  // --------------------------------------------------
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -129,11 +179,21 @@ export default function WardrobeScreen({ userId }: Props) {
       );
 
       setItems(itemsWithImages);
+
       const { data: outfitData, error: outfitError } = await supabase
-        .from('wardrobe_outfits').select('id,name,item_ids')
-        .eq('user_id', userId).order('created_at', {ascending:false});
-      if (outfitError) console.warn('Kombinler yüklenemedi:', outfitError.message);
-      else setOutfits((outfitData || []) as {id:string;name:string;item_ids:string[]}[]);
+        .from('wardrobe_outfits')
+        .select('id,name,item_ids')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (outfitError) {
+        console.warn(
+          'Kombinler yüklenemedi:',
+          outfitError.message
+        );
+      } else {
+        setOutfits((outfitData || []) as Outfit[]);
+      }
     } catch (error: any) {
       Alert.alert(
         'Gardırop yüklenemedi',
@@ -148,7 +208,9 @@ export default function WardrobeScreen({ userId }: Props) {
     void loadItems();
   }, [loadItems]);
 
-  // FORMU SIFIRLA
+  // --------------------------------------------------
+  // FORM İŞLEMLERİ
+  // --------------------------------------------------
 
   const resetForm = () => {
     setShowForm(false);
@@ -162,14 +224,10 @@ export default function WardrobeScreen({ userId }: Props) {
     setSeason('Dört Mevsim');
   };
 
-  // YENİ KIYAFET EKLEMEYİ BAŞLAT
-
   const startAdding = () => {
     resetForm();
     choosePhoto();
   };
-
-  // DÜZENLEMEYİ BAŞLAT
 
   const startEditing = (item: WardrobeItemWithImage) => {
     setEditingItem(item);
@@ -183,7 +241,9 @@ export default function WardrobeScreen({ userId }: Props) {
     setShowForm(true);
   };
 
-  // GALERİDEN SEÇ
+  // --------------------------------------------------
+  // FOTOĞRAF SEÇİMİ
+  // --------------------------------------------------
 
   const openGallery = async () => {
     try {
@@ -202,14 +262,10 @@ export default function WardrobeScreen({ userId }: Props) {
       setSelectedImage(result.assets[0]);
       setShowForm(true);
     } catch (error: any) {
-      Alert.alert(
-        'Fotoğraf seçilemedi',
-        error?.message || 'Lütfen tekrar dene.'
-      );
+      showNotice('error', 'Fotoğraf seçilemedi',
+        error?.message || 'Lütfen tekrar dene.');
     }
   };
-
-  // KAMERAYLA ÇEK
 
   const openCamera = async () => {
     try {
@@ -217,10 +273,8 @@ export default function WardrobeScreen({ userId }: Props) {
         await ImagePicker.requestCameraPermissionsAsync();
 
       if (!permission.granted) {
-        Alert.alert(
-          'Kamera izni gerekli',
-          'Fotoğraf çekmek için kamera izni vermelisin.'
-        );
+        showNotice('info', 'Kamera izni gerekli',
+          'Fotoğraf çekebilmek için cihaz ayarlarından PRİZMA uygulamasına kamera izni verebilirsin.');
         return;
       }
 
@@ -238,71 +292,18 @@ export default function WardrobeScreen({ userId }: Props) {
       setSelectedImage(result.assets[0]);
       setShowForm(true);
     } catch (error: any) {
-      Alert.alert(
-        'Kamera açılamadı',
-        error?.message || 'Lütfen tekrar dene.'
-      );
+      showNotice('error', 'Kamera açılamadı',
+        error?.message || 'Lütfen tekrar dene.');
     }
   };
 
-  // FOTOĞRAF KAYNAĞINI SEÇ
-
   const choosePhoto = () => {
-    Alert.alert(
-      'Fotoğraf ekle ✦',
-      'Fotoğrafını nasıl eklemek istersin?',
-      [
-        {
-          text: '📷 Fotoğraf Çek',
-          onPress: () => {
-            Alert.alert(
-              'Kamera erişimi',
-              'PRİZMA, kıyafet fotoğrafı çekebilmen için kameranı kullanacak.',
-              [
-                {
-                  text: 'Vazgeç',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Devam Et',
-                  onPress: () => {
-                    void openCamera();
-                  },
-                },
-              ]
-            );
-          },
-        },
-        {
-          text: '🖼️ Galeriden Seç',
-          onPress: () => {
-            Alert.alert(
-              'Fotoğraflarına erişim',
-              'PRİZMA, seçtiğin kıyafet fotoğrafını gardırobuna kaydeder.',
-              [
-                {
-                  text: 'Vazgeç',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Devam Et',
-                  onPress: () => {
-                    void openGallery();
-                  },
-                },
-              ]
-            );
-          },
-        },
-        {
-          text: 'Vazgeç',
-          style: 'cancel',
-        },
-      ]
-    );
+    setPhotoSheetVisible(true);
   };
 
+  // --------------------------------------------------
   // FOTOĞRAFI SUPABASE'E YÜKLE
+  // --------------------------------------------------
 
   const uploadImage = async (
     image: ImagePicker.ImagePickerAsset
@@ -315,7 +316,6 @@ export default function WardrobeScreen({ userId }: Props) {
 
     const mimeType = image.mimeType || 'image/jpeg';
 
-    // Desteklenmeyen formatları JPEG olarak yeniden seçmek gerekir.
     if (
       mimeType !== 'image/jpeg' &&
       mimeType !== 'image/png' &&
@@ -359,7 +359,9 @@ export default function WardrobeScreen({ userId }: Props) {
     return filePath;
   };
 
-  // YENİ KIYAFETİ KAYDET VEYA MEVCUDU GÜNCELLE
+  // --------------------------------------------------
+  // KIYAFET KAYDET / GÜNCELLE
+  // --------------------------------------------------
 
   const saveItem = async () => {
     if (saving) return;
@@ -386,18 +388,14 @@ export default function WardrobeScreen({ userId }: Props) {
     let databaseSaved = false;
 
     try {
-      // Düzenlemede eski fotoğrafı koru.
       let imagePath = editingItem?.image_path || '';
 
-      // Yeni fotoğraf seçildiyse onu yükle.
       if (selectedImage) {
         imagePath = await uploadImage(selectedImage);
         newUploadedPath = imagePath;
       }
 
       if (editingItem) {
-        // MEVCUT KIYAFETİ GÜNCELLE
-
         const { error } = await supabase
           .from('wardrobe_items')
           .update({
@@ -417,8 +415,6 @@ export default function WardrobeScreen({ userId }: Props) {
 
         databaseSaved = true;
 
-        // Yeni fotoğraf başarıyla kaydedildiyse
-        // eski fotoğrafı depodan temizle.
         if (
           newUploadedPath &&
           editingItem.image_path !== newUploadedPath
@@ -436,8 +432,6 @@ export default function WardrobeScreen({ userId }: Props) {
           }
         }
       } else {
-        // YENİ KIYAFET EKLE
-
         const { error } = await supabase
           .from('wardrobe_items')
           .insert({
@@ -472,7 +466,6 @@ export default function WardrobeScreen({ userId }: Props) {
 
       await loadItems();
     } catch (error: any) {
-      // Veritabanına kaydedilemeyen yeni fotoğrafı temizle.
       if (newUploadedPath && !databaseSaved) {
         await supabase.storage
           .from('wardrobe')
@@ -492,21 +485,15 @@ export default function WardrobeScreen({ userId }: Props) {
     }
   };
 
-  // KIYAFETİ SİL
+  // --------------------------------------------------
+  // KIYAFET SİL
+  // --------------------------------------------------
 
   const deleteItem = (item: WardrobeItem) => {
-    Alert.alert(
-      'Kıyafeti sil',
-      `"${item.name}" gardırobundan silinsin mi?`,
-      [
-        {
-          text: 'Vazgeç',
-          style: 'cancel',
-        },
-        {
-          text: 'Sil',
-          style: 'destructive',
-          onPress: async () => {
+    setConfirmTarget({ type: 'item', id: item.id, name: item.name });
+  };
+
+  const confirmDeleteItem = async (item: WardrobeItem) => {
             if (deletingId) return;
 
             setDeletingId(item.id);
@@ -547,39 +534,95 @@ export default function WardrobeScreen({ userId }: Props) {
             } finally {
               setDeletingId(null);
             }
-          },
-        },
-      ]
+  };
+
+  // --------------------------------------------------
+  // FAVORİLER
+  // --------------------------------------------------
+
+  const toggleFavorite = async (
+    item: WardrobeItemWithImage
+  ) => {
+    const next = !item.favorite;
+
+    const { error } = await supabase
+      .from('wardrobe_items')
+      .update({ favorite: next })
+      .eq('id', item.id)
+      .eq('user_id', userId);
+
+    if (error) {
+      Alert.alert(
+        'Favori kaydedilemedi',
+        error.message
+      );
+      return;
+    }
+
+    setItems((current) =>
+      current.map((x) =>
+        x.id === item.id
+          ? { ...x, favorite: next }
+          : x
+      )
+    );
+
+    setDetailItem((current) =>
+      current?.id === item.id
+        ? { ...current, favorite: next }
+        : current
     );
   };
 
-  const toggleFavorite = async (item: WardrobeItemWithImage) => {
-    const next = !item.favorite;
-    const { error } = await supabase.from('wardrobe_items')
-      .update({ favorite: next }).eq('id', item.id).eq('user_id', userId);
-    if (error) return Alert.alert('Favori kaydedilemedi', error.message);
-    setItems(current => current.map(x => x.id === item.id ? {...x, favorite:next} : x));
-    setDetailItem(current => current?.id === item.id ? {...current, favorite:next} : current);
-  };
+  // --------------------------------------------------
+  // KOMBİNLER
+  // --------------------------------------------------
 
   const saveOutfit = async () => {
-    const chosen = [...new Set(outfitSelected)].filter(id => items.some(item => item.id === id));
+    const chosen = [...new Set(outfitSelected)].filter(
+      (id) => items.some((item) => item.id === id)
+    );
+
     if (!outfitName.trim() || chosen.length < 2) {
-      Alert.alert('Eksik bilgi', 'Kombine isim ver ve en az iki kıyafet seç.');
+      Alert.alert(
+        'Eksik bilgi',
+        'Kombine isim ver ve en az iki kıyafet seç.'
+      );
       return;
     }
+
     const query = editingOutfitId
-      ? supabase.from('wardrobe_outfits').update({name: outfitName.trim(), item_ids: chosen})
-          .eq('id', editingOutfitId).eq('user_id', userId)
-      : supabase.from('wardrobe_outfits').insert({
-          user_id: userId, name: outfitName.trim(), item_ids: chosen,
-        });
-    const {error} = await query;
-    if (error) return Alert.alert('Kombin kaydedilemedi', error.message);
+      ? supabase
+          .from('wardrobe_outfits')
+          .update({
+            name: outfitName.trim(),
+            item_ids: chosen,
+          })
+          .eq('id', editingOutfitId)
+          .eq('user_id', userId)
+      : supabase
+          .from('wardrobe_outfits')
+          .insert({
+            user_id: userId,
+            name: outfitName.trim(),
+            item_ids: chosen,
+          });
+
+    const { error } = await query;
+
+    if (error) {
+      Alert.alert(
+        'Kombin kaydedilemedi',
+        error.message
+      );
+      return;
+    }
+
     setShowOutfitBuilder(false);
     setEditingOutfitId(null);
     setOutfitName('');
     setOutfitSelected([]);
+
     await loadItems();
   };
 
@@ -590,93 +633,317 @@ export default function WardrobeScreen({ userId }: Props) {
     setOutfitSelected([]);
   };
 
-  const editOutfit = (outfit: {id:string; name:string; item_ids:string[]}) => {
+  const editOutfit = (outfit: Outfit) => {
     setEditingOutfitId(outfit.id);
     setOutfitName(outfit.name);
-    setOutfitSelected(outfit.item_ids.filter(id => items.some(item => item.id === id)));
+
+    setOutfitSelected(
+      outfit.item_ids.filter((id) =>
+        items.some((item) => item.id === id)
+      )
+    );
+
     setShowOutfitBuilder(true);
   };
 
   const boardOrder: Record<string, number> = {
-    'Dış Giyim': 0, 'Üst Giyim': 1, 'Elbise': 2,
-    'Alt Giyim': 3, 'Ayakkabı': 4, 'Çanta': 5,
-    'Aksesuar': 6, 'Diğer': 7,
+    'Dış Giyim': 0,
+    'Üst Giyim': 1,
+    'Elbise': 2,
+    'Alt Giyim': 3,
+    'Ayakkabı': 4,
+    'Çanta': 5,
+    'Aksesuar': 6,
+    'Diğer': 7,
   };
 
   const renderBoard = (ids: string[]) => {
-    const chosen = ids.map(id => items.find(item => item.id === id))
-      .filter((item): item is WardrobeItemWithImage => Boolean(item))
-      .sort((a, b) => (boardOrder[a.category] ?? 7) - (boardOrder[b.category] ?? 7));
+    const chosen = ids
+      .map((id) => items.find((item) => item.id === id))
+      .filter(
+        (item): item is WardrobeItemWithImage =>
+          Boolean(item)
+      )
+      .sort(
+        (a, b) =>
+          (boardOrder[a.category] ?? 7) -
+          (boardOrder[b.category] ?? 7)
+      );
+
     if (!chosen.length) {
-      return <Text style={styles.itemCategory}>Bu kombinin parçaları artık gardıropta yok.</Text>;
+      return (
+        <Text style={styles.itemCategory}>
+          Bu kombinin parçaları artık gardıropta yok.
+        </Text>
+      );
     }
-    const main = chosen.filter(item => !['Çanta', 'Aksesuar'].includes(item.category));
-    const side = chosen.filter(item => ['Çanta', 'Aksesuar'].includes(item.category));
-    const renderPiece = (item: WardrobeItemWithImage, compact = false) => (
-      <View key={item.id} style={[styles.boardPiece, compact && styles.boardPieceSmall]}>
-        {item.imageUrl
-          ? <Image source={{uri:item.imageUrl}} style={[styles.boardImage, compact && styles.boardImageSmall]} resizeMode="contain" />
-          : <Text style={styles.boardPlaceholder}>◇</Text>}
-        <Text style={styles.boardPieceName} numberOfLines={2}>{item.name}</Text>
+
+    const main = chosen.filter(
+      (item) =>
+        !['Çanta', 'Aksesuar'].includes(item.category)
+    );
+
+    const side = chosen.filter(
+      (item) =>
+        ['Çanta', 'Aksesuar'].includes(item.category)
+    );
+
+    const renderPiece = (
+      item: WardrobeItemWithImage,
+      compact = false
+    ) => (
+      <View
+        key={item.id}
+        style={[
+          styles.boardPiece,
+          compact && styles.boardPieceSmall,
+        ]}
+      >
+        {item.imageUrl ? (
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={[
+              styles.boardImage,
+              compact && styles.boardImageSmall,
+            ]}
+            resizeMode="contain"
+          />
+        ) : (
+          <Text style={styles.boardPlaceholder}>◇</Text>
+        )}
+
+        <Text
+          style={styles.boardPieceName}
+          numberOfLines={2}
+        >
+          {item.name}
+        </Text>
       </View>
     );
+
     return (
       <View style={styles.boardCanvas}>
-        <View style={styles.boardMain}>{main.map(item => renderPiece(item))}</View>
+        <View style={styles.boardMain}>
+          {main.map((item) => renderPiece(item))}
+        </View>
+
         {side.length > 0 && (
-          <View style={styles.boardSide}>{side.map(item => renderPiece(item, true))}</View>
+          <View style={styles.boardSide}>
+            {side.map((item) => renderPiece(item, true))}
+          </View>
         )}
       </View>
     );
   };
 
-  const deleteOutfit = (id:string) => Alert.alert('Kombini sil', 'Bu kombin silinsin mi?', [
-    {text:'Vazgeç',style:'cancel'},
-    {text:'Sil',style:'destructive',onPress:async()=>{
-      const {error}=await supabase.from('wardrobe_outfits').delete().eq('id',id).eq('user_id',userId);
-      if(error) Alert.alert('Hata',error.message);
-      else setOutfits(current=>current.filter(o=>o.id!==id));
-    }}
-  ]);
-
-  // Arka plan kaldırma sunucu tarafında çalışır; anahtar uygulamaya eklenmez.
-  const removeBackground = async () => {
-    if (!selectedImage?.base64) {
-      Alert.alert('Fotoğraf seç', 'Önce yeni bir fotoğraf seçmelisin.'); return;
-    }
-    setRemovingBackground(true);
-    try {
-      const {data,error} = await supabase.functions.invoke('remove-background', {
-        body: { imageBase64:selectedImage.base64, mimeType:selectedImage.mimeType || 'image/jpeg' },
-      });
-      if(error) throw error;
-      if (!data?.imageBase64) throw new Error(data?.error || 'Servis yanıt vermedi.');
-      setSelectedImage({
-        ...selectedImage,
-        uri:`data:image/png;base64,${data.imageBase64}`,
-        base64:data.imageBase64,
-        mimeType:'image/png',
-      });
-      Alert.alert('Hazır ✨','Arka plan kaldırıldı. Beğenmezsen fotoğrafı yeniden seçebilirsin.');
-    } catch(e:any) {
-      Alert.alert('Arka plan kaldırılamadı',
-        'Sunucu servisi henüz kurulmamış veya kullanılamıyor olabilir. '+(e?.message || ''));
-    } finally { setRemovingBackground(false); }
+  const deleteOutfit = (id: string) => {
+    const outfit = outfits.find((o) => o.id === id);
+    setConfirmTarget({
+      type: 'outfit',
+      id,
+      name: outfit?.name || 'Bu kombin',
+    });
   };
 
-  const filteredItems = items.filter(item =>
-    (activeFilter === 'Tümü' || item.category === activeFilter) &&
-    (!favoriteOnly || item.favorite) &&
-    (seasonFilter === 'Tüm Mevsimler' || item.season === seasonFilter || item.season === 'Dört Mevsim') &&
-    (!colorFilter.trim() || (item.color || '').toLocaleLowerCase('tr-TR').includes(colorFilter.trim().toLocaleLowerCase('tr-TR'))) &&
-    (!search.trim() || [item.name,item.category,item.color || '',item.notes || ''].join(' ').toLocaleLowerCase('tr-TR').includes(search.trim().toLocaleLowerCase('tr-TR')))
+  const confirmDeleteOutfit = async (id: string) => {
+            const { error } = await supabase
+              .from('wardrobe_outfits')
+              .delete()
+              .eq('id', id)
+              .eq('user_id', userId);
+
+            if (error) {
+              Alert.alert('Hata', error.message);
+            } else {
+              setOutfits((current) =>
+                current.filter((o) => o.id !== id)
+              );
+            }
+  };
+
+  // --------------------------------------------------
+  // ARKA PLAN KALDIRMA
+  // --------------------------------------------------
+
+  const removeBackground = async () => {
+    if (removingBackground || saving) return;
+
+    if (!selectedImage && !existingImageUrl) {
+      showNotice('info', 'Fotoğraf seç',
+        'Önce bir kıyafet fotoğrafı seçmelisin.');
+      return;
+    }
+
+    setRemovingBackground(true);
+
+    try {
+      // Fotoğrafı arka plan kaldırmadan önce küçült.
+      let sourceUri = selectedImage?.uri;
+
+      if (!sourceUri && editingItem) {
+        const { data: signed, error: signedError } =
+          await supabase.storage
+            .from('wardrobe')
+            .createSignedUrl(editingItem.image_path, 120);
+
+        if (signedError || !signed?.signedUrl) {
+          throw new Error('Kayıtlı fotoğraf açılamadı.');
+        }
+        sourceUri = signed.signedUrl;
+      }
+
+      if (!sourceUri) {
+        throw new Error('Fotoğraf okunamadı.');
+      }
+
+      const resized = await ImageManipulator.manipulateAsync(
+        sourceUri,
+        [{ resize: { width: 1024 } }],
+        {
+          compress: 0.7,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        }
+      );
+
+      const imageBase64 = resized.base64;
+      const mimeType = 'image/jpeg';
+
+      if (!imageBase64 || imageBase64.length > 8_000_000) {
+        throw new Error('Fotoğraf çok büyük. Daha küçük bir fotoğraf seç.');
+      }
+
+      const { data, error } = await supabase.functions.invoke(
+        'remove-background',
+        { body: { imageBase64, mimeType } }
+      );
+
+      if (error) {
+        let message = error.message || 'Arka plan kaldırılamadı.';
+        // Supabase, HTTP hatalarında asıl mesajı response içinde tutar.
+        if (error.context && typeof error.context.json === 'function') {
+          try {
+            const details = await error.context.json();
+            if (typeof details?.error === 'string') message = details.error;
+          } catch (_) { /* JSON olmayan hata yanıtı */ }
+        }
+        throw new Error(message);
+      }
+
+      if (!data?.imageBase64) {
+        throw new Error(data?.error || 'Servis görsel döndürmedi.');
+      }
+
+      const pngUri = `data:image/png;base64,${data.imageBase64}`;
+      setSelectedImage({
+        ...(selectedImage || {
+          uri: pngUri,
+          width: 0,
+          height: 0,
+          type: 'image' as const,
+        }),
+        uri: pngUri,
+        base64: data.imageBase64,
+        mimeType: 'image/png',
+      });
+
+      showNotice('success', 'Arka plan hazır ✨',
+        'Arka plan kaldırıldı. Değişikliği saklamak için Kaydet butonuna bas.');
+    } catch (error: any) {
+      showNotice('error', 'Arka plan kaldırılamadı',
+        error?.message || 'Lütfen tekrar dene.');
+    } finally {
+      setRemovingBackground(false);
+    }
+  };
+
+  // --------------------------------------------------
+  // FİLTRELER
+  // --------------------------------------------------
+
+  const filteredItems = items.filter(
+    (item) =>
+      (activeFilter === 'Tümü' ||
+        item.category === activeFilter) &&
+      (!favoriteOnly || item.favorite) &&
+      (seasonFilter === 'Tüm Mevsimler' ||
+        item.season === seasonFilter ||
+        item.season === 'Dört Mevsim') &&
+      (!colorFilter.trim() ||
+        (item.color || '')
+          .toLocaleLowerCase('tr-TR')
+          .includes(
+            colorFilter
+              .trim()
+              .toLocaleLowerCase('tr-TR')
+          )) &&
+      (!search.trim() ||
+        [
+          item.name,
+          item.category,
+          item.color || '',
+          item.notes || '',
+        ]
+          .join(' ')
+          .toLocaleLowerCase('tr-TR')
+          .includes(
+            search.trim().toLocaleLowerCase('tr-TR')
+          ))
   );
 
   const previewUri =
     selectedImage?.uri || existingImageUrl;
+      // --------------------------------------------------
+  // DETAY EKRANINDAN DÜZENLEMEYE GEÇ
+  // --------------------------------------------------
+
+  const editFromDetail = () => {
+    if (!detailItem) return;
+
+    const item = detailItem;
+    setDetailItem(null);
+
+    // Detay modalının kapanış animasyonunun bitmesini bekle.
+    setTimeout(() => {
+      startEditing(item);
+    }, 350);
+  };
 
   return (
     <View style={styles.container}>
+      <PrizmaNotice
+        visible={Boolean(notice)}
+        type={notice?.type || 'info'}
+        title={notice?.title || ''}
+        message={notice?.message || ''}
+        onClose={() => setNotice(null)}
+      />
+      <PrizmaConfirm
+        visible={Boolean(confirmTarget)}
+        title={confirmTarget?.type === 'outfit' ? 'Kombin silinsin mi?' : 'Bu parçayı silelim mi?'}
+        message={confirmTarget?.type === 'outfit'
+          ? `"${confirmTarget?.name || 'Kombin'}" silinecek.`
+          : `"${confirmTarget?.name || 'Kıyafet'}" gardırobundan kaldırılacak.`}
+        loading={confirmBusy}
+        onCancel={() => setConfirmTarget(null)}
+        onConfirm={async () => {
+          if (!confirmTarget || confirmBusy) return;
+          const target = confirmTarget;
+          setConfirmBusy(true);
+          try {
+            if (target.type === 'item') {
+              const item = items.find((i) => i.id === target.id);
+              if (item) await confirmDeleteItem(item);
+            } else {
+              await confirmDeleteOutfit(target.id);
+            }
+            setConfirmTarget(null);
+          } finally {
+            setConfirmBusy(false);
+          }
+        }}
+      />
+
       <Text style={styles.eyebrow}>
         YOUR DIGITAL CLOSET
       </Text>
@@ -706,250 +973,658 @@ export default function WardrobeScreen({ userId }: Props) {
           </Text>
         </View>
 
-        <Text style={styles.summaryIcon}>
-          ◇
-        </Text>
+        <Text style={styles.summaryIcon}>◇</Text>
       </View>
 
-      {/* KIYAFET EKLE */}
+      {/* YENİ KIYAFET EKLE */}
 
-      {!showForm && (
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={startAdding}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.addButtonText}>
-            + Yeni Kıyafet Ekle
-          </Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={startAdding}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.addButtonText}>
+          + Yeni Kıyafet Ekle
+        </Text>
+      </TouchableOpacity>
 
-      {/* EKLEME / DÜZENLEME FORMU */}
+      {/* ============================================= */}
+      {/* KIYAFET EKLEME / DÜZENLEME TAM EKRAN MODALI */}
+      {/* ============================================= */}
 
-      {showForm && (
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>
-            {editingItem
-              ? 'Parçanı düzenle ✦'
-              : 'Yeni bir parça ✦'}
-          </Text>
 
-          <Text style={styles.formSubtitle}>
-            {editingItem
-              ? 'Kıyafet bilgilerini güncelleyebilirsin.'
-              : 'Kıyafetini gardırobuna ekleyelim.'}
-          </Text>
+      <Modal
+        visible={photoSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPhotoSheetVisible(false)}
+      >
+        <View style={styles.prizmaSheetOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setPhotoSheetVisible(false)}
+          />
+          <View style={styles.prizmaSheet}>
+            <View style={styles.prizmaSheetHandle} />
+            <Text style={styles.prizmaSheetSparkle}>✦</Text>
+            <Text style={styles.prizmaSheetTitle}>
+              Bir parça ekleyelim
+            </Text>
+            <Text style={styles.prizmaSheetSubtitle}>
+              Yeni parçanı nasıl eklemek istersin?
+            </Text>
 
-          {previewUri && (
             <TouchableOpacity
-              onPress={choosePhoto}
-              activeOpacity={0.85}
+              style={styles.prizmaSheetOption}
+              onPress={() => {
+                setPhotoSheetVisible(false);
+                setTimeout(() => { void openGallery(); }, 350);
+              }}
             >
-              <Image
-                source={{ uri: previewUri }}
-                style={styles.previewImage}
-                resizeMode="contain"
+              <Text style={styles.prizmaSheetOptionIcon}>▧</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.prizmaSheetOptionTitle}>
+                  Galeriden seç
+                </Text>
+                <Text style={styles.prizmaSheetOptionDetail}>
+                  Fotoğraflarından bir parça seç
+                </Text>
+              </View>
+              <Text style={styles.prizmaSheetArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.prizmaSheetOption}
+              onPress={() => {
+                setPhotoSheetVisible(false);
+                setTimeout(() => { void openCamera(); }, 350);
+              }}
+            >
+              <Text style={styles.prizmaSheetOptionIcon}>◉</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.prizmaSheetOptionTitle}>
+                  Fotoğraf çek
+                </Text>
+                <Text style={styles.prizmaSheetOptionDetail}>
+                  Kameranla yeni bir fotoğraf oluştur
+                </Text>
+              </View>
+              <Text style={styles.prizmaSheetArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.prizmaSheetCancel}
+              onPress={() => setPhotoSheetVisible(false)}
+            >
+              <Text style={styles.prizmaSheetCancelText}>Vazgeç</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showForm}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => {
+          if (!saving) resetForm();
+        }}
+      >
+        <SafeAreaView style={styles.editorScreen}>
+          <KeyboardAvoidingView
+            style={styles.editorFlex}
+            behavior={
+              Platform.OS === 'ios' ? 'padding' : undefined
+            }
+          >
+            {/* ÜST BAŞLIK */}
+
+            <View style={styles.editorHeader}>
+              <TouchableOpacity
+                onPress={resetForm}
+                disabled={saving}
+                style={styles.editorBack}
+              >
+                <Text style={styles.editorBackText}>
+                  ‹ Geri
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.editorHeaderTitle}>
+                {editingItem
+                  ? 'Kıyafeti Düzenle'
+                  : 'Yeni Kıyafet'}
+              </Text>
+
+              <View style={styles.editorHeaderSpacer} />
+            </View>
+
+            {/* KAYDIRILABİLİR FORM */}
+
+            <ScrollView
+              style={styles.editorFlex}
+              contentContainerStyle={styles.editorContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.formTitle}>
+                {editingItem
+                  ? 'Parçanı düzenle ✦'
+                  : 'Yeni bir parça ✦'}
+              </Text>
+
+              <Text style={styles.formSubtitle}>
+                {editingItem
+                  ? 'Kıyafet bilgilerini güncelleyebilirsin.'
+                  : 'Kıyafetini gardırobuna ekleyelim.'}
+              </Text>
+
+              {/* FOTOĞRAF */}
+
+              {previewUri && (
+                <TouchableOpacity
+                  onPress={choosePhoto}
+                  activeOpacity={0.85}
+                >
+                  <Image
+                    source={{ uri: previewUri }}
+                    style={styles.previewImage}
+                    resizeMode="contain"
+                  />
+
+                  <Text style={styles.changePhoto}>
+                    Fotoğrafı değiştir ↗
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* ARKA PLAN KALDIRMA - YENİ VE KAYITLI KIYAFETLER */}
+
+              {previewUri && (
+                <TouchableOpacity
+                  style={styles.outlineButton}
+                  disabled={removingBackground || saving}
+                  onPress={() => void removeBackground()}
+                >
+                  {removingBackground ? (
+                    <ActivityIndicator color={C.navy} />
+                  ) : (
+                    <Text style={styles.outlineText}>
+                      ✨ Arka Planı Kaldır
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {/* KIYAFET ADI */}
+
+              <Text style={styles.inputLabel}>
+                KIYAFET ADI
+              </Text>
+
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Örn. Beyaz keten gömlek"
+                placeholderTextColor={C.muted}
+                maxLength={80}
               />
 
-              <Text style={styles.changePhoto}>
-                Fotoğrafı değiştir ↗
+              {/* KATEGORİ */}
+
+              <Text style={styles.inputLabel}>
+                KATEGORİ
               </Text>
-            </TouchableOpacity>
-          )}
 
-          <Text style={styles.inputLabel}>
-            KIYAFET ADI
-          </Text>
+              <View style={styles.categoryWrap}>
+                {CATEGORIES.filter(
+                  (item) => item !== 'Tümü'
+                ).map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    style={[
+                      styles.categoryChip,
+                      category === item &&
+                        styles.categoryChipActive,
+                    ]}
+                    onPress={() => setCategory(item)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        category === item &&
+                          styles.categoryTextActive,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Örn. Beyaz keten gömlek"
-            placeholderTextColor={C.muted}
-            maxLength={80}
-          />
+              {/* RENK */}
 
-          <Text style={styles.inputLabel}>
-            KATEGORİ
-          </Text>
+              <Text style={styles.inputLabel}>
+                RENK (İSTEĞE BAĞLI)
+              </Text>
 
-          <View style={styles.categoryWrap}>
-            {CATEGORIES.filter(
-              (item) => item !== 'Tümü'
-            ).map((item) => (
-              <TouchableOpacity
-                key={item}
+              <TextInput
+                style={styles.input}
+                value={color}
+                onChangeText={setColor}
+                placeholder="Örn. Krem"
+                placeholderTextColor={C.muted}
+                maxLength={40}
+              />
+
+              {/* MEVSİM */}
+
+              <Text style={styles.inputLabel}>
+                MEVSİM
+              </Text>
+
+              <View style={styles.categoryWrap}>
+                {SEASONS.filter(
+                  (item) => item !== 'Tüm Mevsimler'
+                ).map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    onPress={() => setSeason(item)}
+                    style={[
+                      styles.categoryChip,
+                      season === item &&
+                        styles.categoryChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        season === item &&
+                          styles.categoryTextActive,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* NOTLAR */}
+
+              <Text style={styles.inputLabel}>
+                NOTLAR (İSTEĞE BAĞLI)
+              </Text>
+
+              <TextInput
                 style={[
-                  styles.categoryChip,
-                  category === item &&
-                    styles.categoryChipActive,
+                  styles.input,
+                  styles.notesInput,
                 ]}
-                onPress={() => setCategory(item)}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Örn. Günlük kullanım için"
+                placeholderTextColor={C.muted}
+                multiline
+                maxLength={300}
+              />
+
+            </ScrollView>
+
+            {/* SABİT ALT BUTONLAR */}
+
+            <View style={styles.editorFooter}>
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  { marginTop: 0 },
+                  saving && styles.disabledButton,
+                ]}
+                disabled={saving}
+                onPress={() => void saveItem()}
               >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    category === item &&
-                      styles.categoryTextActive,
-                  ]}
-                >
-                  {item}
+                {saving ? (
+                  <ActivityIndicator color={C.white} />
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    {editingItem
+                      ? 'Değişiklikleri Kaydet →'
+                      : 'Gardırobuma Kaydet →'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={resetForm}
+                disabled={saving}
+              >
+                <Text style={styles.cancelButtonText}>
+                  Vazgeç
                 </Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
 
-          <Text style={styles.inputLabel}>
-            RENK (İSTEĞE BAĞLI)
-          </Text>
+      {/* ============================================= */}
+      {/* KIYAFET DETAYLARI - TAM EKRAN */}
+      {/* ============================================= */}
 
-          <TextInput
-            style={styles.input}
-            value={color}
-            onChangeText={setColor}
-            placeholder="Örn. Krem"
-            placeholderTextColor={C.muted}
-            maxLength={40}
-          />
+      <Modal
+        visible={detailItem !== null}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setDetailItem(null)}
+      >
+        <SafeAreaView style={styles.detailScreen}>
+          {/* DETAY ÜST BAŞLIK */}
 
-          <Text style={styles.inputLabel}>MEVSİM</Text>
-          <View style={styles.categoryWrap}>
-            {SEASONS.filter(x=>x!=='Tüm Mevsimler').map(x=>(
-              <TouchableOpacity key={x} onPress={()=>setSeason(x)} style={[styles.categoryChip,season===x && styles.categoryChipActive]}>
-                <Text style={[styles.categoryText,season===x && styles.categoryTextActive]}>{x}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.inputLabel}>
-            NOTLAR (İSTEĞE BAĞLI)
-          </Text>
-
-          <TextInput
-            style={[
-              styles.input,
-              styles.notesInput,
-            ]}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Örn. Günlük kullanım için"
-            placeholderTextColor={C.muted}
-            multiline
-            maxLength={300}
-          />
-
-          {selectedImage && (
-            <TouchableOpacity style={styles.outlineButton} disabled={removingBackground || saving} onPress={()=>void removeBackground()}>
-              {removingBackground ? <ActivityIndicator color={C.navy}/> : <Text style={styles.outlineText}>✨ Arka Planı Kaldır</Text>}
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              saving && styles.disabledButton,
-            ]}
-            disabled={saving}
-            onPress={saveItem}
-          >
-            {saving ? (
-              <ActivityIndicator color={C.white} />
-            ) : (
-              <Text style={styles.saveButtonText}>
-                {editingItem
-                  ? 'Değişiklikleri Kaydet →'
-                  : 'Gardırobuma Kaydet →'}
+          <View style={styles.editorHeader}>
+            <TouchableOpacity
+              style={styles.editorBack}
+              onPress={() => setDetailItem(null)}
+            >
+              <Text style={styles.editorBackText}>
+                ‹ Geri
               </Text>
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
 
+            <Text style={styles.editorHeaderTitle}>
+              Parça Detayları
+            </Text>
+
+            <View style={styles.editorHeaderSpacer} />
+          </View>
+
+          {detailItem && (
+            <>
+              {/* DETAY İÇERİĞİ */}
+
+              <ScrollView
+                style={styles.editorFlex}
+                contentContainerStyle={styles.detailContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* BÜYÜK FOTOĞRAF */}
+
+                <View style={styles.detailImageContainer}>
+                  {detailItem.imageUrl ? (
+                    <Image
+                      source={{ uri: detailItem.imageUrl }}
+                      style={styles.detailImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.detailImagePlaceholder}>
+                      <Text style={styles.detailPlaceholderIcon}>
+                        ◇
+                      </Text>
+
+                      <Text style={styles.placeholderText}>
+                        Görsel yüklenemedi
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* İSİM VE FAVORİ */}
+
+                <View style={styles.detailTitleRow}>
+                  <View style={styles.detailTitleArea}>
+                    <Text style={styles.detailEyebrow}>
+                      GARDIROBUMDAKİ PARÇA
+                    </Text>
+
+                    <Text style={styles.detailName}>
+                      {detailItem.name}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.detailFavoriteButton}
+                    onPress={() =>
+                      void toggleFavorite(detailItem)
+                    }
+                  >
+                    <Text style={styles.detailFavoriteText}>
+                      {detailItem.favorite ? '♥' : '♡'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* KIYAFET BİLGİLERİ */}
+
+                <View style={styles.detailInfoCard}>
+                  <View style={styles.detailInfoRow}>
+                    <Text style={styles.detailInfoLabel}>
+                      Kategori
+                    </Text>
+
+                    <Text style={styles.detailInfoValue}>
+                      {detailItem.category}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailDivider} />
+
+                  <View style={styles.detailInfoRow}>
+                    <Text style={styles.detailInfoLabel}>
+                      Renk
+                    </Text>
+
+                    <Text style={styles.detailInfoValue}>
+                      {detailItem.color || 'Belirtilmedi'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailDivider} />
+
+                  <View style={styles.detailInfoRow}>
+                    <Text style={styles.detailInfoLabel}>
+                      Mevsim
+                    </Text>
+
+                    <Text style={styles.detailInfoValue}>
+                      {detailItem.season || 'Belirtilmedi'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* NOTLAR */}
+
+                <View style={styles.detailNotesCard}>
+                  <Text style={styles.detailNotesTitle}>
+                    NOTLAR ✦
+                  </Text>
+
+                  <Text style={styles.detailNotesText}>
+                    {detailItem.notes ||
+                      'Bu parça için henüz not eklenmemiş.'}
+                  </Text>
+                </View>
+              </ScrollView>
+
+              {/* DETAY EKRANI SABİT ALT BUTON */}
+
+              <View style={styles.editorFooter}>
+                <TouchableOpacity
+                  style={[
+                    styles.saveButton,
+                    { marginTop: 0 },
+                  ]}
+                  onPress={editFromDetail}
+                >
+                  <Text style={styles.saveButtonText}>
+                    ✎ Bu Parçayı Düzenle →
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* ============================================= */}
+      {/* KOMBİNLER */}
+      {/* ============================================= */}
+
+      <View style={styles.formCard}>
+        <Text style={styles.formTitle}>
+          Kombinlerim ✦
+        </Text>
+
+        <Text style={styles.formSubtitle}>
+          Parçalarını bir moda panosunda bir araya getir.
+        </Text>
+
+        {items.length >= 2 && (
           <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={resetForm}
-            disabled={saving}
+            style={styles.addButton}
+            onPress={() => {
+              if (showOutfitBuilder) {
+                closeOutfitBuilder();
+              } else {
+                setEditingOutfitId(null);
+                setShowOutfitBuilder(true);
+              }
+            }}
           >
-            <Text style={styles.cancelButtonText}>
-              Vazgeç
+            <Text style={styles.addButtonText}>
+              {showOutfitBuilder
+                ? 'Kapat'
+                : '+ Kombin Oluştur'}
             </Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
 
-      {detailItem && (
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>{detailItem.name}</Text>
-          {detailItem.imageUrl && <Image source={{uri:detailItem.imageUrl}} style={styles.previewImage} resizeMode="contain"/>}
-          <Text style={styles.description}>Kategori: {detailItem.category}{'\n'}Renk: {detailItem.color || 'Belirtilmedi'}{'\n'}Mevsim: {detailItem.season || 'Belirtilmedi'}{'\n'}Not: {detailItem.notes || 'Yok'}</Text>
-          <TouchableOpacity style={styles.outlineButton} onPress={()=>setDetailItem(null)}><Text style={styles.outlineText}>Kapat</Text></TouchableOpacity>
-        </View>
-      )}
-      {!showForm && (
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Kombinlerim ✦</Text>
-          <Text style={styles.formSubtitle}>Parçalarını bir moda panosunda bir araya getir.</Text>
-          {items.length >= 2 && (
-            <TouchableOpacity style={styles.addButton} onPress={() => {
-              if (showOutfitBuilder) closeOutfitBuilder();
-              else { setEditingOutfitId(null); setShowOutfitBuilder(true); }
-            }}>
-              <Text style={styles.addButtonText}>
-                {showOutfitBuilder ? 'Kapat' : '+ Kombin Oluştur'}
+        {items.length < 2 && (
+          <Text style={styles.itemCategory}>
+            Yeni kombin oluşturmak için en az iki kıyafet ekle.
+          </Text>
+        )}
+
+        {/* KOMBİN OLUŞTURUCU */}
+
+        {showOutfitBuilder && (
+          <View style={styles.builderBox}>
+            <TextInput
+              style={styles.input}
+              value={outfitName}
+              onChangeText={setOutfitName}
+              placeholder="Kombin adı"
+              placeholderTextColor={C.muted}
+              maxLength={100}
+            />
+
+            <Text style={styles.boardHint}>
+              Parçaları fotoğraflarına dokunarak seç:
+            </Text>
+
+            <View style={styles.boardPicker}>
+              {items.map((item) => {
+                const chosen = outfitSelected.includes(
+                  item.id
+                );
+
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.boardPickCard,
+                      chosen && styles.boardPickSelected,
+                    ]}
+                    onPress={() =>
+                      setOutfitSelected((current) =>
+                        current.includes(item.id)
+                          ? current.filter(
+                              (id) => id !== item.id
+                            )
+                          : [...current, item.id]
+                      )
+                    }
+                  >
+                    {item.imageUrl ? (
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.boardPickImage}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Text style={styles.boardPlaceholder}>
+                        ◇
+                      </Text>
+                    )}
+
+                    <Text
+                      style={styles.boardPieceName}
+                      numberOfLines={2}
+                    >
+                      {item.name}
+                    </Text>
+
+                    <Text style={styles.boardCheck}>
+                      {chosen ? '✓ Seçildi' : '+ Seç'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => void saveOutfit()}
+            >
+              <Text style={styles.saveButtonText}>
+                {editingOutfitId
+                  ? 'Kombini Güncelle'
+                  : 'Kombini Kaydet'}
               </Text>
             </TouchableOpacity>
-          )}
-          {items.length < 2 && (
-            <Text style={styles.itemCategory}>Yeni kombin oluşturmak için en az iki kıyafet ekle.</Text>
-          )}
-          {showOutfitBuilder && (
-            <View style={styles.builderBox}>
-              <TextInput style={styles.input} value={outfitName}
-                onChangeText={setOutfitName} placeholder="Kombin adı"
-                placeholderTextColor={C.muted} maxLength={100} />
-              <Text style={styles.boardHint}>Parçaları fotoğraflarına dokunarak seç:</Text>
-              <View style={styles.boardPicker}>
-                {items.map(item => {
-                  const chosen = outfitSelected.includes(item.id);
-                  return (
-                    <TouchableOpacity key={item.id}
-                      style={[styles.boardPickCard, chosen && styles.boardPickSelected]}
-                      onPress={() => setOutfitSelected(current => current.includes(item.id)
-                        ? current.filter(id => id !== item.id) : [...current, item.id])}>
-                      {item.imageUrl
-                        ? <Image source={{uri:item.imageUrl}} style={styles.boardPickImage} resizeMode="contain" />
-                        : <Text style={styles.boardPlaceholder}>◇</Text>}
-                      <Text style={styles.boardPieceName} numberOfLines={2}>{item.name}</Text>
-                      <Text style={styles.boardCheck}>{chosen ? '✓ Seçildi' : '+ Seç'}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <TouchableOpacity style={styles.saveButton} onPress={() => void saveOutfit()}>
-                <Text style={styles.saveButtonText}>
-                  {editingOutfitId ? 'Kombini Güncelle' : 'Kombini Kaydet'}
+          </View>
+        )}
+
+        {/* KAYITLI KOMBİNLER */}
+
+        {outfits.map((outfit) => (
+          <View
+            key={outfit.id}
+            style={styles.outfitCard}
+          >
+            <Text style={styles.boardOutfitTitle}>
+              {outfit.name}
+            </Text>
+
+            {renderBoard(outfit.item_ids)}
+
+            <View style={styles.boardActions}>
+              <TouchableOpacity
+                style={styles.boardAction}
+                onPress={() => editOutfit(outfit)}
+              >
+                <Text style={styles.editText}>
+                  ✎ Düzenle
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.boardAction}
+                onPress={() => deleteOutfit(outfit.id)}
+              >
+                <Text style={styles.deleteText}>
+                  Kombini Sil
                 </Text>
               </TouchableOpacity>
             </View>
-          )}
-          {outfits.map(outfit => (
-            <View key={outfit.id} style={styles.outfitCard}>
-              <Text style={styles.boardOutfitTitle}>{outfit.name}</Text>
-              {renderBoard(outfit.item_ids)}
-              <View style={styles.boardActions}>
-                <TouchableOpacity style={styles.boardAction} onPress={() => editOutfit(outfit)}>
-                  <Text style={styles.editText}>✎ Düzenle</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.boardAction} onPress={() => deleteOutfit(outfit.id)}>
-                  <Text style={styles.deleteText}>Kombini Sil</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
+          </View>
+        ))}
+      </View>
 
-      {/* YÜKLENİYOR */}
+      {/* ============================================= */}
+      {/* KIYAFET LİSTESİ */}
+      {/* ============================================= */}
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -962,21 +1637,17 @@ export default function WardrobeScreen({ userId }: Props) {
             Gardırobun hazırlanıyor...
           </Text>
         </View>
-      ) : items.length === 0 && !showForm ? (
-        /* BOŞ GARDIROP */
-
+      ) : items.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>
-            ◇
-          </Text>
+          <Text style={styles.emptyIcon}>◇</Text>
 
           <Text style={styles.emptyTitle}>
             Gardırobunu oluşturalım
           </Text>
 
           <Text style={styles.emptyDescription}>
-            İlk kıyafetini ekle, kendi stil
-            koleksiyonunu oluşturmaya başla.
+            İlk kıyafetini ekle, kendi stil koleksiyonunu
+            oluşturmaya başla.
           </Text>
 
           <TouchableOpacity
@@ -988,10 +1659,10 @@ export default function WardrobeScreen({ userId }: Props) {
             </Text>
           </TouchableOpacity>
         </View>
-      ) : items.length > 0 ? (
-        /* KAYITLI KIYAFETLER */
-
+      ) : (
         <>
+          {/* LİSTE BAŞLIĞI */}
+
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
               Parçaların
@@ -1006,18 +1677,67 @@ export default function WardrobeScreen({ userId }: Props) {
             </TouchableOpacity>
           </View>
 
-          <TextInput style={styles.input} value={search} onChangeText={setSearch}
-            placeholder="Kıyafet ara..." placeholderTextColor={C.muted} />
-          <TouchableOpacity style={styles.outlineButton} onPress={()=>setFavoriteOnly(!favoriteOnly)}>
-            <Text style={styles.outlineText}>{favoriteOnly ? '❤️ Sadece favoriler ✓' : '♡ Sadece favoriler'}</Text>
+          {/* ARAMA */}
+
+          <TextInput
+            style={styles.input}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Kıyafet ara..."
+            placeholderTextColor={C.muted}
+          />
+
+          {/* FAVORİ FİLTRESİ */}
+
+          <TouchableOpacity
+            style={styles.outlineButton}
+            onPress={() => setFavoriteOnly(!favoriteOnly)}
+          >
+            <Text style={styles.outlineText}>
+              {favoriteOnly
+                ? '❤️ Sadece favoriler ✓'
+                : '♡ Sadece favoriler'}
+            </Text>
           </TouchableOpacity>
-          <TextInput style={styles.input} value={colorFilter} onChangeText={setColorFilter}
-            placeholder="Renge göre filtrele..." placeholderTextColor={C.muted} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-            {SEASONS.map(x=><TouchableOpacity key={x} onPress={()=>setSeasonFilter(x)}
-              style={[styles.filterChip,seasonFilter===x && styles.filterChipActive]}>
-              <Text style={[styles.filterText,seasonFilter===x && styles.filterTextActive]}>{x}</Text>
-            </TouchableOpacity>)}
+
+          {/* RENK FİLTRESİ */}
+
+          <TextInput
+            style={[styles.input, { marginTop: 12 }]}
+            value={colorFilter}
+            onChangeText={setColorFilter}
+            placeholder="Renge göre filtrele..."
+            placeholderTextColor={C.muted}
+          />
+
+          {/* MEVSİM FİLTRELERİ */}
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {SEASONS.map((item) => (
+              <TouchableOpacity
+                key={item}
+                onPress={() => setSeasonFilter(item)}
+                style={[
+                  styles.filterChip,
+                  seasonFilter === item &&
+                    styles.filterChipActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    seasonFilter === item &&
+                      styles.filterTextActive,
+                  ]}
+                >
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
 
           {/* KATEGORİ FİLTRELERİ */}
@@ -1050,10 +1770,12 @@ export default function WardrobeScreen({ userId }: Props) {
             ))}
           </ScrollView>
 
+          {/* FİLTRE SONUÇLARI */}
+
           {filteredItems.length === 0 ? (
             <View style={styles.filterEmpty}>
               <Text style={styles.filterEmptyText}>
-                Bu kategoride henüz kıyafet yok.
+                Aradığın kriterlere uygun kıyafet bulunamadı.
               </Text>
             </View>
           ) : (
@@ -1063,7 +1785,13 @@ export default function WardrobeScreen({ userId }: Props) {
                   key={item.id}
                   style={styles.itemCard}
                 >
-                  <View style={styles.itemImageContainer}>
+                  {/* KIYAFET FOTOĞRAFI */}
+
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => setDetailItem(item)}
+                    style={styles.itemImageContainer}
+                  >
                     {item.imageUrl ? (
                       <Image
                         source={{ uri: item.imageUrl }}
@@ -1081,7 +1809,9 @@ export default function WardrobeScreen({ userId }: Props) {
                         </Text>
                       </View>
                     )}
-                  </View>
+                  </TouchableOpacity>
+
+                  {/* KIYAFET BİLGİLERİ */}
 
                   <View style={styles.itemInfo}>
                     <Text
@@ -1101,19 +1831,41 @@ export default function WardrobeScreen({ userId }: Props) {
                       </Text>
                     ) : null}
 
-                    <TouchableOpacity onPress={()=>setDetailItem(item)} style={styles.outlineButton}>
-                      <Text style={styles.outlineText}>Detayları Gör</Text>
+                    {/* DETAY BUTONU */}
+
+                    <TouchableOpacity
+                      onPress={() => setDetailItem(item)}
+                      style={styles.outlineButton}
+                    >
+                      <Text style={styles.outlineText}>
+                        Detayları Gör
+                      </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={()=>void toggleFavorite(item)} style={styles.outlineButton}>
-                      <Text style={styles.outlineText}>{item.favorite ? '❤️ Favoride' : '♡ Favorile'}</Text>
+
+                    {/* FAVORİ BUTONU */}
+
+                    <TouchableOpacity
+                      onPress={() =>
+                        void toggleFavorite(item)
+                      }
+                      style={styles.outlineButton}
+                    >
+                      <Text style={styles.outlineText}>
+                        {item.favorite
+                          ? '❤️ Favoride'
+                          : '♡ Favorile'}
+                      </Text>
                     </TouchableOpacity>
+
                     {/* DÜZENLE VE SİL */}
 
                     <View style={styles.actionRow}>
                       <TouchableOpacity
                         style={styles.editButton}
                         onPress={() => startEditing(item)}
-                        disabled={saving || Boolean(deletingId)}
+                        disabled={
+                          saving || Boolean(deletingId)
+                        }
                       >
                         <Text style={styles.editText}>
                           ✎ Düzenle
@@ -1123,7 +1875,9 @@ export default function WardrobeScreen({ userId }: Props) {
                       <TouchableOpacity
                         style={styles.deleteButton}
                         onPress={() => deleteItem(item)}
-                        disabled={saving || Boolean(deletingId)}
+                        disabled={
+                          saving || Boolean(deletingId)
+                        }
                       >
                         {deletingId === item.id ? (
                           <ActivityIndicator
@@ -1143,34 +1897,93 @@ export default function WardrobeScreen({ userId }: Props) {
             </View>
           )}
         </>
-      ) : null}
+      )}
     </View>
   );
 }
 
+// ====================================================
+// STİLLER
+// ====================================================
+
 const styles = StyleSheet.create({
-  outlineButton: {borderWidth:1,borderColor:C.border,borderRadius:12,padding:12,marginTop:10,alignItems:'center'},
-  outlineText: {color:C.navy,fontSize:12,fontWeight:'700'},
-  outfitCard: {borderTopWidth:1,borderTopColor:C.border,paddingVertical:18,gap:10},
-  boardOutfitTitle: {color:C.navy,fontSize:17,fontWeight:'700'},
-  boardCanvas: {backgroundColor:'#F8F5FD',borderRadius:18,padding:10,flexDirection:'row',alignItems:'flex-start',gap:6},
-  boardMain: {flex:3,gap:8},
-  boardSide: {flex:1.3,gap:8},
-  boardPiece: {width:'100%',minHeight:180,backgroundColor:'transparent',borderRadius:14,padding:2,alignItems:'center',justifyContent:'center'},
-  boardPieceSmall: {minHeight:115},
-  boardImage: {width:'100%',height:165},
-  boardImageSmall: {height:100},
-  boardPieceName: {color:C.navy,fontSize:11,textAlign:'center',marginTop:5},
-  boardPlaceholder: {color:C.lavender,fontSize:28,textAlign:'center'},
-  boardHint: {color:C.muted,fontSize:12,marginVertical:12},
-  builderBox: {marginBottom:18},
-  boardPicker: {flexDirection:'row',flexWrap:'wrap',gap:8},
-  boardPickCard: {width:'48%',borderWidth:2,borderColor:C.border,borderRadius:14,padding:8,alignItems:'center'},
-  boardPickSelected: {borderColor:C.lavender,backgroundColor:C.pale},
-  boardPickImage: {width:'100%',height:96},
-  boardCheck: {color:C.navy,fontSize:11,fontWeight:'700',marginTop:5},
-  boardActions: {flexDirection:'row',justifyContent:'space-between',paddingTop:6},
-  boardAction: {paddingVertical:8,paddingHorizontal:6},
+  prizmaSheetOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(11,20,54,0.45)',
+  },
+  prizmaSheet: {
+    backgroundColor: '#FAF9FC',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 35,
+  },
+  prizmaSheetHandle: {
+    width: 42,
+    height: 5,
+    borderRadius: 5,
+    backgroundColor: '#D9CDE8',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  prizmaSheetSparkle: {
+    color: '#A78BFA',
+    fontSize: 34,
+    marginBottom: 8,
+  },
+  prizmaSheetTitle: {
+    color: '#0B1436',
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  prizmaSheetSubtitle: {
+    color: '#77718B',
+    fontSize: 14,
+    marginBottom: 24,
+  },
+  prizmaSheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0E9FA',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+  },
+  prizmaSheetOptionIcon: {
+    color: '#8050B5',
+    fontSize: 27,
+    width: 44,
+  },
+  prizmaSheetOptionTitle: {
+    color: '#0B1436',
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  prizmaSheetOptionDetail: {
+    color: '#77718B',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  prizmaSheetArrow: {
+    color: '#8050B5',
+    fontSize: 27,
+  },
+  prizmaSheetCancel: {
+    padding: 15,
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  prizmaSheetCancelText: {
+    color: '#8050B5',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+
+  // GENEL
+
   container: {
     flex: 1,
     paddingBottom: 25,
@@ -1198,6 +2011,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 25,
   },
+
+  // KOLEKSİYON ÖZETİ
 
   summaryCard: {
     backgroundColor: C.navy,
@@ -1233,6 +2048,8 @@ const styles = StyleSheet.create({
     fontSize: 60,
   },
 
+  // BUTONLAR
+
   addButton: {
     backgroundColor: C.lavender,
     borderRadius: 18,
@@ -1246,6 +2063,108 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+
+  outlineButton: {
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+
+  outlineText: {
+    color: C.navy,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  saveButton: {
+    backgroundColor: C.navy,
+    borderRadius: 18,
+    paddingVertical: 17,
+    alignItems: 'center',
+    marginTop: 25,
+  },
+
+  saveButtonText: {
+    color: C.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  disabledButton: {
+    opacity: 0.6,
+  },
+
+  cancelButton: {
+    alignItems: 'center',
+    paddingVertical: 17,
+  },
+
+  cancelButtonText: {
+    color: C.muted,
+    fontSize: 13,
+  },
+
+  // TAM EKRAN DÜZENLEME
+
+  editorScreen: {
+    flex: 1,
+    backgroundColor: C.background,
+  },
+
+  editorFlex: {
+    flex: 1,
+  },
+
+  editorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    backgroundColor: C.white,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+  },
+
+  editorBack: {
+    minWidth: 62,
+    paddingVertical: 6,
+  },
+
+  editorBackText: {
+    color: '#8067AE',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  editorHeaderTitle: {
+    color: C.navy,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+
+  editorHeaderSpacer: {
+    minWidth: 62,
+  },
+
+  editorContent: {
+    padding: 20,
+    paddingBottom: 35,
+  },
+
+  editorFooter: {
+    backgroundColor: C.white,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 12,
+  },
+
+  // FORM
 
   formCard: {
     backgroundColor: C.white,
@@ -1336,33 +2255,269 @@ const styles = StyleSheet.create({
     color: C.white,
   },
 
-  saveButton: {
-    backgroundColor: C.navy,
-    borderRadius: 18,
-    paddingVertical: 17,
+  // DETAY EKRANI
+
+  detailScreen: {
+    flex: 1,
+    backgroundColor: C.background,
+  },
+
+  detailContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+
+  detailImageContainer: {
+    width: '100%',
+    height: 340,
+    backgroundColor: C.white,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: C.border,
+    marginBottom: 24,
+  },
+
+  detailImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  detailImagePlaceholder: {
+    flex: 1,
     alignItems: 'center',
-    marginTop: 25,
+    justifyContent: 'center',
   },
 
-  disabledButton: {
-    opacity: 0.6,
+  detailPlaceholderIcon: {
+    color: C.lavender,
+    fontSize: 65,
+    marginBottom: 10,
   },
 
-  saveButtonText: {
-    color: C.white,
-    fontSize: 14,
+  detailTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 12,
+  },
+
+  detailTitleArea: {
+    flex: 1,
+  },
+
+  detailEyebrow: {
+    color: '#937BC5',
+    fontSize: 10,
     fontWeight: '700',
+    letterSpacing: 1.5,
+    marginBottom: 9,
   },
 
-  cancelButton: {
+  detailName: {
+    color: C.navy,
+    fontSize: 26,
+    fontWeight: '700',
+    lineHeight: 34,
+  },
+
+  detailFavoriteButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: C.pale,
     alignItems: 'center',
-    paddingVertical: 17,
+    justifyContent: 'center',
   },
 
-  cancelButtonText: {
+  detailFavoriteText: {
+    color: C.rose,
+    fontSize: 28,
+  },
+
+  detailInfoCard: {
+    backgroundColor: C.white,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: C.border,
+    marginBottom: 18,
+  },
+
+  detailInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 18,
+    gap: 12,
+  },
+
+  detailInfoLabel: {
     color: C.muted,
     fontSize: 13,
   },
+
+  detailInfoValue: {
+    color: C.navy,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'right',
+    flexShrink: 1,
+  },
+
+  detailDivider: {
+    height: 1,
+    backgroundColor: C.border,
+  },
+
+  detailNotesCard: {
+    backgroundColor: C.white,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+
+  detailNotesTitle: {
+    color: '#937BC5',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.3,
+    marginBottom: 12,
+  },
+
+  detailNotesText: {
+    color: C.navy,
+    fontSize: 13,
+    lineHeight: 22,
+  },
+
+  // KOMBİNLER
+
+  outfitCard: {
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    paddingVertical: 18,
+    gap: 10,
+  },
+
+  boardOutfitTitle: {
+    color: C.navy,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+
+  boardCanvas: {
+    backgroundColor: '#F8F5FD',
+    borderRadius: 18,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+
+  boardMain: {
+    flex: 3,
+    gap: 8,
+  },
+
+  boardSide: {
+    flex: 1.3,
+    gap: 8,
+  },
+
+  boardPiece: {
+    width: '100%',
+    minHeight: 180,
+    backgroundColor: 'transparent',
+    borderRadius: 14,
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  boardPieceSmall: {
+    minHeight: 115,
+  },
+
+  boardImage: {
+    width: '100%',
+    height: 165,
+  },
+
+  boardImageSmall: {
+    height: 100,
+  },
+
+  boardPieceName: {
+    color: C.navy,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 5,
+  },
+
+  boardPlaceholder: {
+    color: C.lavender,
+    fontSize: 28,
+    textAlign: 'center',
+  },
+
+  boardHint: {
+    color: C.muted,
+    fontSize: 12,
+    marginVertical: 12,
+  },
+
+  builderBox: {
+    marginBottom: 18,
+  },
+
+  boardPicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  boardPickCard: {
+    width: '48%',
+    borderWidth: 2,
+    borderColor: C.border,
+    borderRadius: 14,
+    padding: 8,
+    alignItems: 'center',
+  },
+
+  boardPickSelected: {
+    borderColor: C.lavender,
+    backgroundColor: C.pale,
+  },
+
+  boardPickImage: {
+    width: '100%',
+    height: 96,
+  },
+
+  boardCheck: {
+    color: C.navy,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 5,
+  },
+
+  boardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 6,
+  },
+
+  boardAction: {
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+
+  // YÜKLEME VE BOŞ DURUM
 
   loadingContainer: {
     paddingVertical: 45,
@@ -1421,6 +2576,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+  // LİSTE VE FİLTRELER
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1443,6 +2600,7 @@ const styles = StyleSheet.create({
   filterRow: {
     gap: 8,
     paddingBottom: 20,
+    paddingTop: 14,
   },
 
   filterChip: {
@@ -1468,6 +2626,21 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: C.white,
   },
+
+  filterEmpty: {
+    backgroundColor: C.white,
+    padding: 25,
+    borderRadius: 18,
+    alignItems: 'center',
+  },
+
+  filterEmptyText: {
+    color: C.muted,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+
+  // KIYAFET KARTLARI
 
   grid: {
     flexDirection: 'row',
@@ -1567,17 +2740,5 @@ const styles = StyleSheet.create({
     color: C.rose,
     fontSize: 11,
     fontWeight: '700',
-  },
-
-  filterEmpty: {
-    backgroundColor: C.white,
-    padding: 25,
-    borderRadius: 18,
-    alignItems: 'center',
-  },
-
-  filterEmptyText: {
-    color: C.muted,
-    fontSize: 12,
   },
 });

@@ -1,8 +1,11 @@
+import PrizmaConfirm from './PrizmaConfirm';
+import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
+import ShoppingDecisionScreen from './ShoppingDecisionScreen';
+import OutfitAIScreen from './OutfitAIScreen';
 import React, { useState, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
-import { supabase } from './supabase';
-import AuthScreen from './AuthScreen';
+
 import {
   SafeAreaView,
   StatusBar,
@@ -17,7 +20,28 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
-type Tab = 'Ana Sayfa' | 'Gardırop' | 'PRİZMA AI' | 'Güzellik' | 'Profil';
+import { supabase } from './supabase';
+import AuthScreen from './AuthScreen';
+import WardrobeScreen from './WardrobeScreen';
+
+type Tab =
+  | 'Ana Sayfa'
+  | 'Gardırop'
+  | 'PRİZMA AI'
+  | 'Güzellik'
+  | 'Profil' | 'Alışveriş';
+
+const C = {
+  navy: '#0B1436',
+  lavender: '#A78BFA',
+  lilac: '#E6DBFF',
+  background: '#FAF9FC',
+  white: '#FFFFFF',
+  ink: '#172044',
+  muted: '#777B94',
+  border: '#ECE7F2',
+  pale: '#F2EDFA',
+};
 
 const tabs: { name: Tab; icon: string }[] = [
   { name: 'Ana Sayfa', icon: '⌂' },
@@ -27,53 +51,65 @@ const tabs: { name: Tab; icon: string }[] = [
   { name: 'Profil', icon: '○' },
 ];
 
-const C = {
-  background: '#FAF7F4',
-  paper: '#FFFFFF',
-  ink: '#302A32',
-  muted: '#857D84',
-  blush: '#F5E5E9',
-  lavender: '#EEE7F8',
-  cream: '#F4EDE4',
-  line: '#EDE5E7',
-  accent: '#8B6C96',
-  dark: '#4D3A54',
-};
-
-function ActionCard({
-  symbol,
+function EditorialCard({
+  icon,
   title,
   description,
-  background,
+  color,
   onPress,
 }: {
-  symbol: string;
+  icon: string;
   title: string;
   description: string;
-  background: string;
+  color: string;
   onPress: () => void;
 }) {
   return (
     <TouchableOpacity
-      activeOpacity={0.8}
+      style={[styles.editorialCard, { backgroundColor: color }]}
       onPress={onPress}
-      style={[styles.actionCard, { backgroundColor: background }]}
+      activeOpacity={0.85}
     >
-      <Text style={styles.actionSymbol}>{symbol}</Text>
-      <Text style={styles.actionTitle}>{title}</Text>
-      <Text style={styles.actionDescription}>{description}</Text>
-      <Text style={styles.cardArrow}>↗</Text>
+      <View style={styles.cardTop}>
+        <Text style={styles.cardIcon}>{icon}</Text>
+        <Text style={styles.cardArrow}>↗</Text>
+      </View>
+      <View>
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardDescription}>{description}</Text>
+      </View>
     </TouchableOpacity>
   );
 }
 
 export default function App() {
+
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+
+
+  const [notice, setNotice] = useState<{
+    type: NoticeType;
+    title: string;
+    message: string;
+  } | null>(null);
+
+  const showNotice = (
+    type: NoticeType,
+    title: string,
+    message: string
+  ) => setNotice({ type, title, message });
+
+
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+
+  const [tab, setTab] = useState<Tab>('Ana Sayfa');
 
   useEffect(() => {
     const handleRecoveryLink = async (url: string | null) => {
@@ -83,18 +119,14 @@ export default function App() {
       const query = url.split('?')[1]?.split('#')[0] || '';
       const params = new URLSearchParams(fragment || query);
 
-      const type = params.get('type');
-
-      if (type !== 'recovery') return;
+      if (params.get('type') !== 'recovery') return;
 
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
 
       if (!accessToken || !refreshToken) {
-        Alert.alert(
-          'Bağlantı geçersiz',
-          'Yeni bir şifre sıfırlama bağlantısı iste.'
-        );
+        showNotice('error', 'Bağlantı geçersiz',
+          'Yeni bir şifre sıfırlama bağlantısı iste.');
         return;
       }
 
@@ -104,10 +136,8 @@ export default function App() {
       });
 
       if (error) {
-        Alert.alert(
-          'Bağlantı açılamadı',
-          'Bağlantı süresi dolmuş olabilir. Yeniden dene.'
-        );
+        showNotice('error', 'Bağlantı açılamadı',
+          'Bağlantı süresi dolmuş olabilir.');
       } else {
         setRecoveryMode(true);
       }
@@ -117,21 +147,42 @@ export default function App() {
       .then(handleRecoveryLink)
       .catch(() => {});
 
-    const subscription = Linking.addEventListener('url', ({ url }) => {
-      void handleRecoveryLink(url);
-    });
+    const subscription = Linking.addEventListener(
+      'url',
+      ({ url }) => {
+        void handleRecoveryLink(url);
+      }
+    );
 
     return () => subscription.remove();
   }, []);
 
+  useEffect(() => {
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setSession(data.session))
+      .catch(() => setSession(null))
+      .finally(() => setAuthLoading(false));
+
+    const { data: listener } =
+      supabase.auth.onAuthStateChange((_event, newSession) => {
+        setSession(newSession);
+        setAuthLoading(false);
+      });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   const saveNewPassword = async () => {
     if (newPassword.length < 8) {
-      Alert.alert('Şifre çok kısa', 'En az 8 karakter kullan.');
+      showNotice('info', 'Şifre çok kısa',
+        'En az 8 karakter kullan.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Şifreler uyuşmuyor', 'İki kutuya aynı şifreyi yaz.');
+      showNotice('info', 'Şifreler uyuşmuyor',
+        'İki kutuya aynı şifreyi yaz.');
       return;
     }
 
@@ -148,62 +199,79 @@ export default function App() {
       setConfirmPassword('');
       setRecoveryMode(false);
 
-      const { error: signOutError } = await supabase.auth.signOut();
+      const { error: signOutError } =
+        await supabase.auth.signOut();
 
-      if (signOutError) {
-        Alert.alert(
-          'Şifren yenilendi ✦',
-          'Şifren değiştirildi. Güvenliğin için çıkış yapıp yeni şifrenle tekrar giriş yap.'
-        );
-      } else {
-        Alert.alert(
-          'Şifren yenilendi ✦',
-          'Yeni şifrenle giriş yapabilirsin.'
-        );
-      }
+      showNotice('success', 'Şifren yenilendi ✦',
+        signOutError
+          ? 'Şifren değiştirildi. Çıkış yapıp yeni şifrenle giriş yap.'
+          : 'Yeni şifrenle giriş yapabilirsin.');
     } catch (error: any) {
-      Alert.alert(
-        'Şifre değiştirilemedi',
-        error?.message || 'Lütfen tekrar dene.'
-      );
+      showNotice('error', 'Şifre değiştirilemedi',
+        error?.message || 'Lütfen tekrar dene.');
     } finally {
       setSavingPassword(false);
     }
   };
 
-  useEffect(() => {
-    supabase.auth.getSession()
-      .then(({ data }) => setSession(data.session))
-      .catch(() => setSession(null))
-      .finally(() => setAuthLoading(false));
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        setSession(newSession);
-        setAuthLoading(false);
-      }
-    );
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  const [tab, setTab] = useState<Tab>('Ana Sayfa');
-  const [notice, setNotice] = useState('');
-
   const open = (target: Tab) => {
-    setNotice('');
     setTab(target);
   };
 
-  const demo = () => {
-    setNotice('Bu özellik sonraki geliştirme günlerinde eklenecek.');
+  const comingSoon = () => {
+    showNotice('info', 'PRİZMA hazırlanıyor ✦',
+      'Bu özelliği sonraki geliştirme adımlarında aktif edeceğiz.');
+  };
+
+  const handleLogout = () => {
+    setLogoutVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    if (logoutBusy) return;
+
+    setLogoutBusy(true);
+
+    try {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        setLogoutVisible(false);
+        showNotice(
+          'error',
+          'Çıkış yapılamadı',
+          'Lütfen tekrar dene.'
+        );
+      } else {
+        setLogoutVisible(false);
+        setTab('Ana Sayfa');
+      }
+    } catch (error) {
+      setLogoutVisible(false);
+      showNotice(
+        'error',
+        'Çıkış yapılamadı',
+        'Lütfen tekrar dene.'
+      );
+    } finally {
+      setLogoutBusy(false);
+    }
   };
 
   if (authLoading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <Text style={{ textAlign: 'center', marginTop: 100 }}>
-          PRİZMA hazırlanıyor... ✦
+      <SafeAreaView style={styles.loadingScreen}>
+      <PrizmaNotice
+        visible={Boolean(notice)}
+        type={notice?.type || 'info'}
+        title={notice?.title || ''}
+        message={notice?.message || ''}
+        onClose={() => setNotice(null)}
+      />
+
+        <ActivityIndicator size="large" color={C.lavender} />
+        <Text style={styles.loadingText}>
+          PRİZMA hazırlanıyor ✦
         </Text>
       </SafeAreaView>
     );
@@ -212,25 +280,32 @@ export default function App() {
   if (recoveryMode) {
     return (
       <SafeAreaView style={styles.safe}>
+      <PrizmaNotice
+        visible={Boolean(notice)}
+        type={notice?.type || 'info'}
+        title={notice?.title || ''}
+        message={notice?.message || ''}
+        onClose={() => setNotice(null)}
+      />
+
         <ScrollView
           contentContainerStyle={styles.resetContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.wordmark}>PRİZMA ✦</Text>
-
-          <Text style={styles.eyebrow}>GÜVENLİ HESAP</Text>
+          <Text style={styles.resetBrand}>PRİZMA ✦</Text>
 
           <Text style={styles.pageTitle}>
-            Yeni şifreni oluştur.
+            Yeni şifreni oluştur
           </Text>
 
-          <Text style={styles.placeholderText}>
+          <Text style={styles.pageDescription}>
             Şifreni yenilemek için iki alana da yeni şifreni yaz.
           </Text>
 
           <TextInput
             style={styles.resetInput}
             placeholder="Yeni şifre (en az 8 karakter)"
+            placeholderTextColor={C.muted}
             secureTextEntry
             value={newPassword}
             onChangeText={setNewPassword}
@@ -240,6 +315,7 @@ export default function App() {
           <TextInput
             style={styles.resetInput}
             placeholder="Yeni şifreyi tekrar yaz"
+            placeholderTextColor={C.muted}
             secureTextEntry
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -247,14 +323,14 @@ export default function App() {
           />
 
           <TouchableOpacity
-            style={styles.resetButton}
+            style={styles.primaryButton}
             disabled={savingPassword}
             onPress={saveNewPassword}
           >
             {savingPassword ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={C.white} />
             ) : (
-              <Text style={styles.placeholderButtonText}>
+              <Text style={styles.primaryButtonText}>
                 Şifremi Kaydet →
               </Text>
             )}
@@ -268,582 +344,975 @@ export default function App() {
     return <AuthScreen />;
   }
 
+  const emailName =
+    session.user.email?.split('@')[0] || 'PRİZMA';
+
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={C.background}
+      <PrizmaConfirm
+        visible={logoutVisible}
+        title="Çıkış yapılsın mı?"
+        message="PRİZMA hesabından çıkış yapmak istediğine emin misin?"
+        confirmText="Evet, çıkış yap"
+        loading={logoutBusy}
+        onCancel={() => setLogoutVisible(false)}
+        onConfirm={() => { void confirmLogout(); }}
+      />
+      <PrizmaNotice
+        visible={Boolean(notice)}
+        type={notice?.type || 'info'}
+        title={notice?.title || ''}
+        message={notice?.message || ''}
+        onClose={() => setNotice(null)}
       />
 
+      <StatusBar
+        barStyle="dark-content"
+      />
+
+      {/* ÜST MENÜ */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.wordmark}>
-            PRİZMA <Text style={styles.star}>✦</Text>
-          </Text>
-          <Text style={styles.tagline}>
-            STYLE • BEAUTY • YOU
-          </Text>
-        </View>
+        <TouchableOpacity
+          style={styles.headerBrand}
+          onPress={() => open('Ana Sayfa')}
+        >
+          <Text style={styles.brandText}>PRİZMA</Text>
+          <Text style={styles.brandStar}>✦</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
+          style={styles.profileCircle}
           onPress={() => open('Profil')}
-          style={styles.avatar}
-          accessibilityLabel="Profil sekmesini aç"
         >
-          <Text style={styles.avatarText}>P</Text>
+          <Text style={styles.profileCircleText}>♡</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {tab === 'Ana Sayfa' ? (
+        {tab === 'Ana Sayfa' && (
           <>
-            <Text style={styles.eyebrow}>
-              SENİN STİL ALANIN
+{/* SENİN DÜNYAN */}
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionEyebrow}>
+                  CURATED FOR YOU
+                </Text>
+
+                <Text style={styles.sectionTitle}>
+                  Senin dünyan
+                </Text>
+              </View>
+
+              <Text style={styles.sectionSparkle}>✧</Text>
+            </View>
+
+            <View style={styles.grid}>
+              <EditorialCard
+                icon="◇"
+                title="Gardırobum"
+                description="Parçalarını bir araya getir."
+                color="#EEE7FA"
+                onPress={() => open('Gardırop')}
+              />
+
+              <EditorialCard
+                icon="✦"
+                title="Stil önerileri"
+                description="Yeni kombinler keşfet."
+                color="#F4EBF9"
+                onPress={() => open('PRİZMA AI')}
+              />
+
+              <EditorialCard
+                icon="♡"
+                title="Güzellik"
+                description="Kendi rutinini oluştur."
+                color="#F8EAF1"
+                onPress={() => open('Güzellik')}
+              />
+
+              <EditorialCard
+                icon="◈"
+                title="Akıllı alışveriş"
+                description="Almadan önce birlikte düşün."
+                color="#E9EDFA"
+                onPress={() => open('Alışveriş')}
+              />
+            </View>
+
+
+            {/* KARŞILAMA */}
+            <View style={styles.greeting}>
+              <View>
+                <Text style={styles.eyebrow}>
+                  SENİN STİL DÜNYAN
+                </Text>
+
+                <Text style={styles.greetingTitle}>
+                  Kendine özgü,
+                  {'\n'}
+                  <Text style={styles.italicText}>
+                    tamamen sen.
+                  </Text>
+                </Text>
+              </View>
+
+              <Text style={styles.greetingSparkle}>✧</Text>
+            </View>
+
+            <Text style={styles.introText}>
+              Stilini keşfet, ilhamını bul ve kendi
+              dünyanı oluştur.
             </Text>
 
-            <Text style={styles.heroTitle}>
-              Kendini keşfet,{'\n'}
-              <Text style={styles.heroItalic}>
-                tarzını yansıt.
-              </Text>
-            </Text>
-
-            <Text style={styles.heroSubtitle}>
-              Gardırobun, güzellik rutinin ve akıllı alışveriş
-              asistanın tek bir yerde.
-            </Text>
-
+            {/* ANA KART */}
             <TouchableOpacity
-              activeOpacity={0.85}
-              style={styles.aiBanner}
+              style={styles.editorialHero}
               onPress={() => open('PRİZMA AI')}
+              activeOpacity={0.85}
             >
-              <Text style={styles.aiSparkle}>
-                ✧ PRİZMA AI
-              </Text>
+              <View style={styles.heroCircleOne} />
+              <View style={styles.heroCircleTwo} />
+
+              <View style={styles.heroTopRow}>
+                <Text style={styles.heroBadge}>
+                  PRİZMA EDITION
+                </Text>
+
+                <Text style={styles.heroSmallStar}>✧</Text>
+              </View>
+
+              <View style={styles.heroCenter}>
+                <Text style={styles.heroDecor}>✦</Text>
+
+                <Text style={styles.heroMainTitle}>
+                  The art of
+                  {'\n'}
+                  <Text style={styles.heroItalic}>
+                    being you.
+                  </Text>
+                </Text>
+
+                <Text style={styles.heroSubtitle}>
+                  Her tarzın bir hikâyesi var.
+                </Text>
+              </View>
+
+              <View style={styles.heroBottom}>
+                <Text style={styles.heroExplore}>
+                  STİLİNİ KEŞFET
+                </Text>
+                <Text style={styles.heroArrow}>↗</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* KISA YOLLAR */}
+            <View style={styles.quickActions}>
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => open('Gardırop')}
+              >
+                <View style={styles.quickIcon}>
+                  <Text style={styles.quickIconText}>◇</Text>
+                </View>
+                <Text style={styles.quickLabel}>Gardırop</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => open('PRİZMA AI')}
+              >
+                <View style={styles.quickIcon}>
+                  <Text style={styles.quickIconText}>✦</Text>
+                </View>
+                <Text style={styles.quickLabel}>Stil Analizi</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => open('Güzellik')}
+              >
+                <View style={styles.quickIcon}>
+                  <Text style={styles.quickIconText}>♡</Text>
+                </View>
+                <Text style={styles.quickLabel}>Makyaj</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => open('Güzellik')}
+              >
+                <View style={styles.quickIcon}>
+                  <Text style={styles.quickIconText}>✧</Text>
+                </View>
+                <Text style={styles.quickLabel}>Saç</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* PRİZMA AI */}
+            <TouchableOpacity
+              style={styles.aiCard}
+              onPress={() => open('PRİZMA AI')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.aiCardTop}>
+                <Text style={styles.aiLabel}>
+                  ✦ PRİZMA AI
+                </Text>
+                <Text style={styles.aiArrow}>↗</Text>
+              </View>
 
               <Text style={styles.aiTitle}>
                 Bugün ne giymeliyim?
               </Text>
 
               <Text style={styles.aiDescription}>
-                Kişisel stil asistanını keşfet
+                Stil asistanınla yeni fikirler keşfet.
               </Text>
-
-              <Text style={styles.aiArrow}>→</Text>
             </TouchableOpacity>
 
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>
-                Senin dünyan
+            <View style={styles.quoteCard}>
+              <Text style={styles.quoteStar}>✦</Text>
+              <Text style={styles.quoteTitle}>
+                Style is personal.
               </Text>
-              <Text style={styles.sectionHint}>
-                KEŞFET
-              </Text>
-            </View>
-
-            <View style={styles.cardsGrid}>
-              <ActionCard
-                symbol="♧"
-                title="Gardırobum"
-                description="Parçalarını bir araya getir"
-                background={C.cream}
-                onPress={() => open('Gardırop')}
-              />
-
-              <ActionCard
-                symbol="✧"
-                title="Akıllı alışveriş"
-                description="Almadan önce birlikte düşün"
-                background={C.blush}
-                onPress={() => open('PRİZMA AI')}
-              />
-
-              <ActionCard
-                symbol="♡"
-                title="Güzellik"
-                description="Sana özel bakım alanı"
-                background={C.lavender}
-                onPress={() => open('Güzellik')}
-              />
-
-              <ActionCard
-                symbol="◈"
-                title="Stil DNA'm"
-                description="Tarzını daha iyi tanı"
-                background="#F1ECEA"
-                onPress={() => open('Profil')}
-              />
-            </View>
-
-            <View style={styles.tipBox}>
-              <Text style={styles.tipLabel}>
-                ✦ KÜÇÜK BİR NOT
-              </Text>
-
-              <Text style={styles.tipText}>
-                En iyi stil, kendini iyi hissettiğin stildir.
+              <Text style={styles.quoteDescription}>
+                En güzel stil, kendine ait olandır.
               </Text>
             </View>
           </>
-        ) : (
+        )}
+
+        {tab === 'Alışveriş' && (
+          <ShoppingDecisionScreen
+            onBack={() => open('Ana Sayfa')}
+            userId={session.user.id}
+          />
+        )}
+
+        {/* GARDIROP */}
+        {tab === 'Gardırop' && (
+          <WardrobeScreen userId={session.user.id} />
+        )}
+
+        {/* PRİZMA AI */}
+        {tab === 'PRİZMA AI' && (
+          <OutfitAIScreen userId={session.user.id} />
+        )}
+
+        {/* GÜZELLİK */}
+        {tab === 'Güzellik' && (
           <>
             <Text style={styles.eyebrow}>
-              PRİZMA • SENİN ALANIN
+              THE BEAUTY EDIT
             </Text>
 
             <Text style={styles.pageTitle}>
-              {tab}
+              Güzellik dünyan
             </Text>
 
-            {tab === 'Profil' && (
-              <TouchableOpacity
-                onPress={() => {
-                  Alert.alert(
-                    'Çıkış Yap',
-                    'Çıkış yapmak istediğine emin misin?',
-                    [
-                      {
-                        text: 'Vazgeç',
-                        style: 'cancel',
-                      },
-                      {
-                        text: 'Çıkış Yap',
-                        style: 'destructive',
-                        onPress: async () => {
-                          const { error } =
-                            await supabase.auth.signOut();
+            <Text style={styles.pageDescription}>
+              Makyaj, saç ve bakım önerileri için
+              sana özel alan.
+            </Text>
 
-                          if (error) {
-                            Alert.alert(
-                              'Hata',
-                              'Çıkış yapılamadı. Lütfen tekrar dene.'
-                            );
-                          }
-                        },
-                      },
-                    ]
-                  );
-                }}
-                style={{
-                  backgroundColor: C.blush,
-                  padding: 16,
-                  borderRadius: 16,
-                  marginBottom: 20,
-                  alignItems: 'center',
-                }}
-              >
-                <Text
-                  style={{
-                    color: C.dark,
-                    fontWeight: '700',
-                  }}
-                >
-                  Çıkış Yap ↗
-                </Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyIcon}>♡</Text>
 
-            <View
-              style={[
-                styles.placeholder,
-                {
-                  backgroundColor:
-                    tab === 'PRİZMA AI'
-                      ? C.lavender
-                      : C.blush,
-                },
-              ]}
-            >
-              <Text style={styles.placeholderIcon}>
-                {tab === 'PRİZMA AI'
-                  ? '✦'
-                  : tab === 'Güzellik'
-                    ? '♡'
-                    : tab === 'Gardırop'
-                      ? '◇'
-                      : '◈'}
+              <Text style={styles.emptyTitle}>
+                Güzellik alanın
               </Text>
 
-              <Text style={styles.placeholderTitle}>
-                {tab === 'PRİZMA AI'
-                  ? 'Stil asistanın burada olacak'
-                  : tab === 'Gardırop'
-                    ? 'Gardırobun burada şekillenecek'
-                    : tab === 'Güzellik'
-                      ? 'Güzellik alanın hazırlanıyor'
-                      : 'Stil profilin burada olacak'}
-              </Text>
-
-              <Text style={styles.placeholderText}>
-                Bu ekran şu anda tasarım önizlemesi.
-                Gerçek özellikleri sonraki günlerde
-                adım adım ekleyeceğiz.
+              <Text style={styles.emptyDescription}>
+                Güzellik önerilerini ve kişisel bakım
+                araçlarını burada geliştireceğiz.
               </Text>
 
               <TouchableOpacity
-                style={styles.placeholderButton}
-                onPress={demo}
+                style={styles.primaryButton}
+                onPress={comingSoon}
               >
-                <Text style={styles.placeholderButtonText}>
-                  Yakında ✦
+                <Text style={styles.primaryButtonText}>
+                  Keşfet ✦
                 </Text>
               </TouchableOpacity>
-
-              {!!notice && (
-                <Text style={styles.notice}>
-                  {notice}
-                </Text>
-              )}
             </View>
+          </>
+        )}
+
+        {/* PROFİL */}
+        {tab === 'Profil' && (
+          <>
+            <Text style={styles.eyebrow}>
+              YOUR PRİZMA PROFILE
+            </Text>
+
+            <Text style={styles.pageTitle}>
+              Profilim
+            </Text>
+
+            <View style={styles.profileCard}>
+              <View style={styles.profileAvatar}>
+                <Text style={styles.profileAvatarText}>
+                  ✦
+                </Text>
+              </View>
+
+              <Text style={styles.profileWelcome}>
+                PRİZMA'ya hoş geldin
+              </Text>
+
+              <Text style={styles.profileEmail}>
+                {session.user.email || emailName}
+              </Text>
+            </View>
+
+            <View style={styles.profileInfoCard}>
+              <Text style={styles.profileInfoTitle}>
+                ✧ Stil profilim
+              </Text>
+
+              <Text style={styles.profileInfoDescription}>
+                Kişisel stil tercihlerini ve hesap ayarlarını
+                burada geliştireceğiz.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+            >
+              <Text style={styles.logoutText}>
+                Çıkış Yap →
+              </Text>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
 
+      {/* ALT MENÜ */}
       <View style={styles.tabBar}>
-        {tabs.map(item => (
-          <TouchableOpacity
-            key={item.name}
-            style={styles.tabItem}
-            onPress={() => open(item.name)}
-            accessibilityRole="tab"
-            accessibilityState={{
-              selected: tab === item.name,
-            }}
-          >
-            <View
-              style={[
-                styles.tabIconWrap,
-                tab === item.name && styles.activeIconWrap,
-              ]}
+        {tabs.map((item) => {
+          const active = tab === item.name;
+          const isAI = item.name === 'PRİZMA AI';
+
+          return (
+            <TouchableOpacity
+              key={item.name}
+              style={styles.tabItem}
+              onPress={() => open(item.name)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
             >
-              <Text
+              <View
                 style={[
-                  styles.tabIcon,
-                  tab === item.name && styles.activeTab,
+                  styles.tabIconWrap,
+                  active && !isAI && styles.tabIconWrapActive,
+                  isAI && styles.aiTabIconWrap,
                 ]}
               >
-                {item.icon}
-              </Text>
-            </View>
+                <Text
+                  style={[
+                    styles.tabIcon,
+                    active && styles.tabIconActive,
+                    isAI && styles.aiTabIcon,
+                  ]}
+                >
+                  {item.icon}
+                </Text>
+              </View>
 
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.tabText,
-                tab === item.name && styles.activeTab,
-              ]}
-            >
-              {item.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.tabLabel,
+                  active && styles.tabLabelActive,
+                ]}
+              >
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  resetContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 28,
-    gap: 20,
-  },
-
-  resetInput: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EDE5E7',
-    borderRadius: 14,
-    padding: 16,
-    fontSize: 15,
-    color: '#302A32',
-  },
-
-  resetButton: {
-    backgroundColor: '#4D3A54',
-    padding: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-
   safe: {
     flex: 1,
     backgroundColor: C.background,
     paddingTop: Platform.OS === 'android' ? 4 : 0,
   },
 
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 18,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: C.line,
+  scroll: {
+    flex: 1,
   },
 
-  wordmark: {
-    color: C.ink,
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: 4,
-  },
-
-  star: {
-    color: C.accent,
-    fontSize: 19,
-  },
-
-  tagline: {
-    color: C.muted,
-    fontSize: 9,
-    letterSpacing: 2.4,
-    marginTop: 3,
-  },
-
-  avatar: {
-    width: 39,
-    height: 39,
-    borderRadius: 20,
-    backgroundColor: C.blush,
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: C.navy,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  avatarText: {
-    color: C.dark,
-    fontWeight: '700',
-    fontSize: 17,
+  loadingText: {
+    color: C.lilac,
+    marginTop: 20,
+    fontSize: 15,
+  },
+
+  header: {
+    backgroundColor: C.background,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+  },
+
+  headerBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  brandText: {
+    color: C.navy,
+    fontSize: 25,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    letterSpacing: 4,
+    fontWeight: '600',
+  },
+
+  brandStar: {
+    color: C.lavender,
+    fontSize: 19,
+    marginLeft: 8,
+  },
+
+  profileCircle: {
+    width: 43,
+    height: 43,
+    borderRadius: 22,
+    backgroundColor: '#F0E8FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  profileCircleText: {
+    color: C.navy,
+    fontSize: 23,
   },
 
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 27,
-    paddingBottom: 30,
+    paddingHorizontal: 23,
+    paddingTop: 29,
+    paddingBottom: 45,
   },
 
   eyebrow: {
-    color: C.accent,
+    color: '#937BC5',
     fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 2.2,
-    marginBottom: 12,
+    letterSpacing: 2.1,
+    marginBottom: 14,
   },
 
-  heroTitle: {
-    color: C.ink,
-    fontSize: 33,
-    fontFamily:
-      Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    lineHeight: 43,
+  greeting: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+
+  greetingTitle: {
+    color: C.navy,
+    fontSize: 36,
+    lineHeight: 46,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+
+  italicText: {
+    color: '#9678CF',
+    fontStyle: 'italic',
+  },
+
+  greetingSparkle: {
+    color: C.lavender,
+    fontSize: 30,
+    marginTop: 30,
+  },
+
+  introText: {
+    color: C.muted,
+    fontSize: 13,
+    lineHeight: 22,
+    marginTop: 14,
+    marginBottom: 27,
+  },
+
+  editorialHero: {
+    backgroundColor: C.navy,
+    borderRadius: 26,
+    minHeight: 290,
+    padding: 23,
+    overflow: 'hidden',
+    justifyContent: 'space-between',
+  },
+
+  heroCircleOne: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: '#373465',
+    right: -75,
+    top: -90,
+    opacity: 0.65,
+  },
+
+  heroCircleTwo: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: '#7161B4',
+    left: -100,
+    bottom: -110,
+    opacity: 0.25,
+  },
+
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
+  heroBadge: {
+    color: C.lilac,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 2.4,
+  },
+
+  heroSmallStar: {
+    color: C.lilac,
+    fontSize: 26,
+  },
+
+  heroCenter: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+
+  heroDecor: {
+    color: C.lilac,
+    fontSize: 32,
+    marginBottom: 8,
+  },
+
+  heroMainTitle: {
+    color: C.white,
+    fontSize: 36,
+    lineHeight: 42,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    textAlign: 'center',
   },
 
   heroItalic: {
-    color: C.accent,
+    color: C.lilac,
     fontStyle: 'italic',
   },
 
   heroSubtitle: {
-    color: C.muted,
-    fontSize: 13,
-    lineHeight: 21,
+    color: '#D1C7E9',
+    fontSize: 12,
     marginTop: 12,
-    marginBottom: 25,
   },
 
-  aiBanner: {
-    backgroundColor: C.lavender,
-    borderRadius: 24,
-    padding: 22,
-    minHeight: 150,
-    marginBottom: 30,
+  heroBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 
-  aiSparkle: {
-    color: C.accent,
+  heroExplore: {
+    color: C.lilac,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
+
+  heroArrow: {
+    color: C.white,
+    fontSize: 23,
+  },
+
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 25,
+    marginBottom: 29,
+  },
+
+  quickAction: {
+    width: '24%',
+    alignItems: 'center',
+  },
+
+  quickIcon: {
+    width: 57,
+    height: 57,
+    borderRadius: 20,
+    backgroundColor: C.pale,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 9,
+  },
+
+  quickIconText: {
+    color: C.navy,
+    fontSize: 27,
+  },
+
+  quickLabel: {
+    color: C.ink,
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  aiCard: {
+    backgroundColor: '#EEE8F8',
+    borderRadius: 23,
+    padding: 23,
+    marginBottom: 36,
+  },
+
+  aiCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  aiLabel: {
+    color: '#8067AE',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.7,
+    letterSpacing: 1.8,
+  },
+
+  aiArrow: {
+    color: C.navy,
+    fontSize: 22,
   },
 
   aiTitle: {
-    color: C.ink,
+    color: C.navy,
     fontSize: 22,
-    fontWeight: '600',
-    marginTop: 14,
+    fontWeight: '700',
+    marginBottom: 7,
   },
 
   aiDescription: {
     color: C.muted,
     fontSize: 12,
-    marginTop: 6,
   },
 
-  aiArrow: {
-    color: C.dark,
-    fontSize: 23,
-    position: 'absolute',
-    right: 22,
-    bottom: 18,
-  },
-
-  sectionRow: {
+  sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    justifyContent: 'space-between',
+    marginBottom: 19,
+  },
+
+  sectionEyebrow: {
+    color: '#957BCB',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginBottom: 8,
   },
 
   sectionTitle: {
-    color: C.ink,
-    fontSize: 21,
-    fontFamily:
-      Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    color: C.navy,
+    fontSize: 27,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
 
-  sectionHint: {
-    color: C.accent,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    fontWeight: '700',
+  sectionSparkle: {
+    color: C.lavender,
+    fontSize: 29,
   },
 
-  cardsGrid: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     gap: 12,
   },
 
-  actionCard: {
+  editorialCard: {
     width: '48%',
-    minHeight: 160,
-    borderRadius: 20,
+    minHeight: 168,
+    borderRadius: 22,
     padding: 17,
+    justifyContent: 'space-between',
   },
 
-  actionSymbol: {
-    fontSize: 27,
-    color: C.dark,
-    marginBottom: 12,
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
 
-  actionTitle: {
-    color: C.ink,
-    fontWeight: '700',
-    fontSize: 15,
-  },
-
-  actionDescription: {
-    color: C.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 5,
-    paddingRight: 5,
+  cardIcon: {
+    color: C.navy,
+    fontSize: 29,
   },
 
   cardArrow: {
-    color: C.dark,
-    position: 'absolute',
-    right: 15,
-    top: 15,
-    fontSize: 17,
+    color: C.navy,
+    fontSize: 18,
   },
 
-  tipBox: {
-    borderWidth: 1,
-    borderColor: C.line,
-    borderRadius: 17,
-    padding: 19,
-    marginTop: 24,
-  },
-
-  tipLabel: {
-    color: C.accent,
-    fontSize: 10,
+  cardTitle: {
+    color: C.navy,
+    fontSize: 15,
     fontWeight: '700',
-    letterSpacing: 1.3,
+    marginBottom: 7,
   },
 
-  tipText: {
-    color: C.ink,
-    fontSize: 13,
+  cardDescription: {
+    color: '#72718A',
+    fontSize: 11,
+    lineHeight: 17,
+  },
+
+  quoteCard: {
+    backgroundColor: C.white,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: C.border,
+    padding: 24,
+    marginTop: 25,
+    alignItems: 'center',
+  },
+
+  quoteStar: {
+    color: C.lavender,
+    fontSize: 27,
+    marginBottom: 10,
+  },
+
+  quoteTitle: {
+    color: C.navy,
+    fontSize: 23,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+
+  quoteDescription: {
+    color: C.muted,
+    fontSize: 12,
+    textAlign: 'center',
     marginTop: 9,
   },
 
   pageTitle: {
-    color: C.ink,
-    fontSize: 34,
-    fontFamily:
-      Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    marginBottom: 24,
+    color: C.navy,
+    fontSize: 32,
+    lineHeight: 40,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    marginBottom: 13,
   },
 
-  placeholder: {
-    borderRadius: 26,
-    padding: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 330,
-  },
-
-  placeholderIcon: {
-    color: C.accent,
-    fontSize: 48,
-    marginBottom: 15,
-  },
-
-  placeholderTitle: {
-    color: C.ink,
-    fontSize: 22,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-
-  placeholderText: {
+  pageDescription: {
     color: C.muted,
     fontSize: 13,
+    lineHeight: 22,
+    marginBottom: 27,
+  },
+
+  emptyCard: {
+    backgroundColor: C.white,
+    borderRadius: 27,
+    padding: 28,
+    minHeight: 320,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+
+  emptyIcon: {
+    color: C.lavender,
+    fontSize: 58,
+    marginBottom: 16,
+  },
+
+  emptyTitle: {
+    color: C.navy,
+    fontSize: 21,
+    fontWeight: '700',
     textAlign: 'center',
+  },
+
+  emptyDescription: {
+    color: C.muted,
+    fontSize: 13,
     lineHeight: 21,
+    textAlign: 'center',
     marginTop: 13,
+    marginBottom: 25,
   },
 
-  placeholderButton: {
-    backgroundColor: C.dark,
-    borderRadius: 24,
-    paddingHorizontal: 25,
-    paddingVertical: 12,
-    marginTop: 24,
+  primaryButton: {
+    backgroundColor: C.navy,
+    borderRadius: 30,
+    minHeight: 52,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  placeholderButtonText: {
-    color: C.paper,
-    fontSize: 12,
+  primaryButtonText: {
+    color: C.white,
+    fontSize: 14,
     fontWeight: '700',
   },
 
-  notice: {
-    color: C.dark,
+  aiFeatureCard: {
+    backgroundColor: C.navy,
+    borderRadius: 27,
+    padding: 28,
+    minHeight: 310,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  aiFeatureIcon: {
+    color: C.lilac,
+    fontSize: 55,
+    marginBottom: 16,
+  },
+
+  aiFeatureTitle: {
+    color: C.white,
+    fontSize: 23,
+    fontWeight: '700',
     textAlign: 'center',
+  },
+
+  aiFeatureDescription: {
+    color: '#C8BDF1',
+    fontSize: 13,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginTop: 13,
+    marginBottom: 25,
+  },
+
+  aiFeatureButton: {
+    backgroundColor: C.lilac,
+    borderRadius: 25,
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+  },
+
+  aiFeatureButtonText: {
+    color: C.navy,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  profileCard: {
+    backgroundColor: C.white,
+    borderRadius: 25,
+    padding: 27,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
+    marginBottom: 18,
+  },
+
+  profileAvatar: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: C.lilac,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+
+  profileAvatarText: {
+    color: C.navy,
+    fontSize: 34,
+  },
+
+  profileWelcome: {
+    color: C.navy,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+
+  profileEmail: {
+    color: C.muted,
     fontSize: 12,
-    marginTop: 15,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+
+  profileInfoCard: {
+    backgroundColor: C.pale,
+    borderRadius: 20,
+    padding: 23,
+    marginBottom: 23,
+  },
+
+  profileInfoTitle: {
+    color: C.navy,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  profileInfoDescription: {
+    color: C.muted,
+    fontSize: 12,
+    lineHeight: 20,
+    marginTop: 9,
+  },
+
+  logoutButton: {
+    borderWidth: 1,
+    borderColor: '#D7C9F4',
+    borderRadius: 20,
+    padding: 17,
+    alignItems: 'center',
+  },
+
+  logoutText: {
+    color: C.navy,
+    fontSize: 14,
+    fontWeight: '700',
   },
 
   tabBar: {
-    backgroundColor: C.paper,
+    backgroundColor: C.white,
     borderTopWidth: 1,
-    borderTopColor: C.line,
+    borderTopColor: C.border,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 10,
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
+    paddingTop: 9,
+    paddingBottom: Platform.OS === 'ios' ? 15 : 9,
   },
 
   tabItem: {
@@ -853,30 +1322,69 @@ const styles = StyleSheet.create({
   },
 
   tabIconWrap: {
-    width: 36,
-    height: 31,
+    width: 43,
+    height: 37,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
   },
 
-  activeIconWrap: {
-    backgroundColor: C.lavender,
+  tabIconWrapActive: {
+    backgroundColor: C.lilac,
+  },
+
+  aiTabIconWrap: {
+    backgroundColor: C.navy,
+    borderRadius: 20,
   },
 
   tabIcon: {
-    fontSize: 22,
-    color: C.muted,
+    color: '#8A8DA4',
+    fontSize: 24,
   },
 
-  tabText: {
-    fontSize: 9,
-    color: C.muted,
-    marginTop: 3,
+  tabIconActive: {
+    color: C.navy,
   },
 
-  activeTab: {
-    color: C.dark,
+  aiTabIcon: {
+    color: C.lilac,
+    fontSize: 25,
+  },
+
+  tabLabel: {
+    color: C.muted,
+    fontSize: 10,
+    marginTop: 5,
+  },
+
+  tabLabelActive: {
+    color: C.navy,
     fontWeight: '700',
+  },
+
+  resetContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 28,
+    gap: 18,
+  },
+
+  resetBrand: {
+    color: C.navy,
+    fontSize: 27,
+    fontWeight: '700',
+    letterSpacing: 3,
+    marginBottom: 18,
+  },
+
+  resetInput: {
+    backgroundColor: C.white,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 15,
+    color: C.navy,
   },
 });

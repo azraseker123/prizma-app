@@ -12,6 +12,7 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { supabase } from './supabase';
 
@@ -154,17 +155,19 @@ export default function AuthScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor={COLORS.navy}
       />
 
-      <View pointerEvents="none" style={styles.background}>
-        <View style={styles.glowTop} />
-        <View style={styles.glowRight} />
-        <View style={styles.glowBottom} />
-        <View style={styles.orbitOne} />
-        <View style={styles.orbitTwo} />
-        <View style={styles.orbitThree} />
-      </View>
+      {/* Işıklı PRİZMA arka planı */}
+      <Image
+        source={require('./assets/prizma-background.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      />
+
+      <View
+        pointerEvents="none"
+        style={styles.backgroundShade}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -189,22 +192,23 @@ export default function AuthScreen() {
             </TouchableOpacity>
           )}
 
+          {/* Gerçek kristal PRİZMA logosu */}
           <View
             style={[
               styles.brandSection,
               !isWelcome && styles.brandSectionCompact,
             ]}
           >
-            <View style={styles.monogramFrame}>
-              <Text style={styles.monogram}>P</Text>
-              <View style={styles.monogramDiamond} />
-            </View>
-
-            <Text style={styles.brandName}>PRİZMA</Text>
-
-            <Text style={styles.tagline}>
-              STİL  ·  GÜZELLİK  ·  SEN
-            </Text>
+            <Image
+              source={require('./assets/prizma-logo.png')}
+              style={[
+                styles.brandLogo,
+                !isWelcome && styles.brandLogoCompact,
+              ]}
+              resizeMode="contain"
+              accessible
+              accessibilityLabel="PRİZMA kristal logosu"
+            />
           </View>
 
           {isWelcome ? (
@@ -221,6 +225,7 @@ export default function AuthScreen() {
                 <Text style={styles.primaryButtonText}>
                   Giriş Yap
                 </Text>
+
                 <Text style={styles.primaryArrow}>→</Text>
               </TouchableOpacity>
 
@@ -275,7 +280,9 @@ export default function AuthScreen() {
 
               {!isReset && (
                 <>
-                  <Text style={styles.inputLabel}>Şifre</Text>
+                  <Text style={styles.inputLabel}>
+                    Şifre
+                  </Text>
 
                   <View style={styles.passwordContainer}>
                     <TextInput
@@ -418,77 +425,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.navy,
   },
 
-  background: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
+  backgroundImage: {
+    ...StyleSheet.absoluteFill,
+    width: '100%',
+    height: '100%',
   },
 
-  glowTop: {
-    position: 'absolute',
-    width: 350,
-    height: 350,
-    borderRadius: 175,
-    backgroundColor: '#33468E',
-    opacity: 0.5,
-    top: -210,
-    right: -120,
-  },
-
-  glowRight: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: '#7556B8',
-    opacity: 0.19,
-    top: '29%',
-    right: -195,
-  },
-
-  glowBottom: {
-    position: 'absolute',
-    width: 350,
-    height: 350,
-    borderRadius: 175,
-    backgroundColor: '#5941A4',
-    opacity: 0.25,
-    bottom: -250,
-    left: -130,
-  },
-
-  orbitOne: {
-    position: 'absolute',
-    width: 430,
-    height: 430,
-    borderRadius: 215,
-    borderWidth: 1,
-    borderColor: 'rgba(189,166,250,0.16)',
-    top: -245,
-    right: -220,
-    transform: [{ rotate: '-25deg' }],
-  },
-
-  orbitTwo: {
-    position: 'absolute',
-    width: 430,
-    height: 430,
-    borderRadius: 215,
-    borderWidth: 2,
-    borderColor: 'rgba(189,166,250,0.13)',
-    bottom: -275,
-    left: -190,
-    transform: [{ rotate: '30deg' }],
-  },
-
-  orbitThree: {
-    position: 'absolute',
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    borderWidth: 1,
-    borderColor: 'rgba(230,219,255,0.12)',
-    top: '22%',
-    right: -260,
+  backgroundShade: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(7, 13, 38, 0.20)',
   },
 
   content: {
@@ -500,8 +445,8 @@ const styles = StyleSheet.create({
 
   welcomeContent: {
     justifyContent: 'space-between',
-    paddingTop: 95,
-    paddingBottom: 45,
+    paddingTop: 55,
+    paddingBottom: 30,
   },
 
   backButton: {
@@ -526,66 +471,20 @@ const styles = StyleSheet.create({
     marginBottom: 35,
   },
 
-  monogramFrame: {
-    width: 118,
-    height: 142,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+  brandLogo: {
+    width: '100%',
+    height: 350,
+    maxWidth: 360,
   },
 
-  monogram: {
-    color: COLORS.lavenderLight,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 132,
-    lineHeight: 150,
-    fontWeight: '400',
-    textShadowColor: 'rgba(189,166,250,0.65)',
-    textShadowRadius: 20,
-    textShadowOffset: {
-      width: 0,
-      height: 0,
-    },
-  },
-
-  monogramDiamond: {
-    position: 'absolute',
-    width: 19,
-    height: 19,
-    backgroundColor: COLORS.lavender,
-    transform: [{ rotate: '45deg' }],
-    left: 55,
-    top: 68,
-    borderWidth: 3,
-    borderColor: COLORS.navy,
-  },
-
-  brandName: {
-    color: COLORS.white,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 48,
-    fontWeight: '400',
-    letterSpacing: 7,
-    textAlign: 'center',
-    textShadowColor: 'rgba(189,166,250,0.2)',
-    textShadowRadius: 12,
-    textShadowOffset: {
-      width: 0,
-      height: 0,
-    },
-  },
-
-  tagline: {
-    color: COLORS.lavenderLight,
-    fontSize: 10,
-    letterSpacing: 3,
-    textAlign: 'center',
-    marginTop: 14,
+  brandLogoCompact: {
+    height: 215,
+    maxWidth: 245,
   },
 
   welcomeActions: {
     width: '100%',
-    marginTop: 75,
+    marginTop: 24,
   },
 
   welcomeDescription: {
@@ -597,7 +496,7 @@ const styles = StyleSheet.create({
   },
 
   primaryButton: {
-    backgroundColor: COLORS.lavender,
+    backgroundColor: COLORS.lavenderLight,
     borderRadius: 30,
     minHeight: 56,
     alignItems: 'center',
@@ -629,7 +528,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 14,
-    backgroundColor: 'rgba(16,27,66,0.3)',
+    backgroundColor: 'rgba(8,14,40,0.55)',
   },
 
   outlineButtonText: {

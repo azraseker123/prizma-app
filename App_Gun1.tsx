@@ -20,7 +20,7 @@ function Tile({ icon, title, subtitle, tint, onPress }: { icon: string; title: s
 export default function App() {
   const [tab, setTab] = useState<Tab>('Ana Sayfa');
   return <SafeAreaView style={styles.safe}>
-    <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+    <StatusBar barStyle="dark-content" />
     <View style={styles.top}><Text style={styles.brand}>PRİZMA <Text style={styles.sparkle}>✦</Text></Text><Text style={styles.topRight}>SOFT LUXURY AI</Text></View>
     <ScrollView contentContainerStyle={styles.content}>
       {tab === 'Ana Sayfa' ? <>
