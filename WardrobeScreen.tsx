@@ -1,4 +1,5 @@
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
+import { PRIZMA_COLORS as C } from './theme';
 import PrizmaConfirm from './PrizmaConfirm';
 import OutfitAIScreen from './OutfitAIScreen';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -50,17 +51,7 @@ type Outfit = {
   item_ids: string[];
 };
 
-const C = {
-  navy: '#0B1436',
-  lavender: '#9372B5',
-  lilac: '#E7D9F0',
-  background: '#FAF8FC',
-  white: '#FFFFFF',
-  muted: '#777B94',
-  border: '#E9E0EF',
-  pale: '#F4EDF9',
-  rose: '#C05D78',
-};
+
 
 const SEASONS = [
   'Tüm Mevsimler',
