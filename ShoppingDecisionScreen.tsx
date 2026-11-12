@@ -35,6 +35,15 @@ type Analysis = {
   reasons: string[];
   outfits: string[];
   warnings?: string[];
+  sections?: {
+    signatureFit: string;
+    wardrobeFit: string;
+    similarItems: string;
+    needAnalysis: string;
+    priceAnalysis: string;
+    usagePotential: string;
+    alternativeDecision: string;
+  };
 };
 
 const C = {
@@ -145,7 +154,12 @@ export default function ShoppingDecisionScreen({
         { role: 'assistant', text: data.answer },
       ]);
     } catch (e: any) {
-      showNotice('error', 'Sohbet hatası', e.message || 'Yanıt alınamadı.');
+      console.error('PRIZMA AI chat error:', e);
+      showNotice(
+        'error',
+        'PRİZMA şu anda yanıt veremiyor',
+        'Mesajını göndermeyi tekrar deneyebilirsin.'
+      );
     } finally {
       setChatLoading(false);
     }
@@ -283,11 +297,11 @@ export default function ShoppingDecisionScreen({
 
       setResult(data as Analysis);
     } catch (e: any) {
+      console.error('PRIZMA AI analysis error:', e);
       showNotice(
         'error',
-        'AI analizi tamamlanamadı',
-        'Sunucu bağlantısı henüz kurulmamış veya bir hata oluşmuş olabilir. ' +
-        (e.message || '')
+        'Analiz şu anda tamamlanamadı',
+        'Fotoğrafın ve girdiğin bilgiler yerinde duruyor. Biraz sonra yeniden deneyebilirsin.'
       );
     } finally {
       setLoading(false);
@@ -412,6 +426,32 @@ export default function ShoppingDecisionScreen({
           <Text style={styles.score}>{result.score}/100</Text>
           <Text style={styles.verdict}>{result.verdict}</Text>
           <Text style={styles.summary}>{result.summary}</Text>
+
+          {result.sections && (
+            <View style={styles.analysisSections}>
+              <Text style={styles.resultHeading}>
+                ✦ Detaylı Ürün Değerlendirmesi
+              </Text>
+              {([
+                ['✦', 'PRİZMA İmzan ile Uyumu', result.sections.signatureFit],
+                ['◈', 'Dolap Uyumu', result.sections.wardrobeFit],
+                ['◇', 'Benzer Ürün Kontrolü', result.sections.similarItems],
+                ['◎', 'İhtiyaç Analizi', result.sections.needAnalysis],
+                ['₺', 'Fiyat Değerlendirmesi', result.sections.priceAnalysis],
+                ['◷', 'Kullanım Potansiyeli', result.sections.usagePotential],
+                ['⚖', 'Alternatif Karar', result.sections.alternativeDecision],
+              ] as [string, string, string][]).map(([symbol, title, description]) => (
+                <View key={title} style={styles.analysisCard}>
+                  <Text style={styles.analysisCardTitle}>
+                    {symbol}  {title}
+                  </Text>
+                  <Text style={styles.analysisCardText}>
+                    {description}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <Text style={styles.resultHeading}>Neden?</Text>
           {result.reasons.map((r, i) => (
@@ -541,6 +581,28 @@ const styles = StyleSheet.create({
   score: { color: '#50277A', fontSize: 49, fontWeight: '900', textAlign: 'center', marginTop: 12 },
   verdict: { color: C.purple, fontSize: 32, fontWeight: '900', textAlign: 'center' },
   summary: { color: C.navy, lineHeight: 24, fontSize: 15, marginTop: 20 },
+  analysisSections: {
+    marginTop: 10,
+  },
+  analysisCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 17,
+    padding: 16,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E8DDF5',
+  },
+  analysisCardTitle: {
+    color: C.purple,
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  analysisCardText: {
+    color: C.navy,
+    fontSize: 13,
+    lineHeight: 21,
+  },
   resultHeading: { color: C.navy, fontSize: 17, fontWeight: '800', marginTop: 22, marginBottom: 10 },
   detail: { color: C.navy, fontSize: 14, lineHeight: 23, marginBottom: 8 },
   warning: { color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 12 },

@@ -1,5 +1,6 @@
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 import PrizmaConfirm from './PrizmaConfirm';
+import OutfitAIScreen from './OutfitAIScreen';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -10,7 +11,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   ScrollView,
   Modal,
   SafeAreaView,
@@ -52,13 +52,13 @@ type Outfit = {
 
 const C = {
   navy: '#0B1436',
-  lavender: '#A78BFA',
-  lilac: '#E6DBFF',
-  background: '#FAF9FC',
+  lavender: '#9372B5',
+  lilac: '#E7D9F0',
+  background: '#FAF8FC',
   white: '#FFFFFF',
   muted: '#777B94',
-  border: '#ECE7F2',
-  pale: '#F2EDFA',
+  border: '#E9E0EF',
+  pale: '#F4EDF9',
   rose: '#C05D78',
 };
 
@@ -135,6 +135,7 @@ export default function WardrobeScreen({ userId }: Props) {
   const [detailItem, setDetailItem] =
     useState<WardrobeItemWithImage | null>(null);
 
+  const [activeWardrobeTab, setActiveWardrobeTab] = useState<'clothes' | 'outfits' | 'ai'>('clothes');
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [outfitName, setOutfitName] = useState('');
   const [editingOutfitId, setEditingOutfitId] =
@@ -195,7 +196,7 @@ export default function WardrobeScreen({ userId }: Props) {
         setOutfits((outfitData || []) as Outfit[]);
       }
     } catch (error: any) {
-      Alert.alert(
+      showNotice('error',
         'Gardırop yüklenemedi',
         error?.message || 'Lütfen tekrar dene.'
       );
@@ -204,9 +205,27 @@ export default function WardrobeScreen({ userId }: Props) {
     }
   }, [userId]);
 
+  const reloadOutfits = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('wardrobe_outfits')
+      .select('id,name,item_ids')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      showNotice('error', 'Kombinler yüklenemedi', error.message);
+      return;
+    }
+    setOutfits((data || []) as Outfit[]);
+  }, [userId]);
+
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  const selectWardrobeTab = (nextTab: 'clothes' | 'outfits' | 'ai') => {
+    setActiveWardrobeTab(nextTab);
+    if (nextTab === 'outfits') void reloadOutfits();
+  };
 
   // --------------------------------------------------
   // FORM İŞLEMLERİ
@@ -367,7 +386,7 @@ export default function WardrobeScreen({ userId }: Props) {
     if (saving) return;
 
     if (!name.trim()) {
-      Alert.alert(
+      showNotice('info',
         'İsim eksik',
         'Kıyafetine bir isim ver.'
       );
@@ -375,7 +394,7 @@ export default function WardrobeScreen({ userId }: Props) {
     }
 
     if (!editingItem && !selectedImage) {
-      Alert.alert(
+      showNotice('info',
         'Fotoğraf eksik',
         'Önce bir kıyafet fotoğrafı seç.'
       );
@@ -455,7 +474,7 @@ export default function WardrobeScreen({ userId }: Props) {
 
       resetForm();
 
-      Alert.alert(
+      showNotice('success',
         wasEditing
           ? 'Kıyafet güncellendi ✦'
           : 'Kıyafetin eklendi ✦',
@@ -472,7 +491,7 @@ export default function WardrobeScreen({ userId }: Props) {
           .remove([newUploadedPath]);
       }
 
-      Alert.alert(
+      showNotice('info',
         databaseSaved
           ? 'Kıyafet kaydedildi'
           : 'İşlem başarısız',
@@ -521,13 +540,13 @@ export default function WardrobeScreen({ userId }: Props) {
                   .remove([item.image_path]);
 
               if (storageError) {
-                Alert.alert(
+                showNotice('info',
                   'Kıyafet silindi',
                   'Kayıt silindi ancak fotoğraf depodan temizlenemedi.'
                 );
               }
             } catch (error: any) {
-              Alert.alert(
+              showNotice('info',
                 'Silme başarısız',
                 error?.message || 'Tekrar dene.'
               );
@@ -552,7 +571,7 @@ export default function WardrobeScreen({ userId }: Props) {
       .eq('user_id', userId);
 
     if (error) {
-      Alert.alert(
+      showNotice('info',
         'Favori kaydedilemedi',
         error.message
       );
@@ -584,7 +603,7 @@ export default function WardrobeScreen({ userId }: Props) {
     );
 
     if (!outfitName.trim() || chosen.length < 2) {
-      Alert.alert(
+      showNotice('info',
         'Eksik bilgi',
         'Kombine isim ver ve en az iki kıyafet seç.'
       );
@@ -611,7 +630,7 @@ export default function WardrobeScreen({ userId }: Props) {
     const { error } = await query;
 
     if (error) {
-      Alert.alert(
+      showNotice('info',
         'Kombin kaydedilemedi',
         error.message
       );
@@ -753,7 +772,7 @@ export default function WardrobeScreen({ userId }: Props) {
               .eq('user_id', userId);
 
             if (error) {
-              Alert.alert('Hata', error.message);
+              showNotice('info', 'Hata', error.message);
             } else {
               setOutfits((current) =>
                 current.filter((o) => o.id !== id)
@@ -944,49 +963,51 @@ export default function WardrobeScreen({ userId }: Props) {
         }}
       />
 
-      <Text style={styles.eyebrow}>
-        YOUR DIGITAL CLOSET
-      </Text>
-
-      <Text style={styles.title}>
-        Gardırobun
-      </Text>
-
-      <Text style={styles.description}>
-        Tarzını oluşturan her parça, tek bir yerde.
-      </Text>
-
-      {/* KOLEKSİYON ÖZETİ */}
-
-      <View style={styles.summaryCard}>
-        <View>
-          <Text style={styles.summaryLabel}>
-            SENİN KOLEKSİYONUN
-          </Text>
-
-          <Text style={styles.summaryNumber}>
-            {items.length}
-          </Text>
-
-          <Text style={styles.summaryDescription}>
-            kayıtlı parça
+      <View style={styles.wardrobeCompactHeading}>
+        <Text style={styles.wardrobeCompactIcon}>♧</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.wardrobeCompactTitle}>Gardırop</Text>
+          <Text style={styles.wardrobeCompactDescription}>
+            Kıyafetlerini yönet, kombin oluştur ve AI'dan stil önerileri al.
           </Text>
         </View>
-
-        <Text style={styles.summaryIcon}>◇</Text>
       </View>
 
-      {/* YENİ KIYAFET EKLE */}
+      {/* GARDIROP SEKME NAVIGASYONU */}
+      <View style={styles.wardrobeTabRow} accessibilityRole="tablist">
+        {([
+          ['clothes', 'Kıyafetler'],
+          ['outfits', 'Kombinler'],
+          ['ai', 'AI Öneri ✦'],
+        ] as const).map(([key, label]) => (
+          <TouchableOpacity
+            key={key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeWardrobeTab === key }}
+            onPress={() => selectWardrobeTab(key)}
+            style={[
+              styles.wardrobeTab,
+              activeWardrobeTab === key && styles.wardrobeTabActive,
+            ]}
+          >
+            <Text style={[
+              styles.wardrobeTabText,
+              activeWardrobeTab === key && styles.wardrobeTabTextActive,
+            ]}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={startAdding}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.addButtonText}>
-          + Yeni Kıyafet Ekle
-        </Text>
-      </TouchableOpacity>
+      {activeWardrobeTab === 'clothes' && (
+        <>
+      <View style={styles.compactWardrobeTools}>
+        <Text style={styles.compactCount}>{items.length} parça</Text>
+        <TouchableOpacity style={styles.compactAdd} onPress={startAdding}>
+          <Text style={styles.compactAddText}>+ Parça Ekle</Text>
+        </TouchableOpacity>
+      </View>
+        </>
+      )}
 
       {/* ============================================= */}
       {/* KIYAFET EKLEME / DÜZENLEME TAM EKRAN MODALI */}
@@ -1467,6 +1488,8 @@ export default function WardrobeScreen({ userId }: Props) {
         </SafeAreaView>
       </Modal>
 
+      {activeWardrobeTab === 'outfits' && (
+        <>
       {/* ============================================= */}
       {/* KOMBİNLER */}
       {/* ============================================= */}
@@ -1622,6 +1645,11 @@ export default function WardrobeScreen({ userId }: Props) {
         ))}
       </View>
 
+        </>
+      )}
+
+      {activeWardrobeTab === 'clothes' && (
+        <>
       {/* ============================================= */}
       {/* KIYAFET LİSTESİ */}
       {/* ============================================= */}
@@ -1898,6 +1926,12 @@ export default function WardrobeScreen({ userId }: Props) {
           )}
         </>
       )}
+        </>
+      )}
+
+      {activeWardrobeTab === 'ai' && (
+        <OutfitAIScreen userId={userId} onSaved={() => { void reloadOutfits(); setActiveWardrobeTab('outfits'); showNotice('success', 'Kombin kaydedildi ✦', 'AI kombinin Kombinler sekmesine eklendi.'); }} />
+      )}
     </View>
   );
 }
@@ -1907,13 +1941,49 @@ export default function WardrobeScreen({ userId }: Props) {
 // ====================================================
 
 const styles = StyleSheet.create({
+  wardrobeCompactHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 },
+  wardrobeCompactIcon: { color: '#785597', fontSize: 29, lineHeight: 34 },
+  wardrobeCompactTitle: { color: '#221637', fontSize: 22, fontWeight: '800', marginBottom: 4 },
+  wardrobeCompactDescription: { color: '#645777', fontSize: 12, lineHeight: 18 },
+  compactWardrobeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 10 },
+  compactCount: { color: '#59466D', fontSize: 13, fontWeight: '700' },
+  compactAdd: { backgroundColor: '#7A5799', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
+  compactAddText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
+  wardrobeTabRow: {
+    flexDirection: 'row',
+    gap: 7,
+    marginBottom: 12,
+  },
+  wardrobeTab: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E5D8EA',
+    backgroundColor: '#F2EAF7',
+    paddingVertical: 10,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 24,
+  },
+  wardrobeTabActive: {
+    backgroundColor: '#7A5799',
+    borderColor: '#7A5799',
+  },
+  wardrobeTabText: {
+    color: '#31254C',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  wardrobeTabTextActive: {
+    color: '#FFFFFF',
+  },
   prizmaSheetOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(11,20,54,0.45)',
   },
   prizmaSheet: {
-    backgroundColor: '#FAF9FC',
+    backgroundColor: '#FAF8FC',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 24,
@@ -1924,12 +1994,12 @@ const styles = StyleSheet.create({
     width: 42,
     height: 5,
     borderRadius: 5,
-    backgroundColor: '#D9CDE8',
+    backgroundColor: '#D6C4E3',
     alignSelf: 'center',
     marginBottom: 20,
   },
   prizmaSheetSparkle: {
-    color: '#A78BFA',
+    color: '#9372B5',
     fontSize: 34,
     marginBottom: 8,
   },
@@ -1947,13 +2017,13 @@ const styles = StyleSheet.create({
   prizmaSheetOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0E9FA',
+    backgroundColor: '#F0E5F6',
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
   },
   prizmaSheetOptionIcon: {
-    color: '#8050B5',
+    color: '#805CA1',
     fontSize: 27,
     width: 44,
   },
@@ -1968,7 +2038,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   prizmaSheetArrow: {
-    color: '#8050B5',
+    color: '#805CA1',
     fontSize: 27,
   },
   prizmaSheetCancel: {
@@ -1977,7 +2047,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   prizmaSheetCancelText: {
-    color: '#8050B5',
+    color: '#805CA1',
     fontWeight: '700',
     fontSize: 15,
   },
@@ -1990,7 +2060,7 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: {
-    color: '#937BC5',
+    color: '#8C6BAC',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 2.1,
@@ -2135,7 +2205,7 @@ const styles = StyleSheet.create({
   },
 
   editorBackText: {
-    color: '#8067AE',
+    color: '#8062A2',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -2196,7 +2266,7 @@ const styles = StyleSheet.create({
   },
 
   changePhoto: {
-    color: '#8067AE',
+    color: '#8062A2',
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
@@ -2308,7 +2378,7 @@ const styles = StyleSheet.create({
   },
 
   detailEyebrow: {
-    color: '#937BC5',
+    color: '#8C6BAC',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.5,
@@ -2381,7 +2451,7 @@ const styles = StyleSheet.create({
   },
 
   detailNotesTitle: {
-    color: '#937BC5',
+    color: '#8C6BAC',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.3,
@@ -2410,7 +2480,7 @@ const styles = StyleSheet.create({
   },
 
   boardCanvas: {
-    backgroundColor: '#F8F5FD',
+    backgroundColor: '#FAF7FC',
     borderRadius: 18,
     padding: 10,
     flexDirection: 'row',
@@ -2592,7 +2662,7 @@ const styles = StyleSheet.create({
   },
 
   refreshText: {
-    color: '#8067AE',
+    color: '#8062A2',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -2646,22 +2716,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
 
   itemCard: {
     width: '48%',
     backgroundColor: C.white,
-    borderRadius: 20,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: C.border,
-    marginBottom: 5,
+    marginBottom: 4,
   },
 
   itemImageContainer: {
     width: '100%',
-    height: 175,
+    height: 145,
     backgroundColor: C.pale,
   },
 
@@ -2705,7 +2775,7 @@ const styles = StyleSheet.create({
   },
 
   itemColor: {
-    color: '#8067AE',
+    color: '#8062A2',
     fontSize: 11,
     marginTop: 5,
   },
@@ -2726,7 +2796,7 @@ const styles = StyleSheet.create({
   },
 
   editText: {
-    color: '#8067AE',
+    color: '#8062A2',
     fontSize: 11,
     fontWeight: '700',
   },

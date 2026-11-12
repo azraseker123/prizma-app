@@ -14,6 +14,7 @@ import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 
 type Props = {
   userId: string;
+  onSaved?: () => void;
 };
 
 type WardrobeItem = {
@@ -26,7 +27,7 @@ type WardrobeItem = {
   imageUrl?: string | null;
 };
 
-export default function OutfitAIScreen({ userId }: Props) {
+export default function OutfitAIScreen({ userId, onSaved }: Props) {
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [occasion, setOccasion] = useState('');
@@ -121,6 +122,7 @@ export default function OutfitAIScreen({ userId }: Props) {
       if (error) throw error;
 
       setSavedOutfits(previous => [...previous, index]);
+      onSaved?.();
       setNotice({
         type: 'success',
         title: 'Kombin kaydedildi ♡',
@@ -279,7 +281,7 @@ export default function OutfitAIScreen({ userId }: Props) {
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F8F4FF',
+                        backgroundColor: '#F8F3FA',
                         borderRadius: 15,
                         padding: 10,
                         marginBottom: 10,
@@ -301,7 +303,7 @@ export default function OutfitAIScreen({ userId }: Props) {
                           width: 78,
                           height: 90,
                           borderRadius: 12,
-                          backgroundColor: '#EDE4FA',
+                          backgroundColor: '#EBDEF2',
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}>
@@ -337,8 +339,8 @@ export default function OutfitAIScreen({ userId }: Props) {
                   }
                   style={{
                     backgroundColor: savedOutfits.includes(index)
-                      ? '#E9DDF8'
-                      : '#7C3AED',
+                      ? '#E4D3EC'
+                      : '#79539A',
                     paddingVertical: 14,
                     borderRadius: 14,
                     alignItems: 'center',
@@ -371,7 +373,7 @@ export default function OutfitAIScreen({ userId }: Props) {
           <Text style={styles.cardTitle}>Gardırobun ♡</Text>
 
           {loading ? (
-            <ActivityIndicator color="#8B5CF6" />
+            <ActivityIndicator color="#9272B5" />
           ) : (
             <>
               <Text style={styles.wardrobeCount}>
@@ -400,14 +402,14 @@ export default function OutfitAIScreen({ userId }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF8FF',
+    backgroundColor: '#FAF7FC',
   },
   content: {
     padding: 20,
     paddingBottom: 40,
   },
   eyebrow: {
-    color: '#9276C9',
+    color: '#8667AB',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 2,
@@ -430,7 +432,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#EDE4FA',
+    borderColor: '#EBDEF2',
     marginBottom: 16,
   },
   cardTitle: {
@@ -454,7 +456,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#E8DDF8',
-    backgroundColor: '#FCFAFF',
+    backgroundColor: '#FFFCFF',
     borderRadius: 15,
     padding: 14,
     color: '#281B46',
@@ -466,7 +468,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   disabledButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#79539A',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -484,13 +486,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   wardrobeCard: {
-    backgroundColor: '#F1EAFC',
+    backgroundColor: '#F0E5F6',
     borderRadius: 22,
     padding: 20,
   },
   wardrobeCount: {
     fontSize: 17,
-    color: '#7953BB',
+    color: '#79579D',
     fontWeight: '800',
     marginBottom: 8,
   },

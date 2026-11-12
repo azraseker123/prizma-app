@@ -1,7 +1,12 @@
+import RoutineScreen from './RoutineScreen';
 import PrizmaConfirm from './PrizmaConfirm';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 import ShoppingDecisionScreen from './ShoppingDecisionScreen';
 import OutfitAIScreen from './OutfitAIScreen';
+import SkinAnalysisScreen from './SkinAnalysisScreen';
+import BeautyCollectionScreen from './BeautyCollectionScreen';
+import BeautyAdviceScreen from './BeautyAdviceScreen';
+import OnboardingScreen, { type OnboardingAnswers } from './OnboardingScreen';
 import React, { useState, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
@@ -29,18 +34,18 @@ type Tab =
   | 'Gardırop'
   | 'PRİZMA AI'
   | 'Güzellik'
-  | 'Profil' | 'Alışveriş';
+  | 'Profil' | 'Alışveriş' | 'Cilt Analizi' | 'Bakım Koleksiyonum' | 'Cilt Danışmanı' | 'Bakım Rutini';
 
 const C = {
   navy: '#0B1436',
-  lavender: '#A78BFA',
-  lilac: '#E6DBFF',
-  background: '#FAF9FC',
+  lavender: '#9372B5',
+  lilac: '#E7D9F0',
+  background: '#FAF8FC',
   white: '#FFFFFF',
   ink: '#172044',
   muted: '#777B94',
-  border: '#ECE7F2',
-  pale: '#F2EDFA',
+  border: '#E9E0EF',
+  pale: '#F4EDF9',
 };
 
 const tabs: { name: Tab; icon: string }[] = [
@@ -86,6 +91,7 @@ export default function App() {
 
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const [beautyCategory, setBeautyCategory] = useState<'skin' | 'hair' | 'makeup'>('skin');
 
 
   const [notice, setNotice] = useState<{
@@ -103,6 +109,18 @@ export default function App() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileLoadError, setProfileLoadError] = useState(false);
+  const [profileRetry, setProfileRetry] = useState(0);
+
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  const [savingOnboarding, setSavingOnboarding] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [loadingEditProfile, setLoadingEditProfile] = useState(false);
+  const [savingEditProfile, setSavingEditProfile] = useState(false);
+  const [profileAnswers, setProfileAnswers] = useState<OnboardingAnswers>({});
+
+
 
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -172,6 +190,155 @@ export default function App() {
 
     return () => listener.subscription.unsubscribe();
   }, []);
+
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!session?.user.id) {
+      setOnboardingDone(false);
+      setProfileLoading(false);
+      return;
+    }
+
+    setProfileLoading(true);
+    setProfileLoadError(false);
+
+    supabase
+      .from('user_profiles')
+      .select('onboarding_completed')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+
+        if (error) {
+          showNotice('error', 'Profil yüklenemedi',
+            'İnternet bağlantını kontrol edip tekrar dene.');
+          setProfileLoadError(true);
+        } else {
+          setOnboardingDone(data?.onboarding_completed === true);
+        }
+
+        setProfileLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [session?.user.id, profileRetry]);
+
+  const openProfileEditor = async () => {
+    if (!session?.user.id || loadingEditProfile) return;
+
+    setLoadingEditProfile(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('answers')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (error) throw error;
+
+      setProfileAnswers(
+        data?.answers && typeof data.answers === 'object'
+          && !Array.isArray(data.answers)
+          ? data.answers as OnboardingAnswers
+          : {}
+      );
+      setEditingProfile(true);
+    } catch (error: any) {
+      showNotice('error', 'Profil açılamadı',
+        error?.message || 'Lütfen tekrar dene.');
+    } finally {
+      setLoadingEditProfile(false);
+    }
+  };
+
+  const saveProfileAnswers = async (answers: OnboardingAnswers) => {
+    if (!session?.user.id || savingEditProfile) return;
+
+    setSavingEditProfile(true);
+    try {
+      const { data, error: readError } = await supabase
+        .from('user_profiles')
+        .select('answers')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (readError) throw readError;
+
+      const current: OnboardingAnswers =
+        data?.answers &&
+        typeof data.answers === 'object' &&
+        !Array.isArray(data.answers)
+          ? data.answers as OnboardingAnswers
+          : {};
+
+      const updated: OnboardingAnswers = { ...current };
+
+      // Düzenleme ekranı açıldığından beri değişen alanları bul.
+      const keys = new Set([
+        ...Object.keys(profileAnswers),
+        ...Object.keys(answers),
+      ]);
+
+      for (const key of keys) {
+        if (profileAnswers[key] === answers[key]) continue;
+
+        if (answers[key] === undefined || answers[key] === '') {
+          delete updated[key];
+        } else {
+          updated[key] = answers[key];
+        }
+      }
+
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          answers: updated,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+
+      setProfileAnswers(updated);
+      setEditingProfile(false);
+      showNotice('success', 'PRİZMA İmzan güncellendi',
+        'Tercihlerin başarıyla kaydedildi.');
+    } catch (error: any) {
+      showNotice('error', 'Değişiklikler kaydedilemedi',
+        error?.message || 'Lütfen tekrar dene.');
+    } finally {
+      setSavingEditProfile(false);
+    }
+  };
+
+  const finishOnboarding = async (answers: OnboardingAnswers) => {
+    if (!session?.user.id || savingOnboarding) return;
+
+    setSavingOnboarding(true);
+
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: session.user.id,
+          onboarding_completed: true,
+          answers,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
+      if (error) throw error;
+
+      setOnboardingDone(true);
+    } catch (error: any) {
+      showNotice('error', 'Cevaplar kaydedilemedi',
+        error?.message || 'Lütfen tekrar dene.');
+    } finally {
+      setSavingOnboarding(false);
+    }
+  };
 
   const saveNewPassword = async () => {
     if (newPassword.length < 8) {
@@ -344,6 +511,80 @@ export default function App() {
     return <AuthScreen />;
   }
 
+  if (profileLoading) {
+    return (
+      <SafeAreaView style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={C.lavender} />
+        <Text style={styles.loadingText}>
+          PRİZMA profilin hazırlanıyor ✦
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (profileLoadError) {
+    return (
+      <SafeAreaView style={styles.loadingScreen}>
+        <Text style={styles.loadingText}>
+          Profil bilgilerin yüklenemedi.
+        </Text>
+        <Text style={styles.loadingText}>
+          İnternet bağlantını kontrol edip tekrar deneyebilirsin.
+        </Text>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => setProfileRetry(value => value + 1)}
+        >
+          <Text style={styles.primaryButtonText}>
+            Tekrar Dene ✦
+          </Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  if (!onboardingDone) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <PrizmaNotice
+          visible={Boolean(notice)}
+          type={notice?.type || 'info'}
+          title={notice?.title || ''}
+          message={notice?.message || ''}
+          onClose={() => setNotice(null)}
+        />
+        <OnboardingScreen onComplete={finishOnboarding} />
+        {savingOnboarding && (
+          <ActivityIndicator color={C.lavender} />
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  if (editingProfile) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <PrizmaNotice
+          visible={Boolean(notice)}
+          type={notice?.type || 'info'}
+          title={notice?.title || ''}
+          message={notice?.message || ''}
+          onClose={() => setNotice(null)}
+        />
+        <OnboardingScreen
+          editing
+          initialAnswers={profileAnswers}
+          saving={savingEditProfile}
+          onComplete={saveProfileAnswers}
+          onCancel={() => setEditingProfile(false)}
+        />
+        {savingEditProfile && (
+          <ActivityIndicator color={C.lavender} />
+        )}
+      </SafeAreaView>
+    );
+  }
+
   const emailName =
     session.user.email?.split('@')[0] || 'PRİZMA';
 
@@ -395,197 +636,45 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === 'Ana Sayfa' && (
-          <>
-{/* SENİN DÜNYAN */}
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionEyebrow}>
-                  CURATED FOR YOU
-                </Text>
-
-                <Text style={styles.sectionTitle}>
-                  Senin dünyan
-                </Text>
-              </View>
-
-              <Text style={styles.sectionSparkle}>✧</Text>
+          <View style={styles.compactHome}>
+            <Text style={styles.compactHomeWelcome}>Merhaba ✦</Text>
+            <Text style={styles.compactHomeSub}>Bugün ne yapmak istersin?</Text>
+            <View style={styles.quickHomeRow}>
+              {([
+                ['♧', 'Gardırop', 'Gardırop'],
+                ['✧', 'Güzellik', 'Güzellik'],
+                ['▢', 'Alışveriş', 'Alışveriş'],
+                ['♡', 'Koleksiyon', 'Bakım Koleksiyonum'],
+              ] as const).map(([icon, title, target]) => (
+                <TouchableOpacity key={title} style={styles.quickHomeItem} onPress={() => open(target)}>
+                  <View style={styles.quickHomeIconBox}><Text style={styles.quickHomeIcon}>{icon}</Text></View>
+                  <Text style={styles.quickHomeLabel}>{title}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-
-            <View style={styles.grid}>
-              <EditorialCard
-                icon="◇"
-                title="Gardırobum"
-                description="Parçalarını bir araya getir."
-                color="#EEE7FA"
-                onPress={() => open('Gardırop')}
-              />
-
-              <EditorialCard
-                icon="✦"
-                title="Stil önerileri"
-                description="Yeni kombinler keşfet."
-                color="#F4EBF9"
-                onPress={() => open('PRİZMA AI')}
-              />
-
-              <EditorialCard
-                icon="♡"
-                title="Güzellik"
-                description="Kendi rutinini oluştur."
-                color="#F8EAF1"
-                onPress={() => open('Güzellik')}
-              />
-
-              <EditorialCard
-                icon="◈"
-                title="Akıllı alışveriş"
-                description="Almadan önce birlikte düşün."
-                color="#E9EDFA"
-                onPress={() => open('Alışveriş')}
-              />
-            </View>
-
-
-            {/* KARŞILAMA */}
-            <View style={styles.greeting}>
-              <View>
-                <Text style={styles.eyebrow}>
-                  SENİN STİL DÜNYAN
-                </Text>
-
-                <Text style={styles.greetingTitle}>
-                  Kendine özgü,
-                  {'\n'}
-                  <Text style={styles.italicText}>
-                    tamamen sen.
-                  </Text>
-                </Text>
+            <TouchableOpacity style={styles.compactAIHero} onPress={() => open('PRİZMA AI')}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.compactAIName}>PRİZMA AI ✦</Text>
+                <Text style={styles.compactAIDesc}>Kişisel asistanın her an yanında.</Text>
               </View>
-
-              <Text style={styles.greetingSparkle}>✧</Text>
-            </View>
-
-            <Text style={styles.introText}>
-              Stilini keşfet, ilhamını bul ve kendi
-              dünyanı oluştur.
-            </Text>
-
-            {/* ANA KART */}
-            <TouchableOpacity
-              style={styles.editorialHero}
-              onPress={() => open('PRİZMA AI')}
-              activeOpacity={0.85}
-            >
-              <View style={styles.heroCircleOne} />
-              <View style={styles.heroCircleTwo} />
-
-              <View style={styles.heroTopRow}>
-                <Text style={styles.heroBadge}>
-                  PRİZMA EDITION
-                </Text>
-
-                <Text style={styles.heroSmallStar}>✧</Text>
-              </View>
-
-              <View style={styles.heroCenter}>
-                <Text style={styles.heroDecor}>✦</Text>
-
-                <Text style={styles.heroMainTitle}>
-                  The art of
-                  {'\n'}
-                  <Text style={styles.heroItalic}>
-                    being you.
-                  </Text>
-                </Text>
-
-                <Text style={styles.heroSubtitle}>
-                  Her tarzın bir hikâyesi var.
-                </Text>
-              </View>
-
-              <View style={styles.heroBottom}>
-                <Text style={styles.heroExplore}>
-                  STİLİNİ KEŞFET
-                </Text>
-                <Text style={styles.heroArrow}>↗</Text>
-              </View>
+              <Text style={styles.compactAIArrow}>➜</Text>
             </TouchableOpacity>
-
-            {/* KISA YOLLAR */}
-            <View style={styles.quickActions}>
-              <TouchableOpacity
-                style={styles.quickAction}
-                onPress={() => open('Gardırop')}
-              >
-                <View style={styles.quickIcon}>
-                  <Text style={styles.quickIconText}>◇</Text>
+            {([
+              ['♧', 'Gardırop', 'Kıyafetlerin, kombinlerin ve AI stil önerileri', 'Gardırop'],
+              ['✧', 'Güzellik', 'Cilt, saç ve makyaj rutinlerin', 'Güzellik'],
+              ['▢', 'Alışveriş Analizi', 'Almadan önce birlikte değerlendirelim', 'Alışveriş'],
+              ['♡', 'Koleksiyonum', 'Kaydettiğin tüm ürünler', 'Bakım Koleksiyonum'],
+            ] as const).map(([icon, title, description, target]) => (
+              <TouchableOpacity key={title} style={styles.compactHomeListCard} onPress={() => open(target)}>
+                <View style={styles.compactListIcon}><Text style={styles.compactListIconText}>{icon}</Text></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.compactListTitle}>{title}</Text>
+                  <Text style={styles.compactListDesc}>{description}</Text>
                 </View>
-                <Text style={styles.quickLabel}>Gardırop</Text>
+                <Text style={styles.compactListArrow}>›</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.quickAction}
-                onPress={() => open('PRİZMA AI')}
-              >
-                <View style={styles.quickIcon}>
-                  <Text style={styles.quickIconText}>✦</Text>
-                </View>
-                <Text style={styles.quickLabel}>Stil Analizi</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.quickAction}
-                onPress={() => open('Güzellik')}
-              >
-                <View style={styles.quickIcon}>
-                  <Text style={styles.quickIconText}>♡</Text>
-                </View>
-                <Text style={styles.quickLabel}>Makyaj</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.quickAction}
-                onPress={() => open('Güzellik')}
-              >
-                <View style={styles.quickIcon}>
-                  <Text style={styles.quickIconText}>✧</Text>
-                </View>
-                <Text style={styles.quickLabel}>Saç</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* PRİZMA AI */}
-            <TouchableOpacity
-              style={styles.aiCard}
-              onPress={() => open('PRİZMA AI')}
-              activeOpacity={0.85}
-            >
-              <View style={styles.aiCardTop}>
-                <Text style={styles.aiLabel}>
-                  ✦ PRİZMA AI
-                </Text>
-                <Text style={styles.aiArrow}>↗</Text>
-              </View>
-
-              <Text style={styles.aiTitle}>
-                Bugün ne giymeliyim?
-              </Text>
-
-              <Text style={styles.aiDescription}>
-                Stil asistanınla yeni fikirler keşfet.
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.quoteCard}>
-              <Text style={styles.quoteStar}>✦</Text>
-              <Text style={styles.quoteTitle}>
-                Style is personal.
-              </Text>
-              <Text style={styles.quoteDescription}>
-                En güzel stil, kendine ait olandır.
-              </Text>
-            </View>
-          </>
+            ))}
+          </View>
         )}
 
         {tab === 'Alışveriş' && (
@@ -605,44 +694,69 @@ export default function App() {
           <OutfitAIScreen userId={session.user.id} />
         )}
 
+        {/* CİLT ANALİZİ */}
+        {tab === 'Cilt Analizi' && (
+          <SkinAnalysisScreen userId={session.user.id} />
+        )}
+
+        {/* BAKIM KOLEKSİYONUM */}
+        {tab === 'Cilt Danışmanı' && (
+          <BeautyAdviceScreen userId={session.user.id} initialCategory={beautyCategory} />
+        )}
+
+        {tab === 'Bakım Koleksiyonum' && (
+          <BeautyCollectionScreen userId={session.user.id} />
+        )}
+
+        {tab === 'Bakım Rutini' && (
+          <RoutineScreen userId={session.user.id} onAIRequest={() => { setBeautyCategory('skin'); open('Cilt Danışmanı'); }} />
+        )}
+
         {/* GÜZELLİK */}
         {tab === 'Güzellik' && (
-          <>
-            <Text style={styles.eyebrow}>
-              THE BEAUTY EDIT
-            </Text>
-
-            <Text style={styles.pageTitle}>
-              Güzellik dünyan
-            </Text>
-
-            <Text style={styles.pageDescription}>
-              Makyaj, saç ve bakım önerileri için
-              sana özel alan.
-            </Text>
-
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyIcon}>♡</Text>
-
-              <Text style={styles.emptyTitle}>
-                Güzellik alanın
-              </Text>
-
-              <Text style={styles.emptyDescription}>
-                Güzellik önerilerini ve kişisel bakım
-                araçlarını burada geliştireceğiz.
-              </Text>
-
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={comingSoon}
-              >
-                <Text style={styles.primaryButtonText}>
-                  Keşfet ✦
-                </Text>
-              </TouchableOpacity>
+          <View style={styles.compactBeauty}>
+            <Text style={styles.compactBeautyTitle}>♡  Güzellik</Text>
+            <Text style={styles.compactBeautySub}>Cilt, saç ve makyaj rutinlerini yönet.</Text>
+            <View style={styles.beautyCategoryRow}>
+              {([
+                ['◉', 'Cilt', 'Cilt Danışmanı'],
+                ['♧', 'Saç', 'Cilt Danışmanı'],
+                ['✎', 'Makyaj', 'Cilt Danışmanı'],
+                ['▤', 'Rutin', 'Bakım Rutini'],
+              ] as const).map(([icon, label, target]) => (
+                <TouchableOpacity key={label} style={styles.beautyCategory} onPress={() => {
+                  if (label === 'Cilt' || label === 'Saç' || label === 'Makyaj') {
+                    setBeautyCategory(label === 'Cilt' ? 'skin' : label === 'Saç' ? 'hair' : 'makeup');
+                  }
+                  open(target);
+                }}>
+                  <Text style={styles.beautyCategoryIcon}>{icon}</Text>
+                  <Text style={styles.beautyCategoryLabel}>{label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          </>
+            <Text style={styles.compactBeautySection}>Hızlı Araçlar</Text>
+            <View style={styles.beautyToolsGrid}>
+              {([
+                ['▦', 'Manuel Rutin Ekle', 'Sabah / akşam', 'Bakım Rutini'],
+                ['✧', 'AI ile Ürün Önerisi', 'Rutinine ekle', 'Cilt Danışmanı'],
+                ['♡', 'Bakım Koleksiyonum', 'Kaydettiğin ürünler', 'Bakım Koleksiyonum'],
+                ['♢', 'İçerik Analizi', 'Ürünleri değerlendir', 'Alışveriş'],
+              ] as const).map(([icon, title, desc, target]) => (
+                <TouchableOpacity key={title} style={styles.beautyTool} onPress={() => open(target)}>
+                  <Text style={styles.beautyToolIcon}>{icon}</Text>
+                  <Text style={styles.beautyToolTitle}>{title}</Text>
+                  <Text style={styles.beautyToolDesc}>{desc}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={{ fontSize: 11, color: "#725A81", marginBottom: 15 }}>ⓘ AI önerileri hata yapabilir. Ürün talimatlarını doğrula.</Text>
+            <Text style={styles.compactBeautySection}>Koleksiyonum</Text>
+            <TouchableOpacity style={styles.beautyCollectionLink} onPress={() => open('Bakım Koleksiyonum')}>
+              <Text style={styles.beautyCollectionLinkText}>Kaydettiğin ürünleri görüntüle</Text>
+              <Text style={styles.compactListArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* PROFİL */}
@@ -672,16 +786,25 @@ export default function App() {
               </Text>
             </View>
 
-            <View style={styles.profileInfoCard}>
+            <TouchableOpacity
+              style={styles.profileInfoCard}
+              onPress={() => { void openProfileEditor(); }}
+              disabled={loadingEditProfile}
+              activeOpacity={0.8}
+            >
               <Text style={styles.profileInfoTitle}>
-                ✧ Stil profilim
+                ✦ PRİZMA İmzan
               </Text>
 
               <Text style={styles.profileInfoDescription}>
-                Kişisel stil tercihlerini ve hesap ayarlarını
-                burada geliştireceğiz.
+                Stil, cilt, saç ve makyaj tercihlerini
+                görüntüle ve düzenle. →
               </Text>
-            </View>
+
+              {loadingEditProfile && (
+                <ActivityIndicator color={C.lavender} />
+              )}
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.logoutButton}
@@ -745,6 +868,154 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  compactHome: { paddingTop: 7, paddingBottom: 24 },
+  compactHomeWelcome: { fontSize: 22, fontWeight: '800', color: '#25183C', marginBottom: 3 },
+  compactHomeSub: { fontSize: 13, color: '#574766', marginBottom: 20 },
+  quickHomeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 7 },
+  quickHomeItem: { flex: 1, alignItems: 'center' },
+  quickHomeIconBox: { width: '100%', height: 54, borderRadius: 16, borderWidth: 1, borderColor: '#E1D2EB', backgroundColor: '#EDE2F5', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  quickHomeIcon: { fontSize: 27, color: '#785597' },
+  quickHomeLabel: { fontSize: 10, color: '#281B3D', fontWeight: '700', textAlign: 'center' },
+  compactAIHero: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#D8C0E8', borderRadius: 20, padding: 19, minHeight: 105, marginBottom: 14 },
+  compactAIName: { fontSize: 16, color: '#39254D', fontWeight: '800', marginBottom: 5 },
+  compactAIDesc: { fontSize: 12, color: '#57426D' },
+  compactAIArrow: { fontSize: 26, color: '#78539C' },
+  compactHomeListCard: { flexDirection: 'row', alignItems: 'center', minHeight: 76, borderWidth: 1, borderColor: '#E5D8EA', borderRadius: 18, backgroundColor: '#FFFCFF', padding: 8, marginBottom: 9, gap: 12 },
+  compactListIcon: { width: 63, height: 61, borderRadius: 13, backgroundColor: '#E7D5E9', alignItems: 'center', justifyContent: 'center' },
+  compactListIconText: { fontSize: 29, color: '#785393' },
+  compactListTitle: { fontSize: 15, fontWeight: '800', color: '#261838', marginBottom: 4 },
+  compactListDesc: { fontSize: 11, color: '#524766', lineHeight: 15 },
+  compactListArrow: { fontSize: 26, color: '#715094' },
+  compactBeauty: { paddingTop: 9, paddingBottom: 22 },
+  compactBeautyTitle: { fontSize: 23, fontWeight: '800', color: '#25183C', marginBottom: 5 },
+  compactBeautySub: { color: '#5E526C', fontSize: 12, marginBottom: 18 },
+  beautyCategoryRow: { flexDirection: 'row', gap: 8, marginBottom: 25 },
+  beautyCategory: { flex: 1, minHeight: 78, borderWidth: 1, borderColor: '#E3D6E9', borderRadius: 16, backgroundColor: '#EEE3F5', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  beautyCategoryIcon: { color: '#795798', fontSize: 27, marginBottom: 7 },
+  beautyCategoryLabel: { color: '#22163B', fontSize: 11, fontWeight: '800' },
+  compactBeautySection: { fontSize: 16, fontWeight: '800', color: '#25183C', marginBottom: 11 },
+  beautyToolsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, marginBottom: 22 },
+  beautyTool: { width: '48%', minHeight: 126, borderWidth: 1, borderColor: '#E6D4EF', borderRadius: 17, backgroundColor: '#FFFCFF', alignItems: 'center', justifyContent: 'center', padding: 9 },
+  beautyToolIcon: { fontSize: 27, color: '#785398', marginBottom: 10 },
+  beautyToolTitle: { fontSize: 12, color: '#281838', fontWeight: '800', textAlign: 'center' },
+  beautyToolDesc: { fontSize: 10, color: '#655273', textAlign: 'center', marginTop: 4 },
+  beautyCollectionLink: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E6D4EF', borderRadius: 16, padding: 16 },
+  beautyCollectionLinkText: { color: '#39224B', fontSize: 13, fontWeight: '700' },
+  homeModern: {
+    paddingTop: 12,
+    paddingBottom: 28,
+  },
+  homeEyebrow: {
+    fontSize: 10,
+    letterSpacing: 2.2,
+    color: '#8C729D',
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  homeHeading: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#292138',
+    marginBottom: 22,
+  },
+  homeHero: {
+    backgroundColor: '#E8D9F1',
+    borderRadius: 24,
+    padding: 24,
+    minHeight: 235,
+    overflow: 'hidden',
+    marginBottom: 30,
+  },
+  homeHeroGlow: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: '#C9A8DF',
+    right: -75,
+    top: -65,
+    opacity: 0.65,
+  },
+  homeHeroLabel: {
+    color: '#704295',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    marginBottom: 17,
+  },
+  homeHeroTitle: {
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#30203D',
+    lineHeight: 34,
+    maxWidth: 270,
+    marginBottom: 10,
+  },
+  homeHeroDescription: {
+    color: '#65536E',
+    fontSize: 13,
+    lineHeight: 20,
+    maxWidth: 260,
+    marginBottom: 20,
+  },
+  homeHeroButton: {
+    backgroundColor: '#78529A',
+    borderRadius: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 17,
+    alignSelf: 'flex-start',
+  },
+  homeHeroButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  homeSectionTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#30203D',
+    marginBottom: 16,
+  },
+  homeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+  },
+  homeTile: {
+    width: '48%',
+    minHeight: 168,
+    backgroundColor: '#F8F3FA',
+    borderWidth: 1,
+    borderColor: '#E6DBEA',
+    borderRadius: 20,
+    padding: 16,
+  },
+  homeTileIcon: {
+    color: '#805CA1',
+    fontSize: 28,
+    marginBottom: 16,
+  },
+  homeTileTitle: {
+    color: '#30203D',
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 7,
+  },
+  homeTileSubtitle: {
+    color: '#786A80',
+    fontSize: 12,
+    lineHeight: 17,
+    paddingRight: 8,
+  },
+  homeTileArrow: {
+    position: 'absolute',
+    right: 14,
+    bottom: 12,
+    fontSize: 20,
+    color: '#805CA1',
+  },
+
   safe: {
     flex: 1,
     backgroundColor: C.background,
@@ -803,7 +1074,7 @@ const styles = StyleSheet.create({
     width: 43,
     height: 43,
     borderRadius: 22,
-    backgroundColor: '#F0E8FA',
+    backgroundColor: '#F0E6F5',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -820,7 +1091,7 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: {
-    color: '#937BC5',
+    color: '#8C6BAC',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 2.1,
@@ -841,7 +1112,7 @@ const styles = StyleSheet.create({
   },
 
   italicText: {
-    color: '#9678CF',
+    color: '#9272B7',
     fontStyle: 'italic',
   },
 
@@ -884,7 +1155,7 @@ const styles = StyleSheet.create({
     width: 170,
     height: 170,
     borderRadius: 85,
-    backgroundColor: '#7161B4',
+    backgroundColor: '#8067A7',
     left: -100,
     bottom: -110,
     opacity: 0.25,
@@ -1004,7 +1275,7 @@ const styles = StyleSheet.create({
   },
 
   aiLabel: {
-    color: '#8067AE',
+    color: '#8062A2',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.8,
@@ -1035,7 +1306,7 @@ const styles = StyleSheet.create({
   },
 
   sectionEyebrow: {
-    color: '#957BCB',
+    color: '#8D73B0',
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 2,

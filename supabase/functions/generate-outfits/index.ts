@@ -109,6 +109,82 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
+    // Kullanıcının PRİZMA İmzan stil tercihlerini oku.
+    const { data: profile, error: profileError } = await sb
+      .from("user_profiles")
+      .select("answers")
+      .eq("user_id", authData.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Style profile could not be loaded");
+    }
+
+    const savedStyle = profile?.answers?.style;
+
+    let personalStyles: string[] = [];
+
+    if (typeof savedStyle === "string") {
+      try {
+        const parsed = JSON.parse(savedStyle);
+        personalStyles = Array.isArray(parsed)
+          ? parsed.filter((value): value is string =>
+              typeof value === "string"
+            )
+          : [savedStyle];
+      } catch {
+        personalStyles = [savedStyle];
+      }
+    }
+
+    const allowedStyles = new Set([
+      "Minimal", "Romantik", "Klasik",
+      "Modern", "Bohem", "Sportif",
+    ]);
+
+    personalStyles = personalStyles
+      .filter(value => allowedStyles.has(value))
+      .slice(0, 6);
+
+    const effectiveStyle = style ||
+      personalStyles.join(", ") ||
+      "Belirtilmedi";
+
+    // Kullanıcının kayıtlı renk paleti tercihleri.
+    const savedColors = profile?.answers?.colors;
+
+    let personalColors: string[] = [];
+
+    if (typeof savedColors === "string") {
+      try {
+        const parsed = JSON.parse(savedColors);
+        personalColors = Array.isArray(parsed)
+          ? parsed.filter((value): value is string =>
+              typeof value === "string"
+            )
+          : [savedColors];
+      } catch {
+        personalColors = [savedColors];
+      }
+    }
+
+    const allowedColors = new Set([
+      "Soft & Pastel",
+      "Nötr & Doğal",
+      "Kahve & Sıcak",
+      "Klasik Tonlar",
+      "Canlı & Enerjik",
+      "Serin & Modern",
+    ]);
+
+    personalColors = personalColors
+      .filter(value => allowedColors.has(value))
+      .slice(0, 6);
+
+    const preferredColors =
+      personalColors.join(", ") || "Belirtilmedi";
+
+
     const wardrobe = items.map((item) => ({
       id: item.id,
       name: String(item.name || "").slice(0, 90),
@@ -125,7 +201,10 @@ Kullanıcının etkinliği:
 ${occasion}
 
 Kullanıcının istediği tarz:
-${style || "Belirtilmedi"}
+${effectiveStyle}
+
+Kullanıcının sevdiği renk paletleri:
+${preferredColors}
 
 Kullanıcının GERÇEK gardırobu:
 ${JSON.stringify(wardrobe)}
@@ -135,6 +214,11 @@ Kurallar:
 - Yalnızca verilen gardıroptaki ID'leri kullan.
 - Her kombin en az 2 farklı kıyafet içermeli.
 - Kombinler etkinliğe ve istenen tarza uygun olmalı.
+- Kullanıcının sevdiği renk paletlerini mümkün olduğunca dikkate al.
+- Renk tercihleri katı bir kural değildir; uyumlu kombinler önceliklidir.
+- Gardıropta uygun renkler yoksa başka renklerle de kombin oluşturabilirsin.
+- Kullanıcının o an yazdığı tarz, kayıtlı stil tercihlerinden önceliklidir.
+- Stil tercihi belirtilmemişse gardıroptaki parçaların uyumuna odaklan.
 - Yeterli çeşitlilik yoksa daha az kombin üret.
 - Kıyafetlerin fotoğraflarını görmüyorsun.
 - Kumaş, kesim veya görünüm bilgisi uydurma.
