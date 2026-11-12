@@ -1,4 +1,5 @@
 import RoutineScreen from './RoutineScreen';
+import { PRIZMA_COLORS as C } from './theme';
 import PrizmaConfirm from './PrizmaConfirm';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 import ShoppingDecisionScreen from './ShoppingDecisionScreen';
@@ -36,17 +37,7 @@ type Tab =
   | 'Güzellik'
   | 'Profil' | 'Alışveriş' | 'Cilt Analizi' | 'Bakım Koleksiyonum' | 'Cilt Danışmanı' | 'Bakım Rutini';
 
-const C = {
-  navy: '#0B1436',
-  lavender: '#9372B5',
-  lilac: '#E7D9F0',
-  background: '#FAF8FC',
-  white: '#FFFFFF',
-  ink: '#172044',
-  muted: '#777B94',
-  border: '#E9E0EF',
-  pale: '#F4EDF9',
-};
+
 
 const tabs: { name: Tab; icon: string }[] = [
   { name: 'Ana Sayfa', icon: '⌂' },
