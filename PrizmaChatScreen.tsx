@@ -178,6 +178,42 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 
   return (
     <View style={s.root}>
+      <View style={s.chatControls}>
+        <TouchableOpacity style={s.historyButton} onPress={() => setShowChats(value => !value)} disabled={loading || !!busyAction}>
+          <Text style={s.historyButtonText}>☰ Sohbetlerim ({chats.length})</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.newChatButton} onPress={startNewChat} disabled={loading || !!busyAction}>
+          <Text style={s.newChatButtonText}>＋ Yeni</Text>
+        </TouchableOpacity>
+      </View>
+      {showChats ? (
+        <ScrollView style={s.chatList} contentContainerStyle={s.chatListContent} keyboardShouldPersistTaps="handled">
+          {historyLoading && <ActivityIndicator color={C.lavender} />}
+          {!historyLoading && chats.length === 0 && <Text style={s.listEmpty}>Henüz kayıtlı sohbet yok.</Text>}
+          {chats.map(chat => (
+            <View key={chat.id} style={s.chatListRow}>
+              <TouchableOpacity style={s.chatListOpen} onPress={() => openChat(chat)} disabled={loading || !!busyAction}>
+                <Text style={s.chatListTitle} numberOfLines={2}>{chat.title}</Text>
+                <Text style={s.chatListMeta}>{chat.messages.length} mesaj</Text>
+              </TouchableOpacity>
+              {confirmDelete === chat.id ? (
+                <View style={s.confirmRow}>
+                  <TouchableOpacity onPress={() => void removeChat(chat.id)} disabled={!!busyAction}>
+                    <Text style={s.deleteConfirm}>Evet, sil</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setConfirmDelete(null)}>
+                    <Text style={s.deleteCancel}>Vazgeç</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setConfirmDelete(chat.id)} disabled={!!busyAction}>
+                  <Text style={s.deleteText}>Sil</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      ) : (<>
       <View style={s.heading}>
         <Text style={s.eyebrow}>PRİZMA ✦ KİŞİSEL ASİSTAN</Text>
         <Text style={s.title}>Sana nasıl yardımcı olayım?</Text>
@@ -215,16 +251,16 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
             <Text style={[s.role, m.role === 'user' && s.userRole]}>{m.role === 'user' ? 'SEN' : 'PRİZMA ✦'}</Text>
             <Text style={[s.messageText, m.role === 'user' && s.userText]}>{m.text}</Text>
             {m.products?.map((p, index) => {
-              const cKey = String(m.id) + ':' + index + ':collection';
-              const rKey = String(m.id) + ':' + index + ':routine:' + routinePeriod;
+              const isCollected = m.savedCollection?.includes(index) === true;
+              const isRoutineSaved = m.savedRoutines?.includes(index + ':' + routinePeriod) === true;
               return (
                 <View key={String(index)} style={s.product}>
                   <Text style={s.brand}>{p.brand}</Text>
                   <Text style={s.productTitle}>{p.name}</Text>
                   <Text style={s.productInfo}>{p.reason}</Text>
                   <Text style={s.caution}>Dikkat: {p.caution}</Text>
-                  <TouchableOpacity style={s.save} disabled={!!busyAction || saved.includes(cKey)} onPress={() => saveProduct(m, p, index, 'collection')}>
-                    <Text style={s.saveText}>{saved.includes(cKey) ? '✓ Koleksiyonda' : '+ Koleksiyona Ekle'}</Text>
+                  <TouchableOpacity style={s.save} disabled={!!busyAction || isCollected} onPress={() => saveProduct(m, p, index, 'collection')}>
+                    <Text style={s.saveText}>{isCollected ? '✓ Koleksiyonda' : '+ Koleksiyona Ekle'}</Text>
                   </TouchableOpacity>
                   <View style={s.routineRow}>
                     {(['Sabah', 'Akşam'] as const).map(period => (
@@ -233,8 +269,8 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TouchableOpacity style={s.routineSave} disabled={!!busyAction || saved.includes(rKey)} onPress={() => saveProduct(m, p, index, 'routine')}>
-                    <Text style={s.routineSaveText}>{saved.includes(rKey) ? '✓ Rutine eklendi' : '+ Rutine Ekle'}</Text>
+                  <TouchableOpacity style={s.routineSave} disabled={!!busyAction || isRoutineSaved} onPress={() => saveProduct(m, p, index, 'routine')}>
+                    <Text style={s.routineSaveText}>{isRoutineSaved ? '✓ Rutine eklendi' : '+ Rutine Ekle'}</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -247,13 +283,11 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 
       <View style={s.composer}>
         <TextInput style={s.input} multiline maxLength={300} placeholder="PRİZMA'ya yaz..." placeholderTextColor="#87839A" value={draft} onChangeText={setDraft} editable={!loading} />
-        <TouchableOpacity style={[s.send, (!draft.trim() || loading) && s.sendDisabled]} onPress={() => { void send(); }} disabled={!draft.trim() || loading}>
+        <TouchableOpacity style={[s.send, (!draft.trim() || loading || historyLoading || !!busyAction) && s.sendDisabled]} onPress={() => { void send(); }} disabled={!draft.trim() || loading || historyLoading || !!busyAction}>
           <Text style={s.sendText}>➤</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={s.newChat} disabled={loading} onPress={() => { setMessages([]); setSaved([]); setFeedback('Yeni sohbet açıldı.'); }}>
-        <Text style={s.newChatText}>Yeni sohbet başlat</Text>
-      </TouchableOpacity>
+      </>)}
     </View>
   );
 }
