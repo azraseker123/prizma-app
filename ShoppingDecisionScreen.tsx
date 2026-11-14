@@ -40,6 +40,8 @@ type Analysis = {
   reasons: string[];
   outfits: string[];
   warnings?: string[];
+  knownFacts?: string[];
+  toVerify?: string[];
   sections?: {
     signatureFit: string;
     wardrobeFit: string;
@@ -450,6 +452,16 @@ export default function ShoppingDecisionScreen({
           <Text style={styles.score}>{result.score}/100</Text>
           <Text style={styles.verdict}>{result.verdict}</Text>
           <Text style={styles.summary}>{result.summary}</Text>
+          <View style={styles.evidencePanel}>
+            <Text style={styles.evidenceTitle}>✓ Bildiklerimiz</Text>
+            {result.knownFacts?.length ? result.knownFacts.map((fact, i) => (
+              <Text key={'fact-' + i} style={styles.evidenceText}>• {fact}</Text>
+            )) : <Text style={styles.evidenceText}>Fotoğrafta görülenler ve girdiğin fiyat/bütçe bilgileri dışında doğrulanmış ürün bilgisi yok.</Text>}
+            <Text style={[styles.evidenceTitle, styles.verifyTitle]}>? Doğrulanması gerekenler</Text>
+            {result.toVerify?.length ? result.toVerify.map((fact, i) => (
+              <Text key={'verify-' + i} style={styles.evidenceText}>• {fact}</Text>
+            )) : <Text style={styles.evidenceText}>Ürünün tam adı, formülü ve varsa SPF değeri gibi özellikler ambalajdan veya resmi ürün bilgisinden kontrol edilmeli.</Text>}
+          </View>
 
           {result.sections && (
             <View style={styles.analysisSections}>
@@ -586,6 +598,10 @@ export default function ShoppingDecisionScreen({
 }
 
 const styles = StyleSheet.create({
+  evidencePanel: { backgroundColor: '#FFFFFF', borderColor: '#E8DDF5', borderWidth: 1, borderRadius: 17, padding: 16, marginTop: 18 },
+  evidenceTitle: { color: C.purple, fontSize: 14, fontWeight: '800', marginBottom: 7 },
+  verifyTitle: { marginTop: 13 },
+  evidenceText: { color: C.navy, fontSize: 12, lineHeight: 20, marginBottom: 4 },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
   categoryChip: { backgroundColor: '#F0E7FC', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 13 },
   categoryActive: { backgroundColor: '#8050B5' },
