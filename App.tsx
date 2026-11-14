@@ -25,6 +25,8 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 
 import { supabase } from './supabase';
@@ -120,6 +122,13 @@ export default function App() {
   const [savingPassword, setSavingPassword] = useState(false);
 
   const [tab, setTab] = useState<Tab>('Ana Sayfa');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { shown.remove(); hidden.remove(); };
+  }, []);
 
   useEffect(() => {
     const handleRecoveryLink = async (url: string | null) => {
@@ -622,9 +631,9 @@ export default function App() {
       </View>
 
       {tab === 'PRİZMA AI' ? (
-        <View style={styles.chatPage}>
+        <KeyboardAvoidingView style={styles.chatPage} behavior="padding">
           <PrizmaChatScreen userId={session.user.id} onOutfit={() => open('Gardırop')} />
-        </View>
+        </KeyboardAvoidingView>
       ) : (
       <ScrollView
         style={styles.scroll}
@@ -813,8 +822,8 @@ export default function App() {
       </ScrollView>
       )}
 
-      {/* ALT MENÜ */}
-      <View style={styles.tabBar}>
+      {/* ALT MENÜ: klavye açıkken sohbet yazma alanına yer bırak */}
+      {!(tab === 'PRİZMA AI' && keyboardVisible) && <View style={styles.tabBar}>
         {tabs.map((item) => {
           const active = tab === item.name;
           const isAI = item.name === 'PRİZMA AI';
@@ -857,7 +866,7 @@ export default function App() {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </View>}
     </SafeAreaView>
   );
 }
