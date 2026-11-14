@@ -124,6 +124,7 @@ export default function App() {
 
   const [tab, setTab] = useState<Tab>('Ana Sayfa');
   const tabHistoryRef = useRef<Tab[]>([]);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !session?.user.id || !onboardingDone || editingProfile) return;
@@ -147,7 +148,6 @@ export default function App() {
     });
     return () => subscription.remove();
   }, [session?.user.id, onboardingDone, editingProfile, tab, logoutVisible, keyboardVisible]);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
     const shown = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
