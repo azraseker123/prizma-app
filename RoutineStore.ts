@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type RoutinePeriod = 'Sabah' | 'Akşam';
+export type RoutineCategory = 'skin' | 'hair' | 'makeup';
 export type RoutineItem = {
   id: string;
   title: string;
   period: RoutinePeriod;
+  category?: RoutineCategory;
   createdAt: string;
   note?: string;
   source: 'manual' | 'ai-suggestion';
@@ -21,7 +23,8 @@ export async function getRoutineItems(userId: string): Promise<RoutineItem[]> {
     return parsed.filter((x): x is RoutineItem => !!x && typeof x === 'object' &&
       typeof x.id === 'string' && typeof x.title === 'string' &&
       (x.period === 'Sabah' || x.period === 'Akşam') &&
-      (x.source === 'manual' || x.source === 'ai-suggestion'));
+      (x.source === 'manual' || x.source === 'ai-suggestion') &&
+      (x.category === undefined || ['skin', 'hair', 'makeup'].includes(x.category)));
   } catch { return []; }
 }
 
