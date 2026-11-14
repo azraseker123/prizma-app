@@ -293,6 +293,20 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 }
 
 const s = StyleSheet.create({
+  chatControls: { flexDirection: 'row', gap: 10, marginBottom: 9 },
+  historyButton: { flex: 1, backgroundColor: C.lilac, borderRadius: 12, padding: 12 },
+  historyButtonText: { color: C.navy, fontSize: 12, fontWeight: '800' },
+  newChatButton: { borderWidth: 1, borderColor: C.lavender, borderRadius: 12, padding: 12 },
+  newChatButtonText: { color: C.lavender, fontSize: 12, fontWeight: '800' },
+  chatList: { flex: 1, minHeight: 0 }, chatListContent: { paddingBottom: 22, gap: 8 },
+  chatListRow: { flexDirection: 'row', backgroundColor: C.white, borderColor: C.border, borderWidth: 1,
+    borderRadius: 14, padding: 12, alignItems: 'center', gap: 10 },
+  chatListOpen: { flex: 1 }, chatListTitle: { color: C.navy, fontSize: 13, fontWeight: '800' },
+  chatListMeta: { color: C.muted, fontSize: 10, marginTop: 5 },
+  deleteText: { color: C.lavender, fontSize: 12, fontWeight: '800', padding: 9 },
+  confirmRow: { gap: 9 }, deleteConfirm: { color: '#AD3852', fontSize: 11, fontWeight: '800' },
+  deleteCancel: { color: C.muted, fontSize: 11 },
+  listEmpty: { color: C.muted, fontSize: 13, textAlign: 'center', marginTop: 24 },
   root: { flex: 1, minHeight: 0, paddingBottom: 4 }, heading: { marginBottom: 10 },
   eyebrow: { fontSize: 10, fontWeight: '800', color: C.lavender, letterSpacing: 1.6, marginBottom: 8 },
   title: { color: C.navy, fontSize: 21, fontWeight: '800', marginBottom: 6 },
