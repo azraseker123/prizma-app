@@ -1,0 +1,204 @@
+import React, { useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from './supabase';
+import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
+import { PRIZMA_COLORS as C } from './theme';
+
+type Category = 'skin' | 'hair' | 'makeup';
+type Product = { name: string; brand: string; reason: string; caution: string };
+type Message = { id: number; role: 'user' | 'assistant'; text: string; category: Category; products?: Product[] };
+type Props = { userId: string; onOutfit: () => void };
+const labels: Record<Category, string> = { skin: 'Cilt', hair: 'Saç', makeup: 'Makyaj' };
+
+export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
+  const [category, setCategory] = useState<Category>('skin');
+  const [draft, setDraft] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState('');
+  const [saved, setSaved] = useState<string[]>([]);
+  const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Akşam');
+
+  const send = async () => {
+    const question = draft.trim();
+    if (loading || !question) return;
+    if (messages.filter(m => m.role === 'user').length >= 10) {
+      setFeedback('Bu oturum için 10 mesaj sınırına ulaştın. Yeni sohbet açabilirsin.');
+      return;
+    }
+    const id = Date.now();
+    const requestCategory = category;
+    setMessages(current => [...current, { id, role: 'user', text: question, category: requestCategory }]);
+    setDraft('');
+    setFeedback('');
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('beauty-advisor', {
+        body: { category: requestCategory, concern: question.slice(0, 300) },
+      });
+      if (error) throw new Error('AI servisine şu an ulaşılamıyor. Biraz sonra tekrar dene.');
+      if (!data || typeof data.introduction !== 'string' || !Array.isArray(data.products)) {
+        throw new Error('AI yanıtı beklenen biçimde gelmedi.');
+      }
+      const products: Product[] = data.products.slice(0, 5).filter(
+        (p: unknown): p is Product => !!p && typeof p === 'object' &&
+          typeof (p as Product).name === 'string' &&
+          typeof (p as Product).brand === 'string' &&
+          typeof (p as Product).reason === 'string' &&
+          typeof (p as Product).caution === 'string'
+      );
+      setMessages(current => [...current, {
+        id: id + 1, role: 'assistant', text: data.introduction.slice(0, 1300),
+        category: requestCategory, products,
+      }]);
+    } catch (error) {
+      setMessages(current => [...current, {
+        id: id + 1, role: 'assistant',
+        text: error instanceof Error ? error.message : 'Yanıt alınamadı. Tekrar deneyebilirsin.',
+        category: requestCategory,
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveProduct = async (message: Message, product: Product, index: number, action: 'collection' | 'routine') => {
+    const key = String(message.id) + ':' + index + ':' + action + (action === 'routine' ? ':' + routinePeriod : '');
+    if (busyAction || saved.includes(key)) return;
+    setBusyAction(key);
+    setFeedback('');
+    try {
+      if (action === 'collection') {
+        const { error } = await supabase.from('beauty_collection').insert({
+          user_id: userId, category: message.category, product_name: product.name,
+          brand: product.brand, status: 'considering', source: 'ai', notes: product.reason,
+        });
+        if (error) throw error;
+      } else {
+        await addRoutineItem(userId, {
+          title: (product.brand ? product.brand + ' — ' : '') + product.name,
+          period: routinePeriod, source: 'ai-suggestion', note: product.caution,
+        });
+      }
+      setSaved(old => [...old, key]);
+      setFeedback(action === 'collection' ? '✓ Koleksiyona eklendi.' : '✓ ' + routinePeriod + ' rutinine eklendi.');
+    } catch {
+      setFeedback('Kaydedilemedi. Tekrar dene.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  return (
+    <View style={s.root}>
+      <View style={s.heading}>
+        <Text style={s.eyebrow}>PRİZMA ✦ KİŞİSEL ASİSTAN</Text>
+        <Text style={s.title}>Sana nasıl yardımcı olayım?</Text>
+        <Text style={s.hint}>Cilt, saç ve makyaj önerileri için yaz. Kombin önerileri Gardırop AI'da.</Text>
+        <View style={s.categories}>
+          {(['skin', 'hair', 'makeup'] as const).map(key => (
+            <TouchableOpacity key={key} style={[s.chip, category === key && s.chipActive]} onPress={() => setCategory(key)} disabled={loading}>
+              <Text style={[s.chipText, category === key && s.chipTextActive]}>{labels[key]}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={s.outfitChip} onPress={onOutfit}>
+            <Text style={s.outfitChipText}>✦ Kombin AI</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView style={s.history} contentContainerStyle={s.historyContent} keyboardShouldPersistTaps="handled">
+        {messages.length === 0 && (
+          <View style={s.empty}>
+            <Text style={s.emptyIcon}>✦</Text>
+            <Text style={s.emptyTitle}>PRİZMA'ya sor</Text>
+            <Text style={s.emptyText}>Örneğin: “Hassas cildim için hafif bir nemlendirici önerir misin?”</Text>
+            <Text style={s.emptyNotice}>AI hata yapabilir. Önerileri ve ürün talimatlarını kontrol et.</Text>
+          </View>
+        )}
+        {messages.map(m => (
+          <View key={m.id} style={[s.bubble, m.role === 'user' ? s.userBubble : s.aiBubble]}>
+            <Text style={[s.role, m.role === 'user' && s.userRole]}>{m.role === 'user' ? 'SEN' : 'PRİZMA ✦'}</Text>
+            <Text style={[s.messageText, m.role === 'user' && s.userText]}>{m.text}</Text>
+            {m.products?.map((p, index) => {
+              const cKey = String(m.id) + ':' + index + ':collection';
+              const rKey = String(m.id) + ':' + index + ':routine:' + routinePeriod;
+              return (
+                <View key={String(index)} style={s.product}>
+                  <Text style={s.brand}>{p.brand}</Text>
+                  <Text style={s.productTitle}>{p.name}</Text>
+                  <Text style={s.productInfo}>{p.reason}</Text>
+                  <Text style={s.caution}>Dikkat: {p.caution}</Text>
+                  <TouchableOpacity style={s.save} disabled={!!busyAction || saved.includes(cKey)} onPress={() => saveProduct(m, p, index, 'collection')}>
+                    <Text style={s.saveText}>{saved.includes(cKey) ? '✓ Koleksiyonda' : '+ Koleksiyona Ekle'}</Text>
+                  </TouchableOpacity>
+                  <View style={s.routineRow}>
+                    {(['Sabah', 'Akşam'] as const).map(period => (
+                      <TouchableOpacity key={period} onPress={() => setRoutinePeriod(period)} style={[s.period, period === routinePeriod && s.periodSelected]}>
+                        <Text style={[s.periodText, period === routinePeriod && s.periodTextSelected]}>{period}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity style={s.routineSave} disabled={!!busyAction || saved.includes(rKey)} onPress={() => saveProduct(m, p, index, 'routine')}>
+                    <Text style={s.routineSaveText}>{saved.includes(rKey) ? '✓ Rutine eklendi' : '+ Rutine Ekle'}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        ))}
+        {loading && <View style={s.loading}><ActivityIndicator color={C.lavender}/><Text style={s.loadingText}>PRİZMA düşünüyor...</Text></View>}
+        {!!feedback && <Text style={s.feedback}>{feedback}</Text>}
+      </ScrollView>
+
+      <View style={s.composer}>
+        <TextInput style={s.input} multiline maxLength={300} placeholder="PRİZMA'ya yaz..." placeholderTextColor="#87839A" value={draft} onChangeText={setDraft} editable={!loading} />
+        <TouchableOpacity style={[s.send, (!draft.trim() || loading) && s.sendDisabled]} onPress={() => { void send(); }} disabled={!draft.trim() || loading}>
+          <Text style={s.sendText}>➤</Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity style={s.newChat} disabled={loading} onPress={() => { setMessages([]); setSaved([]); setFeedback('Yeni sohbet açıldı.'); }}>
+        <Text style={s.newChatText}>Yeni sohbet başlat</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, paddingBottom: 18 }, heading: { marginBottom: 10 },
+  eyebrow: { fontSize: 10, fontWeight: '800', color: C.lavender, letterSpacing: 1.6, marginBottom: 8 },
+  title: { color: C.navy, fontSize: 21, fontWeight: '800', marginBottom: 6 },
+  hint: { color: C.muted, fontSize: 12, lineHeight: 18, marginBottom: 12 },
+  categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: C.border, borderRadius: 18, backgroundColor: C.white },
+  chipActive: { backgroundColor: C.lavender, borderColor: C.lavender },
+  chipText: { color: C.navy, fontSize: 11, fontWeight: '700' }, chipTextActive: { color: C.white },
+  outfitChip: { paddingHorizontal: 11, paddingVertical: 8, borderRadius: 18, backgroundColor: C.lilac },
+  outfitChipText: { color: C.navy, fontSize: 11, fontWeight: '800' },
+  history: { minHeight: 240, maxHeight: 450 }, historyContent: { paddingVertical: 11, gap: 12 },
+  empty: { backgroundColor: C.pale, borderRadius: 20, padding: 24, alignItems: 'center' },
+  emptyIcon: { fontSize: 35, color: C.lavender }, emptyTitle: { color: C.navy, fontSize: 19, fontWeight: '800', marginVertical: 8 },
+  emptyText: { color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 19 },
+  emptyNotice: { color: C.muted, fontSize: 10, textAlign: 'center', marginTop: 14 },
+  bubble: { padding: 15, borderRadius: 19, maxWidth: '94%' }, userBubble: { backgroundColor: C.lavender, alignSelf: 'flex-end' },
+  aiBubble: { backgroundColor: C.white, borderWidth: 1, borderColor: C.border, alignSelf: 'flex-start' },
+  role: { color: C.lavender, fontWeight: '800', fontSize: 10, marginBottom: 7 },
+  userRole: { color: '#EDE4FF' }, messageText: { color: C.navy, fontSize: 13, lineHeight: 20 },
+  userText: { color: C.white }, product: { marginTop: 13, paddingTop: 12, borderTopWidth: 1, borderColor: C.border },
+  brand: { color: C.lavender, fontWeight: '700', fontSize: 11 }, productTitle: { color: C.navy, fontWeight: '800', fontSize: 14, marginVertical: 5 },
+  productInfo: { color: C.ink, fontSize: 12, lineHeight: 18 }, caution: { color: C.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
+  save: { marginTop: 10, backgroundColor: C.lavender, borderRadius: 11, padding: 10, alignItems: 'center' },
+  saveText: { color: C.white, fontWeight: '800', fontSize: 11 }, routineRow: { flexDirection: 'row', gap: 8, marginTop: 9 },
+  period: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: C.pale, borderRadius: 18 },
+  periodSelected: { backgroundColor: C.lilac }, periodText: { color: C.muted, fontSize: 11, fontWeight: '700' },
+  periodTextSelected: { color: C.navy }, routineSave: { marginTop: 8, borderWidth: 1, borderColor: C.lavender, borderRadius: 11, padding: 10, alignItems: 'center' },
+  routineSaveText: { color: C.lavender, fontWeight: '800', fontSize: 11 },
+  loading: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 12 }, loadingText: { color: C.muted, fontSize: 12 },
+  feedback: { color: C.lavender, fontWeight: '700', fontSize: 12, paddingVertical: 8 },
+  composer: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', marginTop: 9 },
+  input: { flex: 1, minHeight: 47, maxHeight: 100, backgroundColor: C.white, borderWidth: 1, borderColor: C.border, color: C.navy, borderRadius: 16, paddingHorizontal: 13, paddingVertical: 10, fontSize: 13 },
+  send: { backgroundColor: C.lavender, width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  sendDisabled: { opacity: 0.45 }, sendText: { color: C.white, fontSize: 22 },
+  newChat: { alignItems: 'center', padding: 9 }, newChatText: { color: C.lavender, fontSize: 11, fontWeight: '700' },
+});
