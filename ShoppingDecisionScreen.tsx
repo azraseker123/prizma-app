@@ -265,13 +265,16 @@ export default function ShoppingDecisionScreen({
     setMessage('');
 
     try {
-      const { data: items, error: wardrobeError } = await supabase
-        .from('wardrobe_items')
-        .select('id,name,category,color,season,notes')
-        .eq('user_id', userId)
-        .limit(100);
-
-      if (wardrobeError) throw wardrobeError;
+      let items: unknown[] = [];
+      if (category === 'clothing') {
+        const { data, error: wardrobeError } = await supabase
+          .from('wardrobe_items')
+          .select('id,name,category,color,season,notes')
+          .eq('user_id', userId)
+          .limit(100);
+        if (wardrobeError) throw wardrobeError;
+        items = data || [];
+      }
 
       const { data, error } = await supabase.functions.invoke(
         'analyze-shopping',
