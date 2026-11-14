@@ -141,11 +141,11 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.eyebrow}>THE BEAUTY ADVISOR</Text>
-      <Text style={styles.title}>PRİZMA Cilt Danışmanı ✦</Text>
+      <Text style={styles.title}>PRİZMA Güzellik Danışmanı ✦</Text>
 
       <Text style={styles.description}>
-        Cilt profilini dikkate alarak ürünler hakkında
-        kişiselleştirilmiş öneriler al.
+        Cilt, saç ve makyaj ihtiyaçların için
+        kişiselleştirilmiş ürün önerileri al.
       </Text>
 
       <View style={styles.categoryRow}>
