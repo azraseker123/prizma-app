@@ -72,22 +72,38 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 
   const send = async () => {
     const question = draft.trim();
-    if (loading || !question) return;
+    if (loading || historyLoading || busyAction || !question) return;
     if (messages.filter(m => m.role === 'user').length >= 10) {
-      setFeedback('Bu oturum için 10 mesaj sınırına ulaştın. Yeni sohbet açabilirsin.');
+      setFeedback('Bu sohbet için 10 mesaj sınırına ulaştın. Yeni sohbet açabilirsin.');
       return;
     }
     const id = Date.now();
     const requestCategory = category;
-    // Send only recent messages from the selected category, not the whole chat.
-    const history = messages
-      .filter(m => m.category === requestCategory)
-      .slice(-6)
-      .map(m => ({ role: m.role, text: m.text.slice(0, 800) }));
-    setMessages(current => [...current, { id, role: 'user', text: question, category: requestCategory }]);
+    const history = messages.filter(m => m.category === requestCategory)
+      .slice(-6).map(m => ({ role: m.role, text: m.text.slice(0, 800) }));
+    const sent: Message = { id, role: 'user', text: question, category: requestCategory };
+    const nextMessages = [...messages, sent];
+    setMessages(nextMessages);
     setDraft('');
     setFeedback('');
     setLoading(true);
+    let chatId = activeChatId;
+    try {
+      if (!chatId) {
+        const created = await createChat(userId, question);
+        chatId = created.id;
+        setActiveChatId(created.id);
+        setChats(old => [created, ...old]);
+      }
+      await saveChatMessages(userId, chatId, nextMessages);
+    } catch {
+      setFeedback('Mesaj kaydedilemedi. İnternet bağlantını kontrol edip yeniden dene.');
+      setDraft(question);
+      setMessages(messages);
+      setLoading(false);
+      return;
+    }
+    let answer: Message;
     try {
       const { data, error } = await supabase.functions.invoke('beauty-advisor', {
         body: { category: requestCategory, concern: question.slice(0, 300), history },
@@ -103,19 +119,20 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
           typeof (p as Product).reason === 'string' &&
           typeof (p as Product).caution === 'string'
       );
-      setMessages(current => [...current, {
-        id: id + 1, role: 'assistant', text: data.introduction.slice(0, 1300),
-        category: requestCategory, products,
-      }]);
+      answer = { id: id + 1, role: 'assistant', text: data.introduction.slice(0, 1300),
+        category: requestCategory, products };
     } catch (error) {
-      setMessages(current => [...current, {
-        id: id + 1, role: 'assistant',
+      answer = { id: id + 1, role: 'assistant',
         text: error instanceof Error ? error.message : 'Yanıt alınamadı. Tekrar deneyebilirsin.',
-        category: requestCategory,
-      }]);
-    } finally {
-      setLoading(false);
+        category: requestCategory };
     }
+    const completed = [...nextMessages, answer];
+    setMessages(completed);
+    try {
+      await saveChatMessages(userId, chatId!, completed);
+      setChats(old => old.map(chat => chat.id === chatId ? { ...chat, messages: completed, updated_at: new Date().toISOString() } : chat));
+    } catch { setFeedback('AI yanıtı görünüyor ama kaydedilemedi. Yeni sohbete geçmeden kontrol et.'); }
+    finally { setLoading(false); }
   };
 
   const saveProduct = async (message: Message, product: Product, index: number, action: 'collection' | 'routine') => {
