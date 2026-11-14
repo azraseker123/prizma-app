@@ -336,7 +336,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
               </TouchableOpacity>
             </View>
           )}
-          <Text style={styles.photoTip}>Fotoğraf eklemek ücretsizdir. Arka plan kaldırma ortak hakkından kullanılır; günlük servis sınırı da geçerlidir.</Text>
+          <Text style={styles.photoTip}>Fotoğraf eklemek ücretsizdir. Arka plan kaldırma: Gardırop + Güzellik için ortak 100 hak, günlük en fazla 5 başarılı işlem.</Text>
 
           <Text style={styles.label}>Alışveriş durumun</Text>
           <View style={styles.statusRow}>
