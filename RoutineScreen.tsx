@@ -153,10 +153,24 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
           {items.filter(x => x.period === p && (x.category || 'skin') === category).length === 0 && <Text style={s.empty}>Bu kategoride henüz bir ürün eklenmedi.</Text>}
           {items.filter(x => x.period === p && (x.category || 'skin') === category).map((item, index) => (
             <View key={item.id} style={s.item}>
-              <View style={s.number}><Text style={s.numberText}>{index + 1}</Text></View>
-              {photoUrls[item.id] && <Image source={{ uri: photoUrls[item.id] }} resizeMode="contain" style={s.itemPhoto} />}
-              <View style={{ flex: 1 }}><Text style={s.itemTitle}>{item.title}</Text><Text style={s.itemCaption}>{item.source === 'manual' ? 'Sen ekledin' : 'AI önerisi • senin onayınla eklendi'}</Text></View>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${item.title} adımını kaldır`} onPress={() => void remove(item.id)}><Text style={s.remove}>Kaldır</Text></TouchableOpacity>
+              {photoUrls[item.id] && (
+                <Image
+                  source={{ uri: photoUrls[item.id] }}
+                  resizeMode="contain"
+                  style={s.itemPhoto}
+                  accessibilityLabel={`${item.title} ürün fotoğrafı`}
+                />
+              )}
+              <View style={s.itemDetails}>
+                <View style={s.number}><Text style={s.numberText}>{index + 1}</Text></View>
+                <View style={s.itemInfo}>
+                  <Text style={s.itemTitle}>{item.title}</Text>
+                  <Text style={s.itemCaption}>{item.source === 'manual' ? 'Sen ekledin' : 'AI önerisi • senin onayınla eklendi'}</Text>
+                </View>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${item.title} adımını kaldır`} onPress={() => void remove(item.id)}>
+                  <Text style={s.remove}>Kaldır</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </View>
@@ -174,7 +188,9 @@ const s = StyleSheet.create({
   photoButtonText: { color: '#5B3D71', fontSize: 11, fontWeight: '800' },
   backgroundButton: { backgroundColor: PURPLE, paddingHorizontal: 12, paddingVertical: 11, borderRadius: 12 },
   backgroundButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
-  itemPhoto: { width: 54, height: 58, borderRadius: 9, backgroundColor: '#F3E9F7' },
+  itemPhoto: { width: '100%', height: 180, borderRadius: 14, backgroundColor: '#F3E9F7', marginBottom: 14 },
+  itemDetails: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  itemInfo: { flex: 1, minWidth: 0 },
   page:{padding:17,paddingBottom:55},eyebrow:{fontSize:10,letterSpacing:2,color:PURPLE,fontWeight:'800',marginBottom:9},
   title:{color:'#271936',fontSize:25,fontWeight:'800',marginBottom:7},desc:{color:'#61556A',fontSize:13,lineHeight:20,marginBottom:19},
   panel:{borderRadius:20,padding:17,backgroundColor:'#FFFCFF',borderWidth:1,borderColor:'#E6D9EC',marginBottom:13},
@@ -186,7 +202,7 @@ const s = StyleSheet.create({
   aiCard:{padding:17,borderRadius:19,backgroundColor:'#E0CBEF',marginBottom:12},aiTitle:{fontWeight:'800',color:'#4B2D61',fontSize:16,marginBottom:6},aiText:{color:'#4D3C5A',fontSize:12,lineHeight:19},aiLink:{color:'#673F87',fontWeight:'800',marginTop:10,fontSize:13},
   info:{padding:11,backgroundColor:'#F3E9F7',borderRadius:11,marginBottom:13},infoText:{color:'#615170',fontSize:11,lineHeight:17},
   feedback:{color:PURPLE,marginVertical:9,fontSize:12,fontWeight:'700'},listSection:{marginTop:14},sectionTitle:{color:'#2A1B3A',fontWeight:'800',fontSize:17,marginBottom:10},
-  empty:{fontSize:12,color:'#887B91',paddingVertical:12},item:{flexDirection:'row',gap:10,alignItems:'center',padding:13,backgroundColor:'#FFFFFF',borderRadius:15,borderWidth:1,borderColor:'#EAE2EF',marginBottom:8},
+  empty:{fontSize:12,color:'#887B91',paddingVertical:12},item:{padding:16,backgroundColor:'#FFFFFF',borderRadius:18,borderWidth:1,borderColor:'#EAE2EF',marginBottom:12},
   number:{width:27,height:27,borderRadius:14,alignItems:'center',justifyContent:'center',backgroundColor:'#E6D5EF'},numberText:{color:PURPLE,fontWeight:'800'},
   itemTitle:{fontWeight:'700',color:'#30203F',fontSize:13},itemCaption:{fontSize:10,color:'#8A7D92',marginTop:3},remove:{color:'#805DA0',fontWeight:'700',fontSize:11},
   footnote:{fontSize:11,color:'#7B7083',lineHeight:17,marginTop:18},
