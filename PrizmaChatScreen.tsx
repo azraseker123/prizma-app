@@ -157,7 +157,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
       } else {
         await addRoutineItem(userId, {
           title: (product.brand ? product.brand + ' — ' : '') + product.name,
-          period: selectedPeriod, source: 'ai-suggestion', note: product.caution,
+          period: selectedPeriod, category: message.category, source: 'ai-suggestion', note: product.caution,
         });
       }
       const updated = messages.map(m => m.id === message.id ? ({
