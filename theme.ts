@@ -4,11 +4,11 @@ export const PRIZMA_COLORS = {
   navy: '#172044',
   ink: '#172044',
   lavender: '#6D47AD',
-  lilac: '#E4D7F6',
+  lilac: '#EDE5F8',
   background: '#FAF9FE',
   white: '#FFFFFF',
   muted: '#74758C',
   border: '#E9E3F2',
-  pale: '#F0E8FA',
+  pale: '#F0E9F8',
   rose: '#C05D78',
 } as const;
