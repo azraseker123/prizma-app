@@ -1,4 +1,5 @@
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
+import { PRIZMA_COLORS as C } from './theme';
 import PrizmaConfirm from './PrizmaConfirm';
 import OutfitAIScreen from './OutfitAIScreen';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -50,17 +51,7 @@ type Outfit = {
   item_ids: string[];
 };
 
-const C = {
-  navy: '#0B1436',
-  lavender: '#9372B5',
-  lilac: '#E7D9F0',
-  background: '#FAF8FC',
-  white: '#FFFFFF',
-  muted: '#777B94',
-  border: '#E9E0EF',
-  pale: '#F4EDF9',
-  rose: '#C05D78',
-};
+
 
 const SEASONS = [
   'Tüm Mevsimler',
@@ -1942,12 +1933,12 @@ export default function WardrobeScreen({ userId }: Props) {
 
 const styles = StyleSheet.create({
   wardrobeCompactHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 },
-  wardrobeCompactIcon: { color: '#785597', fontSize: 29, lineHeight: 34 },
+  wardrobeCompactIcon: { color: '#6D47AD', fontSize: 29, lineHeight: 34 },
   wardrobeCompactTitle: { color: '#221637', fontSize: 22, fontWeight: '800', marginBottom: 4 },
   wardrobeCompactDescription: { color: '#645777', fontSize: 12, lineHeight: 18 },
   compactWardrobeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 10 },
   compactCount: { color: '#59466D', fontSize: 13, fontWeight: '700' },
-  compactAdd: { backgroundColor: '#7A5799', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
+  compactAdd: { backgroundColor: '#6D47AD', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
   compactAddText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
   wardrobeTabRow: {
     flexDirection: 'row',
@@ -1966,8 +1957,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   wardrobeTabActive: {
-    backgroundColor: '#7A5799',
-    borderColor: '#7A5799',
+    backgroundColor: '#6D47AD',
+    borderColor: '#6D47AD',
   },
   wardrobeTabText: {
     color: '#31254C',
@@ -1999,7 +1990,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   prizmaSheetSparkle: {
-    color: '#9372B5',
+    color: '#7956B6',
     fontSize: 34,
     marginBottom: 8,
   },
@@ -2023,7 +2014,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   prizmaSheetOptionIcon: {
-    color: '#805CA1',
+    color: '#7049B0',
     fontSize: 27,
     width: 44,
   },
@@ -2038,7 +2029,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   prizmaSheetArrow: {
-    color: '#805CA1',
+    color: '#7049B0',
     fontSize: 27,
   },
   prizmaSheetCancel: {
@@ -2047,7 +2038,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   prizmaSheetCancelText: {
-    color: '#805CA1',
+    color: '#7049B0',
     fontWeight: '700',
     fontSize: 15,
   },
@@ -2060,7 +2051,7 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: {
-    color: '#8C6BAC',
+    color: '#7852AF',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 2.1,
@@ -2205,7 +2196,7 @@ const styles = StyleSheet.create({
   },
 
   editorBackText: {
-    color: '#8062A2',
+    color: '#7049B0',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -2266,7 +2257,7 @@ const styles = StyleSheet.create({
   },
 
   changePhoto: {
-    color: '#8062A2',
+    color: '#7049B0',
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
@@ -2378,7 +2369,7 @@ const styles = StyleSheet.create({
   },
 
   detailEyebrow: {
-    color: '#8C6BAC',
+    color: '#7852AF',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.5,
@@ -2451,7 +2442,7 @@ const styles = StyleSheet.create({
   },
 
   detailNotesTitle: {
-    color: '#8C6BAC',
+    color: '#7852AF',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.3,
@@ -2662,7 +2653,7 @@ const styles = StyleSheet.create({
   },
 
   refreshText: {
-    color: '#8062A2',
+    color: '#7049B0',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -2775,7 +2766,7 @@ const styles = StyleSheet.create({
   },
 
   itemColor: {
-    color: '#8062A2',
+    color: '#7049B0',
     fontSize: 11,
     marginTop: 5,
   },
@@ -2796,7 +2787,7 @@ const styles = StyleSheet.create({
   },
 
   editText: {
-    color: '#8062A2',
+    color: '#7049B0',
     fontSize: 11,
     fontWeight: '700',
   },
