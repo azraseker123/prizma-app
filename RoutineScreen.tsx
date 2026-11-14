@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { addRoutineItem, getRoutineItems, removeRoutineItem, type RoutineItem, type RoutinePeriod } from './RoutineStore';
+import { addRoutineItem, getRoutineItems, removeRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
 
 type Props = { userId: string; onAIRequest: () => void };
 const PURPLE = '#79569A';
+const categories: { key: RoutineCategory; label: string }[] = [{key:'skin',label:'Cilt'},{key:'hair',label:'Saç'},{key:'makeup',label:'Makyaj'}];
 
 export default function RoutineScreen({ userId, onAIRequest }: Props) {
   const [items, setItems] = useState<RoutineItem[]>([]);
   const [period, setPeriod] = useState<RoutinePeriod>('Sabah');
+  const [category, setCategory] = useState<RoutineCategory>('skin');
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -22,7 +24,7 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
     if (!title.trim() || busy) return;
     setBusy(true);
     try {
-      await addRoutineItem(userId, { title, period, source: 'manual' });
+      await addRoutineItem(userId, { title, period, category, source: 'manual' });
       setTitle('');
       setFeedback('Rutin adımı eklendi ✦');
       await refresh();
@@ -42,9 +44,16 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
     <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
       <Text style={s.eyebrow}>PRİZMA BEAUTY STUDIO</Text>
       <Text style={s.title}>Bakım Rutinim ✦</Text>
-      <Text style={s.desc}>Sabah ve akşam bakım adımlarını kendi ihtiyaçlarına göre düzenle.</Text>
+      <Text style={s.desc}>Cilt, saç ve makyaj ürünlerini sabah ve akşam rutinlerine ekle.</Text>
+      <View style={s.row}>
+        {categories.map(c => (
+          <TouchableOpacity key={c.key} accessibilityRole="button" onPress={() => setCategory(c.key)} style={[s.chip, category === c.key && s.chipSelected]}>
+            <Text style={[s.chipText, category === c.key && s.chipTextSelected]}>{c.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
       <View style={s.panel}>
-        <Text style={s.panelTitle}>Manuel Rutin Ekle</Text>
+        <Text style={s.panelTitle}>{categories.find(c => c.key === category)?.label} Rutinine Ürün Ekle</Text>
         <View style={s.row}>
           {(['Sabah', 'Akşam'] as const).map(p => (
             <TouchableOpacity key={p} accessibilityRole="button" onPress={() => setPeriod(p)} style={[s.chip, period === p && s.chipSelected]}>
@@ -52,14 +61,14 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
             </TouchableOpacity>
           ))}
         </View>
-        <TextInput value={title} onChangeText={setTitle} maxLength={100} style={s.input} placeholder="Örn. Nazik temizleyici kullan" placeholderTextColor="#90849B" />
+        <TextInput value={title} onChangeText={setTitle} maxLength={100} style={s.input} placeholder="Örn. Saç kremi, maskara veya nemlendirici" placeholderTextColor="#90849B" />
         <TouchableOpacity style={[s.button, (!title.trim() || busy) && s.disabled]} onPress={() => void add()} disabled={!title.trim() || busy}>
           {busy ? <ActivityIndicator color="white"/> : <Text style={s.buttonText}>+ Rutinime Ekle</Text>}
         </TouchableOpacity>
       </View>
       <TouchableOpacity onPress={onAIRequest} style={s.aiCard}>
         <Text style={s.aiTitle}>✦ AI ile Ürün Önerisi Al</Text>
-        <Text style={s.aiText}>Cilt danışmanından ürün önerisi al, incele ve onaylayarak rutinine ekle. Otomatik rutin üretimi ayrıca geliştirilecek.</Text>
+        <Text style={s.aiText}>Cilt, saç ve makyaj için ürün önerisi al, incele ve onaylayarak rutinine ekle.</Text>
         <Text style={s.aiLink}>Önerileri keşfet →</Text>
       </TouchableOpacity>
       <View style={s.info}><Text style={s.infoText}>ⓘ AI hata yapabilir. Ürün talimatları ve içeriklerini doğrula; yeni aktifleri kullanmadan önce uyumluluğunu kontrol et.</Text></View>
@@ -67,8 +76,8 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
       {(['Sabah', 'Akşam'] as const).map(p => (
         <View key={p} style={s.listSection}>
           <Text style={s.sectionTitle}>{p === 'Sabah' ? '☀' : '☾'}  {p} Rutinim</Text>
-          {items.filter(x => x.period === p).length === 0 && <Text style={s.empty}>Henüz bir adım eklenmedi.</Text>}
-          {items.filter(x => x.period === p).map((item, index) => (
+          {items.filter(x => x.period === p && (x.category || 'skin') === category).length === 0 && <Text style={s.empty}>Bu kategoride henüz bir ürün eklenmedi.</Text>}
+          {items.filter(x => x.period === p && (x.category || 'skin') === category).map((item, index) => (
             <View key={item.id} style={s.item}>
               <View style={s.number}><Text style={s.numberText}>{index + 1}</Text></View>
               <View style={{ flex: 1 }}><Text style={s.itemTitle}>{item.title}</Text><Text style={s.itemCaption}>{item.source === 'manual' ? 'Sen ekledin' : 'AI önerisi • senin onayınla eklendi'}</Text></View>

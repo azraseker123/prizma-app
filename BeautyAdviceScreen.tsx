@@ -124,6 +124,7 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
       await addRoutineItem(userId, {
         title: `${product.brand ? `${product.brand} — ` : ''}${product.name}`,
         period: routinePeriod,
+        category,
         source: 'ai-suggestion',
         note: product.caution,
       });

@@ -4,6 +4,7 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { supabase } from './supabase';
+import { addRoutineItem, getRoutineItems, type RoutinePeriod } from './RoutineStore';
 
 type Category = 'skin' | 'hair' | 'makeup';
 type Status = 'want' | 'considering';
@@ -45,6 +46,9 @@ export default function BeautyCollectionScreen({ userId }: Props) {
   const [message, setMessage] = useState('');
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Sabah');
+  const [routineBusy, setRoutineBusy] = useState<string | null>(null);
+  const [routineSaved, setRoutineSaved] = useState<string[]>([]);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -165,6 +169,36 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     await loadProducts();
   };
 
+  const addCollectionToRoutine = async (product: Product) => {
+    const key = product.id + ':' + routinePeriod;
+    if (routineBusy || routineSaved.includes(key)) return;
+    setRoutineBusy(key);
+    setMessage('');
+    try {
+      const existing = await getRoutineItems(userId);
+      const label = (product.brand ? product.brand + ' — ' : '') + product.product_name;
+      const duplicate = existing.some(item =>
+        item.title === label && item.period === routinePeriod && (item.category || 'skin') === product.category
+      );
+      if (duplicate) {
+        setRoutineSaved(old => [...old, key]);
+        setMessage('Bu ürün seçtiğin rutinde zaten var.');
+        return;
+      }
+      await addRoutineItem(userId, {
+        title: label,
+        category: product.category,
+        period: routinePeriod,
+        source: 'manual',
+        note: product.notes || undefined,
+      });
+      setRoutineSaved(old => [...old, key]);
+      setMessage('✓ ' + product.product_name + ' ' + routinePeriod.toLowerCase() + ' rutinine eklendi.');
+    } catch {
+      setMessage('Ürün rutine eklenemedi. Tekrar deneyebilirsin.');
+    } finally { setRoutineBusy(null); }
+  };
+
   const visible = products.filter(p => p.category === category);
 
   return (
@@ -199,6 +233,14 @@ export default function BeautyCollectionScreen({ userId }: Props) {
             ]}>
               {item.label}
             </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.routinePeriodRow}>
+        {(['Sabah', 'Akşam'] as const).map(p => (
+          <TouchableOpacity key={p} style={[styles.routinePeriodChip, routinePeriod === p && styles.routinePeriodActive]} onPress={() => setRoutinePeriod(p)}>
+            <Text style={[styles.routinePeriodLabel, routinePeriod === p && styles.routinePeriodLabelActive]}>{p} Rutinim</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -319,6 +361,9 @@ export default function BeautyCollectionScreen({ userId }: Props) {
               <Text style={styles.description}>{product.notes}</Text>
             )}
 
+            <TouchableOpacity style={styles.routineAddButton} disabled={!!routineBusy || routineSaved.includes(product.id + ':' + routinePeriod)} onPress={() => void addCollectionToRoutine(product)}>
+              <Text style={styles.routineAddText}>{routineSaved.includes(product.id + ':' + routinePeriod) ? '✓ Rutinime Eklendi' : routineBusy === product.id + ':' + routinePeriod ? 'Ekleniyor...' : '+ ' + routinePeriod + ' Rutinime Ekle'}</Text>
+            </TouchableOpacity>
             <View style={styles.actions}>
               <TouchableOpacity onPress={() => startEdit(product)}>
                 <Text style={styles.actionText}>Düzenle</Text>
@@ -378,6 +423,13 @@ export default function BeautyCollectionScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
+  routinePeriodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 13 },
+  routinePeriodChip: { paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#F0E8F7', borderRadius: 14 },
+  routinePeriodActive: { backgroundColor: '#79569A' },
+  routinePeriodLabel: { color: '#554365', fontSize: 12, fontWeight: '700' },
+  routinePeriodLabelActive: { color: '#FFFFFF' },
+  routineAddButton: { backgroundColor: '#79569A', paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12, marginTop: 12 },
+  routineAddText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '800', fontSize: 12 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(23, 16, 40, 0.55)',
