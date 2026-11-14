@@ -9,6 +9,35 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from './supabase';
 
 type ShoppingCategory = 'clothing' | 'skin' | 'hair' | 'makeup';
+type QuestionKey = 'need' | 'frequency' | 'fit' | 'similar' | 'affordability';
+type Questionnaire = Partial<Record<QuestionKey, string>>;
+const questionKeys: QuestionKey[] = ['need', 'frequency', 'fit', 'similar', 'affordability'];
+const questions: { key: QuestionKey; label: (category: ShoppingCategory) => string; choices: { label: string; value: string }[] }[] = [
+  { key: 'need', label: () => 'Bu ürüne ne kadar ihtiyacın var?', choices: [
+    { label: 'Gerçekten ihtiyacım var', value: 'high' },
+    { label: 'İşime yarayabilir', value: 'medium' },
+    { label: 'Daha çok hoşuma gitti', value: 'low' },
+  ] },
+  { key: 'frequency', label: () => 'Ne sıklıkla kullanırsın?', choices: [
+    { label: 'Çok sık', value: 'often' }, { label: 'Ara sıra', value: 'sometimes' },
+    { label: 'Nadiren', value: 'rarely' }, { label: 'Henüz bilmiyorum', value: 'unknown' },
+  ] },
+  { key: 'fit', label: category => category === 'clothing'
+    ? 'Gardırobunla uyumu nasıl?' : 'Mevcut güzellik ürünlerinle ve kullanım alışkanlıklarınla uyumu nasıl?', choices: [
+    { label: 'Uyumlu', value: 'good' }, { label: 'Kısmen uyumlu', value: 'partial' },
+    { label: 'Uyumsuz', value: 'poor' }, { label: 'Emin değilim', value: 'unknown' },
+  ] },
+  { key: 'similar', label: category => category === 'clothing'
+    ? 'Zaten benzer bir kıyafetin var mı?' : 'Zaten aynı işlevi gören bir ürünün var mı?', choices: [
+    { label: 'Evet, var', value: 'yes' }, { label: 'Hayır, yok', value: 'no' },
+    { label: 'Emin değilim', value: 'unknown' },
+  ] },
+  { key: 'affordability', label: () => 'Fiyat bütçene uygun mu?', choices: [
+    { label: 'Rahatlıkla karşılarım', value: 'comfortable' },
+    { label: 'Bütçemi zorlar', value: 'stretch' },
+    { label: 'Şu an karşılayamam', value: 'cannot' },
+  ] },
+];
 const categoryOptions: { value: ShoppingCategory; label: string }[] = [
   {value:'clothing',label:'Giyim'}, {value:'skin',label:'Cilt'}, {value:'hair',label:'Saç'}, {value:'makeup',label:'Makyaj'}
 ];
@@ -87,6 +116,7 @@ export default function ShoppingDecisionScreen({
   const [price, setPrice] = useState('');
   const [budget, setBudget] = useState('');
   const [note, setNote] = useState('');
+  const [answers, setAnswers] = useState<Questionnaire>({});
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Analysis | null>(null);
   const [wardrobe, setWardrobe] = useState<WardrobePhoto[]>([]);
@@ -148,6 +178,7 @@ export default function ShoppingDecisionScreen({
             previous: result,
             category: result.category || category,
             history,
+            answers,
           },
         }
       );
@@ -260,6 +291,10 @@ export default function ShoppingDecisionScreen({
       showNotice('error', 'Oturum gerekli', 'Lütfen tekrar giriş yap.');
       return;
     }
+    if (!questionKeys.every(key => Boolean(answers[key]))) {
+      showNotice('info', '5 kısa soru', 'Daha doğru değerlendirebilmek için önce beş soruyu cevapla.');
+      return;
+    }
 
     setLoading(true);
     setResult(null);
@@ -288,6 +323,7 @@ export default function ShoppingDecisionScreen({
             budget: b,
             note: note.trim(),
             category,
+            answers,
             wardrobe: category === 'clothing' ? items || [] : [],
           },
         }
@@ -356,7 +392,7 @@ export default function ShoppingDecisionScreen({
           <TouchableOpacity
             key={option.value}
             style={[styles.categoryChip, category === option.value && styles.categoryActive]}
-            onPress={() => { setCategory(option.value); setResult(null); setMessages([]); }}
+            onPress={() => { setCategory(option.value); setAnswers({}); setResult(null); setMessages([]); }}
             disabled={loading}
           >
             <Text style={[styles.categoryText, category === option.value && styles.categoryTextActive]}>{option.label}</Text>
@@ -425,6 +461,34 @@ export default function ShoppingDecisionScreen({
         onChangeText={v => { setNote(v); setResult(null); }}
       />
 
+      <View style={styles.questionsSection}>
+        <Text style={styles.questionsTitle}>✦ Satın Almadan Önce 5 Kısa Soru</Text>
+        <Text style={styles.questionsCaption}>Yanıtların değerlendirmeye eklenir. Emin değilsen bunu belirtebilirsin.</Text>
+        {questions.map((question, index) => (
+          <View key={question.key} style={styles.questionCard}>
+            <Text style={styles.questionTitle}>{index + 1}. {question.label(category)}</Text>
+            <View style={styles.answerRow}>
+              {question.choices.map(choice => (
+                <TouchableOpacity
+                  key={choice.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: answers[question.key] === choice.value }}
+                  style={[styles.answerChip, answers[question.key] === choice.value && styles.answerChipSelected]}
+                  onPress={() => {
+                    setAnswers(current => ({ ...current, [question.key]: choice.value }));
+                    setResult(null);
+                    setMessages([]);
+                  }}
+                  disabled={loading}
+                >
+                  <Text style={[styles.answerText, answers[question.key] === choice.value && styles.answerTextSelected]}>{choice.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
+      </View>
+
       <View style={styles.info}>
         <Text style={styles.infoTitle}>{category === 'clothing' ? '✦ Gardırop bağlantısı' : '✦ Güzellik Koleksiyonum bağlantısı'}</Text>
         <Text style={styles.infoText}>
@@ -435,8 +499,8 @@ export default function ShoppingDecisionScreen({
       </View>
 
       <TouchableOpacity
-        style={[styles.button, loading && { opacity: 0.6 }]}
-        disabled={loading}
+        style={[styles.button, (loading || !questionKeys.every(key => !!answers[key])) && { opacity: 0.6 }]}
+        disabled={loading || !questionKeys.every(key => !!answers[key])}
         onPress={analyze}
       >
         {loading ? (
@@ -598,6 +662,16 @@ export default function ShoppingDecisionScreen({
 }
 
 const styles = StyleSheet.create({
+  questionsSection: { marginBottom: 22 },
+  questionsTitle: { color: C.navy, fontWeight: '800', fontSize: 17, marginBottom: 7 },
+  questionsCaption: { color: C.muted, fontSize: 12, lineHeight: 19, marginBottom: 12 },
+  questionCard: { backgroundColor: '#FFFFFF', padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#E8DDF5', marginBottom: 10 },
+  questionTitle: { color: C.navy, fontSize: 13, fontWeight: '800', marginBottom: 12 },
+  answerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  answerChip: { backgroundColor: C.lilac, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 11 },
+  answerChipSelected: { backgroundColor: C.purple },
+  answerText: { color: '#645778', fontSize: 11, fontWeight: '700' },
+  answerTextSelected: { color: '#FFFFFF' },
   evidencePanel: { backgroundColor: '#FFFFFF', borderColor: '#E8DDF5', borderWidth: 1, borderRadius: 17, padding: 16, marginTop: 18 },
   evidenceTitle: { color: C.purple, fontSize: 14, fontWeight: '800', marginBottom: 7 },
   verifyTitle: { marginTop: 13 },
