@@ -29,13 +29,18 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
     }
     const id = Date.now();
     const requestCategory = category;
+    // Send only recent messages from the selected category, not the whole chat.
+    const history = messages
+      .filter(m => m.category === requestCategory)
+      .slice(-6)
+      .map(m => ({ role: m.role, text: m.text.slice(0, 800) }));
     setMessages(current => [...current, { id, role: 'user', text: question, category: requestCategory }]);
     setDraft('');
     setFeedback('');
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('beauty-advisor', {
-        body: { category: requestCategory, concern: question.slice(0, 300) },
+        body: { category: requestCategory, concern: question.slice(0, 300), history },
       });
       if (error) throw new Error('AI servisine şu an ulaşılamıyor. Biraz sonra tekrar dene.');
       if (!data || typeof data.introduction !== 'string' || !Array.isArray(data.products)) {
