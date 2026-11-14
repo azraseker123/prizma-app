@@ -8,6 +8,10 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from './supabase';
 
+type ShoppingCategory = 'clothing' | 'skin' | 'hair' | 'makeup';
+const categoryOptions: { value: ShoppingCategory; label: string }[] = [
+  {value:'clothing',label:'Giyim'}, {value:'skin',label:'Cilt'}, {value:'hair',label:'Saç'}, {value:'makeup',label:'Makyaj'}
+];
 type Props = {
   onBack?: () => void;
   userId?: string;
@@ -29,6 +33,7 @@ type ChatMessage = {
 
 type Analysis = {
   verdict: 'AL' | 'BEKLE' | 'ALMA';
+  category?: ShoppingCategory;
   score: number;
   product: string;
   summary: string;
@@ -76,6 +81,7 @@ export default function ShoppingDecisionScreen({
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [base64, setBase64] = useState<string | null>(null);
+  const [category, setCategory] = useState<ShoppingCategory>('clothing');
   const [price, setPrice] = useState('');
   const [budget, setBudget] = useState('');
   const [note, setNote] = useState('');
@@ -138,6 +144,7 @@ export default function ShoppingDecisionScreen({
             mode: 'chat',
             message: question,
             previous: result,
+            category: result.category || category,
             history,
           },
         }
@@ -275,7 +282,8 @@ export default function ShoppingDecisionScreen({
             price: p,
             budget: b,
             note: note.trim(),
-            wardrobe: items || [],
+            category,
+            wardrobe: category === 'clothing' ? items || [] : [],
           },
         }
       );
@@ -295,7 +303,7 @@ export default function ShoppingDecisionScreen({
         throw new Error('AI yanıtı beklenen formatta değil.');
       }
 
-      setResult(data as Analysis);
+      setResult({ ...(data as Analysis), category });
     } catch (e: any) {
       console.error('PRIZMA AI analysis error:', e);
       showNotice(
@@ -333,9 +341,23 @@ export default function ShoppingDecisionScreen({
       <Text style={styles.eyebrow}>PRİZMA ✦ SMART SHOPPING</Text>
       <Text style={styles.title}>Almaya değer mi?</Text>
       <Text style={styles.subtitle}>
-        Beğendiğin ürünü yükle. PRİZMA, fotoğrafı,
-        bütçeni ve gardırobunu birlikte değerlendirsin.
+        Kıyafet, cilt, saç veya makyaj ürünü seç. PRİZMA,
+        ürünü kendi kategorisine göre değerlendirsin.
       </Text>
+
+      <Text style={styles.label}>Hangi ürün grubunu değerlendiriyoruz?</Text>
+      <View style={styles.categoryRow}>
+        {categoryOptions.map(option => (
+          <TouchableOpacity
+            key={option.value}
+            style={[styles.categoryChip, category === option.value && styles.categoryActive]}
+            onPress={() => { setCategory(option.value); setResult(null); setMessages([]); }}
+            disabled={loading}
+          >
+            <Text style={[styles.categoryText, category === option.value && styles.categoryTextActive]}>{option.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <TouchableOpacity
         style={styles.upload}
@@ -392,19 +414,18 @@ export default function ShoppingDecisionScreen({
       <Text style={styles.label}>Ek bilgi (isteğe bağlı)</Text>
       <TextInput
         style={[styles.input, styles.multiline]}
-        placeholder="Örn. Günlük kombinlerimde kullanmak istiyorum."
+        placeholder={category === 'clothing' ? "Örn. Günlük kombinlerimde kullanmak istiyorum." : "Örn. Nasıl kullanacağım, elimde benzeri var mı?"}
         multiline
         value={note}
         onChangeText={v => { setNote(v); setResult(null); }}
       />
 
       <View style={styles.info}>
-        <Text style={styles.infoTitle}>✦ Gardırop bağlantısı</Text>
+        <Text style={styles.infoTitle}>{category === 'clothing' ? '✦ Gardırop bağlantısı' : '✦ Güzellik Koleksiyonum bağlantısı'}</Text>
         <Text style={styles.infoText}>
-          PRİZMA, kayıtlı kıyafetlerinin ad, kategori,
-          renk ve mevsim bilgilerini karşılaştırmaya
-          dahil edecek. Gardırop fotoğrafları bu
-          sürümde analize gönderilmiyor.
+          {category === 'clothing'
+            ? 'PRİZMA, kayıtlı kıyafetlerinin metin bilgilerini karşılaştırmaya dahil eder. Gardırop fotoğrafları gönderilmez.'
+            : 'PRİZMA, güzellik koleksiyonundaki ilgili ürünlerin adlarını ve markalarını karşılaştırır. İçerikler bilinmiyorsa tahmin etmez.'}
         </Text>
       </View>
 
@@ -433,9 +454,9 @@ export default function ShoppingDecisionScreen({
                 ✦ Detaylı Ürün Değerlendirmesi
               </Text>
               {([
-                ['✦', 'PRİZMA İmzan ile Uyumu', result.sections.signatureFit],
-                ['◈', 'Dolap Uyumu', result.sections.wardrobeFit],
-                ['◇', 'Benzer Ürün Kontrolü', result.sections.similarItems],
+                ['✦', category === 'clothing' ? 'PRİZMA İmzan ile Uyumu' : 'İhtiyaçlarınla Uyumu', result.sections.signatureFit],
+                ['◈', category === 'clothing' ? 'Dolap Uyumu' : 'Ürün Uygunluğu', result.sections.wardrobeFit],
+                ['◇', category === 'clothing' ? 'Benzer Ürün Kontrolü' : 'Koleksiyonunda Benzeri Var mı?', result.sections.similarItems],
                 ['◎', 'İhtiyaç Analizi', result.sections.needAnalysis],
                 ['₺', 'Fiyat Değerlendirmesi', result.sections.priceAnalysis],
                 ['◷', 'Kullanım Potansiyeli', result.sections.usagePotential],
@@ -458,15 +479,21 @@ export default function ShoppingDecisionScreen({
             <Text key={i} style={styles.detail}>✦ {r}</Text>
           ))}
 
-          <Text style={styles.resultHeading}>Kombin fikirleri</Text>
-          {result.outfits.map((o, i) => (
-            <Text key={i} style={styles.detail}>◇ {o}</Text>
-          ))}
+          {category === 'clothing' && result.outfits.length > 0 && (
+            <>
+              <Text style={styles.resultHeading}>Kombin fikirleri</Text>
+              {result.outfits.map((o, i) => (
+                <Text key={i} style={styles.detail}>◇ {o}</Text>
+              ))}
+            </>
+          )}
 
           {(result.warnings || []).map((w, i) => (
             <Text key={i} style={styles.warning}>Not: {w}</Text>
           ))}
 
+          {category === 'clothing' && (
+          <>
           <Text style={styles.resultHeading}>Gardırobundan parçalar</Text>
 
           {matchedWardrobe().length ? (
@@ -491,11 +518,14 @@ export default function ShoppingDecisionScreen({
               geliştirmeye devam edeceğiz.
             </Text>
           )}
+          </>
+          )}
 
           <Text style={styles.resultHeading}>PRİZMA'ya sor ✦</Text>
           <Text style={styles.chatHint}>
-            Kombinleri değiştirebilir, farklı seçenekler
-            sorabilir veya kararı tartışabilirsin.
+            {category === 'clothing'
+              ? 'Kombinleri değiştirebilir, farklı seçenekler sorabilir veya kararı tartışabilirsin.'
+              : 'İçerik, kullanım, alternatif ürünler veya fiyat konusunda sorular sorabilirsin.'}
           </Text>
 
           {messages.map((m, i) => (
@@ -524,7 +554,7 @@ export default function ShoppingDecisionScreen({
 
           <TextInput
             style={styles.chatInput}
-            placeholder="Örn. Siyah etekle nasıl kombinlerim?"
+            placeholder={category === 'clothing' ? "Örn. Siyah etekle nasıl kombinlerim?" : "Örn. Bu ürünün avantajları neler?"}
             placeholderTextColor="#958BA2"
             multiline
             value={message}
@@ -553,6 +583,11 @@ export default function ShoppingDecisionScreen({
 }
 
 const styles = StyleSheet.create({
+  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
+  categoryChip: { backgroundColor: '#F0E7FC', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 13 },
+  categoryActive: { backgroundColor: '#8050B5' },
+  categoryText: { color: '#655578', fontWeight: '700', fontSize: 12 },
+  categoryTextActive: { color: '#FFFFFF' },
   root: { flex: 1, backgroundColor: C.bg },
   content: { padding: 22, paddingBottom: 70 },
   back: { color: C.purple, fontSize: 15, marginBottom: 20 },
