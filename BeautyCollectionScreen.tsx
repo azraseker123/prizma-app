@@ -199,6 +199,9 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       return;
     }
 
+    if (productToDelete.image_path) {
+      void deleteBeautyPhoto(productToDelete.image_path).catch(() => {});
+    }
     setProductToDelete(null);
     await loadProducts();
   };
@@ -314,6 +317,27 @@ export default function BeautyCollectionScreen({ userId }: Props) {
             placeholder="Marka adı"
           />
 
+          <Text style={styles.label}>Ürün fotoğrafı (isteğe bağlı)</Text>
+          {(selectedPhoto?.uri || (editing && !removePhoto ? photoUrls[editing.id] : null)) ? (
+            <Image source={{ uri: selectedPhoto?.uri || photoUrls[editing!.id] }} style={styles.photoPreview} resizeMode="contain" />
+          ) : (
+            <View style={styles.photoPlaceholder}><Text style={styles.photoPlaceholderText}>Fotoğraf seçilmedi</Text></View>
+          )}
+          <TouchableOpacity style={styles.photoButton} disabled={photoBusy || saving} onPress={() => void chooseBeautyPhoto()}>
+            <Text style={styles.photoButtonText}>{photoBusy ? 'İşleniyor...' : '＋ Fotoğraf Seç'}</Text>
+          </TouchableOpacity>
+          {(selectedPhoto || (editing && editing.image_path && !removePhoto)) && (
+            <View style={styles.photoActionRow}>
+              <TouchableOpacity style={styles.backgroundButton} disabled={photoBusy || saving} onPress={() => void applyBackgroundRemoval()}>
+                <Text style={styles.backgroundButtonText}>✦ Arka Planı Kaldır</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.removePhotoButton} disabled={photoBusy || saving} onPress={() => { setSelectedPhoto(null); setRemovePhoto(true); }}>
+                <Text style={styles.removePhotoText}>Fotoğrafı Kaldır</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <Text style={styles.photoTip}>Fotoğraf eklemek ücretsizdir. Arka plan kaldırma ortak hakkından kullanılır; günlük servis sınırı da geçerlidir.</Text>
+
           <Text style={styles.label}>Alışveriş durumun</Text>
           <View style={styles.statusRow}>
             {([
@@ -345,7 +369,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => { void saveProduct(); }}
-            disabled={saving}
+            disabled={saving || photoBusy}
           >
             {saving
               ? <ActivityIndicator color="#FFFFFF" />
@@ -371,6 +395,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       ) : (
         visible.map(product => (
           <View key={product.id} style={styles.card}>
+            {photoUrls[product.id] && <Image source={{ uri: photoUrls[product.id] }} style={styles.productPhoto} resizeMode="contain" />}
             <Text style={styles.productName}>
               {product.product_name}
             </Text>
@@ -457,6 +482,18 @@ export default function BeautyCollectionScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
+  productPhoto: { width: '100%', height: 160, borderRadius: 12, backgroundColor: '#F6F0F9', marginBottom: 13 },
+  photoPreview: { width: '100%', height: 180, backgroundColor: '#F6F0F9', borderRadius: 14, marginBottom: 10 },
+  photoPlaceholder: { backgroundColor: '#F6F0F9', height: 88, justifyContent: 'center', alignItems: 'center', borderRadius: 14, marginBottom: 9 },
+  photoPlaceholderText: { color: '#857A91', fontSize: 12 },
+  photoButton: { backgroundColor: '#EFE2F5', padding: 12, borderRadius: 13, alignItems: 'center', marginBottom: 9 },
+  photoButtonText: { color: '#5C3C78', fontWeight: '800', fontSize: 12 },
+  photoActionRow: { flexDirection: 'row', gap: 7, flexWrap: 'wrap', marginBottom: 6 },
+  backgroundButton: { backgroundColor: '#79569A', borderRadius: 11, padding: 10 },
+  backgroundButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  removePhotoButton: { borderRadius: 11, padding: 10, borderWidth: 1, borderColor: '#DDCFEB' },
+  removePhotoText: { color: '#624D74', fontSize: 11, fontWeight: '800' },
+  photoTip: { color: '#857A91', fontSize: 10, lineHeight: 15, marginBottom: 13 },
   routinePeriodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 13 },
   routinePeriodChip: { paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#F0E8F7', borderRadius: 14 },
   routinePeriodActive: { backgroundColor: '#79569A' },
