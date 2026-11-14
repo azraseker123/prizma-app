@@ -1,13 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { ScrollViewInstance } from 'react-native';
 import { supabase } from './supabase';
 import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
 import { PRIZMA_COLORS as C } from './theme';
+import { createChat, deleteChat, listChatHistory, saveChatMessages, type ChatRecord, type ChatMessage } from './ChatHistoryStore';
 
 type Category = 'skin' | 'hair' | 'makeup';
 type Product = { name: string; brand: string; reason: string; caution: string };
-type Message = { id: number; role: 'user' | 'assistant'; text: string; category: Category; products?: Product[] };
+type Message = ChatMessage;
 type Props = { userId: string; onOutfit: () => void };
 const labels: Record<Category, string> = { skin: 'Cilt', hair: 'Saç', makeup: 'Makyaj' };
 
@@ -19,27 +20,94 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
-  const [saved, setSaved] = useState<string[]>([]);
+  const [chats, setChats] = useState<ChatRecord[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [showChats, setShowChats] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Akşam');
+
+  useEffect(() => {
+    let alive = true;
+    setMessages([]);
+    setActiveChatId(null);
+    setChats([]);
+    setShowChats(false);
+    setHistoryLoading(true);
+    void listChatHistory(userId).then(records => {
+      if (alive) setChats(records);
+    }).catch(() => { if (alive) setFeedback('Geçmiş sohbetler yüklenemedi.'); })
+      .finally(() => { if (alive) setHistoryLoading(false); });
+    return () => { alive = false; };
+  }, [userId]);
+
+  const openChat = (chat: ChatRecord) => {
+    if (loading || busyAction) return;
+    setActiveChatId(chat.id);
+    setMessages(chat.messages);
+    setDraft('');
+    setFeedback('');
+    setShowChats(false);
+    setConfirmDelete(null);
+  };
+
+  const startNewChat = () => {
+    if (loading || busyAction) return;
+    setActiveChatId(null);
+    setMessages([]);
+    setDraft('');
+    setFeedback('');
+    setShowChats(false);
+    setConfirmDelete(null);
+  };
+
+  const removeChat = async (id: string) => {
+    if (loading || busyAction) return;
+    setBusyAction('delete');
+    try {
+      await deleteChat(userId, id);
+      setChats(old => old.filter(chat => chat.id !== id));
+      if (activeChatId === id) { setActiveChatId(null); setMessages([]); }
+      setConfirmDelete(null);
+      setFeedback('Sohbet silindi.');
+    } catch { setFeedback('Sohbet silinemedi.'); }
+    finally { setBusyAction(null); }
+  };
 
   const send = async () => {
     const question = draft.trim();
-    if (loading || !question) return;
+    if (loading || historyLoading || busyAction || !question) return;
     if (messages.filter(m => m.role === 'user').length >= 10) {
-      setFeedback('Bu oturum için 10 mesaj sınırına ulaştın. Yeni sohbet açabilirsin.');
+      setFeedback('Bu sohbet için 10 mesaj sınırına ulaştın. Yeni sohbet açabilirsin.');
       return;
     }
     const id = Date.now();
     const requestCategory = category;
-    // Send only recent messages from the selected category, not the whole chat.
-    const history = messages
-      .filter(m => m.category === requestCategory)
-      .slice(-6)
-      .map(m => ({ role: m.role, text: m.text.slice(0, 800) }));
-    setMessages(current => [...current, { id, role: 'user', text: question, category: requestCategory }]);
+    const history = messages.filter(m => m.category === requestCategory)
+      .slice(-6).map(m => ({ role: m.role, text: m.text.slice(0, 800) }));
+    const sent: Message = { id, role: 'user', text: question, category: requestCategory };
+    const nextMessages = [...messages, sent];
+    setMessages(nextMessages);
     setDraft('');
     setFeedback('');
     setLoading(true);
+    let chatId = activeChatId;
+    try {
+      if (!chatId) {
+        const created = await createChat(userId, question);
+        chatId = created.id;
+        setActiveChatId(created.id);
+        setChats(old => [created, ...old]);
+      }
+      await saveChatMessages(userId, chatId, nextMessages);
+    } catch {
+      setFeedback('Mesaj kaydedilemedi. İnternet bağlantını kontrol edip yeniden dene.');
+      setDraft(question);
+      setMessages(messages);
+      setLoading(false);
+      return;
+    }
+    let answer: Message;
     try {
       const { data, error } = await supabase.functions.invoke('beauty-advisor', {
         body: { category: requestCategory, concern: question.slice(0, 300), history },
@@ -55,25 +123,29 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
           typeof (p as Product).reason === 'string' &&
           typeof (p as Product).caution === 'string'
       );
-      setMessages(current => [...current, {
-        id: id + 1, role: 'assistant', text: data.introduction.slice(0, 1300),
-        category: requestCategory, products,
-      }]);
+      answer = { id: id + 1, role: 'assistant', text: data.introduction.slice(0, 1300),
+        category: requestCategory, products };
     } catch (error) {
-      setMessages(current => [...current, {
-        id: id + 1, role: 'assistant',
+      answer = { id: id + 1, role: 'assistant',
         text: error instanceof Error ? error.message : 'Yanıt alınamadı. Tekrar deneyebilirsin.',
-        category: requestCategory,
-      }]);
-    } finally {
-      setLoading(false);
+        category: requestCategory };
     }
+    const completed = [...nextMessages, answer];
+    setMessages(completed);
+    try {
+      await saveChatMessages(userId, chatId!, completed);
+      setChats(old => old.map(chat => chat.id === chatId ? { ...chat, messages: completed, updated_at: new Date().toISOString() } : chat));
+    } catch { setFeedback('AI yanıtı görünüyor ama kaydedilemedi. Yeni sohbete geçmeden kontrol et.'); }
+    finally { setLoading(false); }
   };
 
   const saveProduct = async (message: Message, product: Product, index: number, action: 'collection' | 'routine') => {
-    const key = String(message.id) + ':' + index + ':' + action + (action === 'routine' ? ':' + routinePeriod : '');
-    if (busyAction || saved.includes(key)) return;
-    setBusyAction(key);
+    const selectedPeriod = routinePeriod;
+    const alreadySaved = action === 'collection'
+      ? message.savedCollection?.includes(index)
+      : message.savedRoutines?.includes(index + ':' + selectedPeriod);
+    if (busyAction || loading || alreadySaved) return;
+    setBusyAction('save');
     setFeedback('');
     try {
       if (action === 'collection') {
@@ -85,20 +157,67 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
       } else {
         await addRoutineItem(userId, {
           title: (product.brand ? product.brand + ' — ' : '') + product.name,
-          period: routinePeriod, source: 'ai-suggestion', note: product.caution,
+          period: selectedPeriod, source: 'ai-suggestion', note: product.caution,
         });
       }
-      setSaved(old => [...old, key]);
-      setFeedback(action === 'collection' ? '✓ Koleksiyona eklendi.' : '✓ ' + routinePeriod + ' rutinine eklendi.');
-    } catch {
-      setFeedback('Kaydedilemedi. Tekrar dene.');
-    } finally {
-      setBusyAction(null);
-    }
+      const updated = messages.map(m => m.id === message.id ? ({
+        ...m,
+        savedCollection: action === 'collection' ? [...(m.savedCollection || []), index] : m.savedCollection,
+        savedRoutines: action === 'routine' ? [...(m.savedRoutines || []), index + ':' + selectedPeriod] : m.savedRoutines,
+      }) : m);
+      setMessages(updated);
+      if (activeChatId) {
+        try {
+          await saveChatMessages(userId, activeChatId, updated);
+          setChats(old => old.map(chat => chat.id === activeChatId ? { ...chat, messages: updated } : chat));
+        } catch {
+          setFeedback('Ürün eklendi ancak sohbetin kayıt durumu güncellenemedi.');
+          return;
+        }
+      }
+      setFeedback(action === 'collection' ? '✓ Koleksiyona eklendi.' : '✓ ' + selectedPeriod + ' rutinine eklendi.');
+    } catch { setFeedback('Kaydedilemedi. Tekrar dene.'); }
+    finally { setBusyAction(null); }
   };
 
   return (
     <View style={s.root}>
+      <View style={s.chatControls}>
+        <TouchableOpacity style={s.historyButton} onPress={() => setShowChats(value => !value)} disabled={loading || !!busyAction}>
+          <Text style={s.historyButtonText}>☰ Sohbetlerim ({chats.length})</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.newChatButton} onPress={startNewChat} disabled={loading || !!busyAction}>
+          <Text style={s.newChatButtonText}>＋ Yeni</Text>
+        </TouchableOpacity>
+      </View>
+      {showChats ? (
+        <ScrollView style={s.chatList} contentContainerStyle={s.chatListContent} keyboardShouldPersistTaps="handled">
+          {historyLoading && <ActivityIndicator color={C.lavender} />}
+          {!historyLoading && chats.length === 0 && <Text style={s.listEmpty}>Henüz kayıtlı sohbet yok.</Text>}
+          {chats.map(chat => (
+            <View key={chat.id} style={s.chatListRow}>
+              <TouchableOpacity style={s.chatListOpen} onPress={() => openChat(chat)} disabled={loading || !!busyAction}>
+                <Text style={s.chatListTitle} numberOfLines={2}>{chat.title}</Text>
+                <Text style={s.chatListMeta}>{chat.messages.length} mesaj</Text>
+              </TouchableOpacity>
+              {confirmDelete === chat.id ? (
+                <View style={s.confirmRow}>
+                  <TouchableOpacity onPress={() => void removeChat(chat.id)} disabled={!!busyAction}>
+                    <Text style={s.deleteConfirm}>Evet, sil</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setConfirmDelete(null)}>
+                    <Text style={s.deleteCancel}>Vazgeç</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setConfirmDelete(chat.id)} disabled={!!busyAction}>
+                  <Text style={s.deleteText}>Sil</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      ) : (<>
       <View style={s.heading}>
         <Text style={s.eyebrow}>PRİZMA ✦ KİŞİSEL ASİSTAN</Text>
         <Text style={s.title}>Sana nasıl yardımcı olayım?</Text>
@@ -136,16 +255,16 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
             <Text style={[s.role, m.role === 'user' && s.userRole]}>{m.role === 'user' ? 'SEN' : 'PRİZMA ✦'}</Text>
             <Text style={[s.messageText, m.role === 'user' && s.userText]}>{m.text}</Text>
             {m.products?.map((p, index) => {
-              const cKey = String(m.id) + ':' + index + ':collection';
-              const rKey = String(m.id) + ':' + index + ':routine:' + routinePeriod;
+              const isCollected = m.savedCollection?.includes(index) === true;
+              const isRoutineSaved = m.savedRoutines?.includes(index + ':' + routinePeriod) === true;
               return (
                 <View key={String(index)} style={s.product}>
                   <Text style={s.brand}>{p.brand}</Text>
                   <Text style={s.productTitle}>{p.name}</Text>
                   <Text style={s.productInfo}>{p.reason}</Text>
                   <Text style={s.caution}>Dikkat: {p.caution}</Text>
-                  <TouchableOpacity style={s.save} disabled={!!busyAction || saved.includes(cKey)} onPress={() => saveProduct(m, p, index, 'collection')}>
-                    <Text style={s.saveText}>{saved.includes(cKey) ? '✓ Koleksiyonda' : '+ Koleksiyona Ekle'}</Text>
+                  <TouchableOpacity style={s.save} disabled={!!busyAction || isCollected} onPress={() => saveProduct(m, p, index, 'collection')}>
+                    <Text style={s.saveText}>{isCollected ? '✓ Koleksiyonda' : '+ Koleksiyona Ekle'}</Text>
                   </TouchableOpacity>
                   <View style={s.routineRow}>
                     {(['Sabah', 'Akşam'] as const).map(period => (
@@ -154,8 +273,8 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TouchableOpacity style={s.routineSave} disabled={!!busyAction || saved.includes(rKey)} onPress={() => saveProduct(m, p, index, 'routine')}>
-                    <Text style={s.routineSaveText}>{saved.includes(rKey) ? '✓ Rutine eklendi' : '+ Rutine Ekle'}</Text>
+                  <TouchableOpacity style={s.routineSave} disabled={!!busyAction || isRoutineSaved} onPress={() => saveProduct(m, p, index, 'routine')}>
+                    <Text style={s.routineSaveText}>{isRoutineSaved ? '✓ Rutine eklendi' : '+ Rutine Ekle'}</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -168,18 +287,30 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 
       <View style={s.composer}>
         <TextInput style={s.input} multiline maxLength={300} placeholder="PRİZMA'ya yaz..." placeholderTextColor="#87839A" value={draft} onChangeText={setDraft} editable={!loading} />
-        <TouchableOpacity style={[s.send, (!draft.trim() || loading) && s.sendDisabled]} onPress={() => { void send(); }} disabled={!draft.trim() || loading}>
+        <TouchableOpacity style={[s.send, (!draft.trim() || loading || historyLoading || !!busyAction) && s.sendDisabled]} onPress={() => { void send(); }} disabled={!draft.trim() || loading || historyLoading || !!busyAction}>
           <Text style={s.sendText}>➤</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={s.newChat} disabled={loading} onPress={() => { setMessages([]); setSaved([]); setFeedback('Yeni sohbet açıldı.'); }}>
-        <Text style={s.newChatText}>Yeni sohbet başlat</Text>
-      </TouchableOpacity>
+      </>)}
     </View>
   );
 }
 
 const s = StyleSheet.create({
+  chatControls: { flexDirection: 'row', gap: 10, marginBottom: 9 },
+  historyButton: { flex: 1, backgroundColor: C.lilac, borderRadius: 12, padding: 12 },
+  historyButtonText: { color: C.navy, fontSize: 12, fontWeight: '800' },
+  newChatButton: { borderWidth: 1, borderColor: C.lavender, borderRadius: 12, padding: 12 },
+  newChatButtonText: { color: C.lavender, fontSize: 12, fontWeight: '800' },
+  chatList: { flex: 1, minHeight: 0 }, chatListContent: { paddingBottom: 22, gap: 8 },
+  chatListRow: { flexDirection: 'row', backgroundColor: C.white, borderColor: C.border, borderWidth: 1,
+    borderRadius: 14, padding: 12, alignItems: 'center', gap: 10 },
+  chatListOpen: { flex: 1 }, chatListTitle: { color: C.navy, fontSize: 13, fontWeight: '800' },
+  chatListMeta: { color: C.muted, fontSize: 10, marginTop: 5 },
+  deleteText: { color: C.lavender, fontSize: 12, fontWeight: '800', padding: 9 },
+  confirmRow: { gap: 9 }, deleteConfirm: { color: '#AD3852', fontSize: 11, fontWeight: '800' },
+  deleteCancel: { color: C.muted, fontSize: 11 },
+  listEmpty: { color: C.muted, fontSize: 13, textAlign: 'center', marginTop: 24 },
   root: { flex: 1, minHeight: 0, paddingBottom: 4 }, heading: { marginBottom: 10 },
   eyebrow: { fontSize: 10, fontWeight: '800', color: C.lavender, letterSpacing: 1.6, marginBottom: 8 },
   title: { color: C.navy, fontSize: 21, fontWeight: '800', marginBottom: 6 },
