@@ -9,6 +9,7 @@ export type RoutineItem = {
   category?: RoutineCategory;
   createdAt: string;
   note?: string;
+  imagePath?: string;
   source: 'manual' | 'ai-suggestion';
 };
 
@@ -24,7 +25,8 @@ export async function getRoutineItems(userId: string): Promise<RoutineItem[]> {
       typeof x.id === 'string' && typeof x.title === 'string' &&
       (x.period === 'Sabah' || x.period === 'Akşam') &&
       (x.source === 'manual' || x.source === 'ai-suggestion') &&
-      (x.category === undefined || ['skin', 'hair', 'makeup'].includes(x.category)));
+      (x.category === undefined || ['skin', 'hair', 'makeup'].includes(x.category)) &&
+      (x.imagePath === undefined || typeof x.imagePath === 'string'));
   } catch { return []; }
 }
 
@@ -35,6 +37,7 @@ export async function addRoutineItem(userId: string, item: Omit<RoutineItem, 'id
     ...item,
     title: item.title.trim().slice(0, 100),
     note: item.note?.slice(0, 300),
+    imagePath: item.imagePath,
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     createdAt: new Date().toISOString(),
   };
