@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { supabase } from './supabase';
 import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
@@ -11,6 +11,7 @@ type Props = { userId: string; onOutfit: () => void };
 const labels: Record<Category, string> = { skin: 'Cilt', hair: 'Saç', makeup: 'Makyaj' };
 
 export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
+  const historyRef = useRef<ScrollView>(null);
   const [category, setCategory] = useState<Category>('skin');
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -113,7 +114,14 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         </View>
       </View>
 
-      <ScrollView style={s.history} contentContainerStyle={s.historyContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={historyRef}
+        style={s.history}
+        contentContainerStyle={s.historyContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={true}
+        onContentSizeChange={() => historyRef.current?.scrollToEnd({ animated: true })}
+      >
         {messages.length === 0 && (
           <View style={s.empty}>
             <Text style={s.emptyIcon}>✦</Text>
@@ -171,7 +179,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, paddingBottom: 18 }, heading: { marginBottom: 10 },
+  root: { flex: 1, minHeight: 0, paddingBottom: 4 }, heading: { marginBottom: 10 },
   eyebrow: { fontSize: 10, fontWeight: '800', color: C.lavender, letterSpacing: 1.6, marginBottom: 8 },
   title: { color: C.navy, fontSize: 21, fontWeight: '800', marginBottom: 6 },
   hint: { color: C.muted, fontSize: 12, lineHeight: 18, marginBottom: 12 },
@@ -181,7 +189,7 @@ const s = StyleSheet.create({
   chipText: { color: C.navy, fontSize: 11, fontWeight: '700' }, chipTextActive: { color: C.white },
   outfitChip: { paddingHorizontal: 11, paddingVertical: 8, borderRadius: 18, backgroundColor: C.lilac },
   outfitChipText: { color: C.navy, fontSize: 11, fontWeight: '800' },
-  history: { minHeight: 240, maxHeight: 450 }, historyContent: { paddingVertical: 11, gap: 12 },
+  history: { flex: 1, minHeight: 0 }, historyContent: { paddingTop: 11, paddingBottom: 22, gap: 12 },
   empty: { backgroundColor: C.pale, borderRadius: 20, padding: 24, alignItems: 'center' },
   emptyIcon: { fontSize: 35, color: C.lavender }, emptyTitle: { color: C.navy, fontSize: 19, fontWeight: '800', marginVertical: 8 },
   emptyText: { color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 19 },
