@@ -21,6 +21,25 @@ export async function selectBeautyPhoto(): Promise<BeautyPhoto | null> {
   return { uri: compressed.uri, base64: compressed.base64, mimeType: 'image/jpeg' };
 }
 
+export async function captureBeautyPhoto(): Promise<BeautyPhoto | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error('Fotoğraf çekmek için kamera izni vermelisin. Ayarlardan izin verebilirsin.');
+  }
+  const capture = await ImagePicker.launchCameraAsync({
+    mediaTypes: ['images'], allowsEditing: false, quality: 0.85,
+  });
+  if (capture.canceled || !capture.assets?.[0]?.uri) return null;
+  const compressed = await ImageManipulator.manipulateAsync(
+    capture.assets[0].uri,
+    [{ resize: { width: 1200 } }],
+    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+  );
+  if (!compressed.base64) throw new Error('Çekilen fotoğraf okunamadı.');
+  if (compressed.base64.length > 13_000_000) throw new Error('Fotoğraf çok büyük.');
+  return { uri: compressed.uri, base64: compressed.base64, mimeType: 'image/jpeg' };
+}
+
 export async function removeBeautyBackground(photo: BeautyPhoto | string): Promise<BeautyPhoto> {
   const inputUri = typeof photo === 'string' ? photo : photo.uri;
   const resized = await ImageManipulator.manipulateAsync(inputUri, [{ resize: { width: 1024 } }], {
