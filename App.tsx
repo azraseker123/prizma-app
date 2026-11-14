@@ -621,6 +621,11 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
+      {tab === 'PRİZMA AI' ? (
+        <View style={styles.chatPage}>
+          <PrizmaChatScreen userId={session.user.id} onOutfit={() => open('Gardırop')} />
+        </View>
+      ) : (
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -681,11 +686,6 @@ export default function App() {
         {/* GARDIROP */}
         {tab === 'Gardırop' && (
           <WardrobeScreen userId={session.user.id} />
-        )}
-
-        {/* PRİZMA AI */}
-        {tab === 'PRİZMA AI' && (
-          <PrizmaChatScreen userId={session.user.id} onOutfit={() => open('Gardırop')} />
         )}
 
         {/* CİLT ANALİZİ */}
@@ -811,6 +811,7 @@ export default function App() {
           </>
         )}
       </ScrollView>
+      )}
 
       {/* ALT MENÜ */}
       <View style={styles.tabBar}>
@@ -1020,6 +1021,12 @@ const styles = StyleSheet.create({
 
   scroll: {
     flex: 1,
+  },
+  chatPage: {
+    flex: 1,
+    minHeight: 0,
+    paddingHorizontal: 23,
+    paddingTop: 18,
   },
 
   loadingScreen: {
