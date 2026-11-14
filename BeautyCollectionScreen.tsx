@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { supabase } from './supabase';
 import { addRoutineItem, getRoutineItems, type RoutinePeriod } from './RoutineStore';
-import { selectBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
+import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
 type Category = 'skin' | 'hair' | 'makeup';
 type Status = 'want' | 'considering';
@@ -118,6 +118,18 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       if (photo) { setSelectedPhoto(photo); setRemovePhoto(false); }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Fotoğraf seçilemedi.');
+    } finally { setPhotoBusy(false); }
+  };
+
+  const takeBeautyPhoto = async () => {
+    if (saving || photoBusy) return;
+    setPhotoBusy(true);
+    setMessage('');
+    try {
+      const photo = await captureBeautyPhoto();
+      if (photo) { setSelectedPhoto(photo); setRemovePhoto(false); }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Fotoğraf çekilemedi.');
     } finally { setPhotoBusy(false); }
   };
 
@@ -323,9 +335,14 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           ) : (
             <View style={styles.photoPlaceholder}><Text style={styles.photoPlaceholderText}>Fotoğraf seçilmedi</Text></View>
           )}
-          <TouchableOpacity style={styles.photoButton} disabled={photoBusy || saving} onPress={() => void chooseBeautyPhoto()}>
-            <Text style={styles.photoButtonText}>{photoBusy ? 'İşleniyor...' : '＋ Fotoğraf Seç'}</Text>
-          </TouchableOpacity>
+          <View style={styles.photoActionRow}>
+            <TouchableOpacity style={styles.photoButton} disabled={photoBusy || saving} onPress={() => void chooseBeautyPhoto()}>
+              <Text style={styles.photoButtonText}>{photoBusy ? 'İşleniyor...' : '▧ Galeriden Seç'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoButton} disabled={photoBusy || saving} onPress={() => void takeBeautyPhoto()}>
+              <Text style={styles.photoButtonText}>{photoBusy ? 'İşleniyor...' : '📷 Fotoğraf Çek'}</Text>
+            </TouchableOpacity>
+          </View>
           {(selectedPhoto || (editing && editing.image_path && !removePhoto)) && (
             <View style={styles.photoActionRow}>
               <TouchableOpacity style={styles.backgroundButton} disabled={photoBusy || saving} onPress={() => void applyBackgroundRemoval()}>
