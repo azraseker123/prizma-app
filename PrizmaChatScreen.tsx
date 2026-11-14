@@ -1,13 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { ScrollViewInstance } from 'react-native';
 import { supabase } from './supabase';
 import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
 import { PRIZMA_COLORS as C } from './theme';
+import { createChat, deleteChat, listChatHistory, saveChatMessages, type ChatRecord, type ChatMessage } from './ChatHistoryStore';
 
 type Category = 'skin' | 'hair' | 'makeup';
 type Product = { name: string; brand: string; reason: string; caution: string };
-type Message = { id: number; role: 'user' | 'assistant'; text: string; category: Category; products?: Product[] };
+type Message = ChatMessage;
 type Props = { userId: string; onOutfit: () => void };
 const labels: Record<Category, string> = { skin: 'Cilt', hair: 'Saç', makeup: 'Makyaj' };
 
@@ -19,8 +20,55 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
-  const [saved, setSaved] = useState<string[]>([]);
+  const [chats, setChats] = useState<ChatRecord[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [showChats, setShowChats] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Akşam');
+
+  useEffect(() => {
+    let alive = true;
+    setHistoryLoading(true);
+    void listChatHistory(userId).then(records => {
+      if (alive) setChats(records);
+    }).catch(() => { if (alive) setFeedback('Geçmiş sohbetler yüklenemedi.'); })
+      .finally(() => { if (alive) setHistoryLoading(false); });
+    return () => { alive = false; };
+  }, [userId]);
+
+  const openChat = (chat: ChatRecord) => {
+    if (loading || busyAction) return;
+    setActiveChatId(chat.id);
+    setMessages(chat.messages);
+    setDraft('');
+    setFeedback('');
+    setShowChats(false);
+    setConfirmDelete(null);
+  };
+
+  const startNewChat = () => {
+    if (loading || busyAction) return;
+    setActiveChatId(null);
+    setMessages([]);
+    setDraft('');
+    setFeedback('');
+    setShowChats(false);
+    setConfirmDelete(null);
+  };
+
+  const removeChat = async (id: string) => {
+    if (loading || busyAction) return;
+    setBusyAction('delete');
+    try {
+      await deleteChat(userId, id);
+      setChats(old => old.filter(chat => chat.id !== id));
+      if (activeChatId === id) { setActiveChatId(null); setMessages([]); }
+      setConfirmDelete(null);
+      setFeedback('Sohbet silindi.');
+    } catch { setFeedback('Sohbet silinemedi.'); }
+    finally { setBusyAction(null); }
+  };
 
   const send = async () => {
     const question = draft.trim();
