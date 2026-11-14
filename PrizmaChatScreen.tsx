@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import { supabase } from './supabase';
 import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
 import { PRIZMA_COLORS as C } from './theme';
@@ -11,7 +12,7 @@ type Props = { userId: string; onOutfit: () => void };
 const labels: Record<Category, string> = { skin: 'Cilt', hair: 'Saç', makeup: 'Makyaj' };
 
 export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
-  const historyRef = useRef<ScrollView>(null);
+  const historyRef = useRef<ScrollViewInstance>(null);
   const [category, setCategory] = useState<Category>('skin');
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
