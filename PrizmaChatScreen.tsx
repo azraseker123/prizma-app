@@ -29,6 +29,10 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 
   useEffect(() => {
     let alive = true;
+    setMessages([]);
+    setActiveChatId(null);
+    setChats([]);
+    setShowChats(false);
     setHistoryLoading(true);
     void listChatHistory(userId).then(records => {
       if (alive) setChats(records);
