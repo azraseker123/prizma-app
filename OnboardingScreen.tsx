@@ -176,6 +176,77 @@ const questions: Question[] = [
     ],
   },
   {
+    id: 'skin_tone',
+    title: 'Ten Rengin ✦',
+    subtitle: 'Makyaj tonu önerileri için ten rengini seç. Cilt alt tonundan farklıdır; istersen atlayabilirsin.',
+    multi: false,
+    options: [
+      item('Çok açık', 'Çok açık ten tonları', '◌', ['#F8E4D9','#EED3C7']),
+      item('Açık', 'Açık ten tonları', '◌', ['#EAC8B3','#DDB49B']),
+      item('Orta', 'Orta ten tonları', '◌', ['#D6A582','#BE896C']),
+      item('Buğday / Esmer', 'Daha sıcak veya koyu orta tonlar', '◌', ['#B67C58','#936043']),
+      item('Koyu', 'Koyu ten tonları', '◌', ['#79492F','#55321F']),
+      item('Emin değilim', 'Daha sonra seçebilirim', '❔', ['#DDD3E6','#B9ACCB']),
+    ],
+  },
+  {
+    id: 'clothing_size',
+    title: 'Kıyafet Bedenin ✦',
+    subtitle: 'Genellikle tercih ettiğin bedeni seç. Markaya ve kalıba göre değişebilir; isteğe bağlıdır.',
+    multi: false,
+    options: [
+      item('XXS', 'Genelde XXS', '✦', ['#E9E0F1','#CAB9DE']),
+      item('XS', 'Genelde XS', '✦', ['#E9E0F1','#CAB9DE']),
+      item('S', 'Genelde S', '✦', ['#E9E0F1','#CAB9DE']),
+      item('M', 'Genelde M', '✦', ['#E9E0F1','#CAB9DE']),
+      item('L', 'Genelde L', '✦', ['#E9E0F1','#CAB9DE']),
+      item('XL', 'Genelde XL', '✦', ['#E9E0F1','#CAB9DE']),
+      item('XXL ve üzeri', 'Genelde daha büyük bedenler', '✦', ['#E9E0F1','#CAB9DE']),
+      item('Markaya göre değişiyor', 'Sabit bir bedenim yok', '◐', ['#DDD3E6','#B9ACCB']),
+    ],
+  },
+  {
+    id: 'fit_preference',
+    title: 'Kalıp Tercihin ✦',
+    subtitle: 'Kıyafetleri nasıl giymeyi seversin? Konfor ve stil tercihin için soruyoruz.',
+    multi: false,
+    options: [
+      item('Rahat / Oversize', 'Bol kalıplar', '☁️', ['#D7D3E0','#A9A3BA']),
+      item('Regular', 'Ne çok bol ne çok dar', '◐', ['#E6D8D4','#C5B6B0']),
+      item('Vücuda oturan', 'Daha yakın kalıplar', '✦', ['#D7CAE3','#AE93C7']),
+      item('Parçaya göre değişir', 'Farklı kalıpları severim', '✨', ['#D9D0E6','#C0B2D4']),
+    ],
+  },
+  {
+    id: 'skin_concerns',
+    title: 'Cildinin İhtiyaçları ✦',
+    subtitle: 'İlgilendiğin konuları seçebilirsin; bu bir teşhis değildir. İstersen atlayabilirsin.',
+    multi: true,
+    options: [
+      item('Kuruluk', 'Nem ihtiyacı', '💧', ['#F1DACD','#D8B6A5']),
+      item('Sivilce', 'Sivilceye eğilim', '🌿', ['#E6CEBE','#CBAA9D']),
+      item('Siyah nokta / Gözenek', 'Doku ve gözenek görünümü', '◌', ['#DDC7BF','#BFA49E']),
+      item('Kızarıklık', 'Kızarma ve hassasiyet hissi', '🌸', ['#F3D4D8','#D9A9B2']),
+      item('Leke görünümü', 'Ton eşitsizliği görünümü', '✨', ['#E4CBB7','#CDA88F']),
+      item('Matlık', 'Canlılık ihtiyacı', '☀️', ['#ECDCC7','#D3B591']),
+      item('Belirgin ihtiyacım yok', 'Şu an özel bir konum yok', '✓', ['#D5E1D4','#ADC3AD']),
+    ],
+  },
+  {
+    id: 'scalp_type',
+    title: 'Saç Derisi Tipin ✦',
+    subtitle: 'Saç tellerinin yapısından farklı olabilir. En uygun seçeneği işaretle.',
+    multi: false,
+    options: [
+      item('Yağlı', 'Çabuk yağlanır', '💧', ['#C4AF95','#967960']),
+      item('Kuru', 'Kuruluk hissi olur', '☁️', ['#E4D0B9','#BFA186']),
+      item('Normal', 'Dengeli hissedilir', '🌿', ['#D8C5B4','#AE927A']),
+      item('Hassas', 'Kolay rahatsız olabilir', '🌸', ['#EAD1CE','#CDAAA6']),
+      item('Değişken', 'Döneme göre farklılık gösterir', '◐', ['#D6C1B4','#B6A08D']),
+      item('Emin değilim', 'Henüz bilmiyorum', '❔', ['#DDD3E6','#B9ACCB']),
+    ],
+  },
+  {
     id: 'goal',
     title: 'PRİZMA Sana Nasıl Yardımcı Olsun? ✦',
     subtitle: 'En çok ilgilendiğin alanları seç.',
@@ -232,7 +303,7 @@ const beautyImages: Record<string, Record<string, any>> = {
   },
 };
 
-const MULTI_IDS = ['style', 'colors', 'hair_type', 'hair_condition', 'makeup', 'goal'];
+const MULTI_IDS = ['style', 'colors', 'hair_type', 'hair_condition', 'skin_concerns', 'makeup', 'goal'];
 
 export default function OnboardingScreen({
   onComplete,
@@ -277,6 +348,14 @@ export default function OnboardingScreen({
         updated = ['Sağlıklı'];
       } else if (name !== 'Sağlıklı') {
         updated = updated.filter(value => value !== 'Sağlıklı');
+      }
+    }
+
+    if (question.id === 'skin_concerns') {
+      if (name === 'Belirgin ihtiyacım yok' && updated.includes('Belirgin ihtiyacım yok')) {
+        updated = ['Belirgin ihtiyacım yok'];
+      } else if (name !== 'Belirgin ihtiyacım yok') {
+        updated = updated.filter(value => value !== 'Belirgin ihtiyacım yok');
       }
     }
 
