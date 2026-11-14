@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Modal, ScrollView, StyleSheet,
+  ActivityIndicator, Image, Modal, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { supabase } from './supabase';
 import { addRoutineItem, getRoutineItems, type RoutinePeriod } from './RoutineStore';
+import { selectBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
 type Category = 'skin' | 'hair' | 'makeup';
 type Status = 'want' | 'considering';
@@ -20,6 +21,7 @@ type Product = {
   source: Source;
   notes: string;
   created_at: string;
+  image_path?: string | null;
 };
 
 type Props = {
@@ -46,6 +48,10 @@ export default function BeautyCollectionScreen({ userId }: Props) {
   const [message, setMessage] = useState('');
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<BeautyPhoto | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Sabah');
   const [routineBusy, setRoutineBusy] = useState<string | null>(null);
   const [routineSaved, setRoutineSaved] = useState<string[]>([]);
@@ -64,7 +70,14 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       console.error('Beauty collection load:', error);
       setMessage('Koleksiyon yüklenemedi. Tekrar deneyebilirsin.');
     } else {
-      setProducts((data || []) as Product[]);
+      const rows = (data || []) as Product[];
+      setProducts(rows);
+      const urls: Record<string, string> = {};
+      await Promise.all(rows.filter(p => p.image_path).map(async product => {
+        const url = await getBeautyPhotoUrl(product.image_path!);
+        if (url) urls[product.id] = url;
+      }));
+      setPhotoUrls(urls);
     }
 
     setLoading(false);
@@ -80,6 +93,8 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     setBrand('');
     setNotes('');
     setStatus('considering');
+    setSelectedPhoto(null);
+    setRemovePhoto(false);
     setFormOpen(false);
   };
 
@@ -90,56 +105,75 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     setBrand(product.brand);
     setNotes(product.notes);
     setStatus(product.status);
+    setSelectedPhoto(null);
+    setRemovePhoto(false);
     setFormOpen(true);
+  };
+
+  const chooseBeautyPhoto = async () => {
+    if (saving || photoBusy) return;
+    setPhotoBusy(true);
+    try {
+      const photo = await selectBeautyPhoto();
+      if (photo) { setSelectedPhoto(photo); setRemovePhoto(false); }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Fotoğraf seçilemedi.');
+    } finally { setPhotoBusy(false); }
+  };
+
+  const applyBackgroundRemoval = async () => {
+    if (photoBusy || saving) return;
+    const source = selectedPhoto || (editing && !removePhoto ? photoUrls[editing.id] : null);
+    if (!source) return;
+    setPhotoBusy(true);
+    setMessage('');
+    try {
+      const photo = await removeBeautyBackground(source);
+      setSelectedPhoto(photo);
+      setRemovePhoto(false);
+      setMessage('✓ Arka plan kaldırıldı. Kaydet ile saklayabilirsin.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Arka plan kaldırılamadı.');
+    } finally { setPhotoBusy(false); }
   };
 
   const saveProduct = async () => {
     const cleanName = name.trim();
-    if (!cleanName) {
-      setMessage('Lütfen ürünün adını yaz.');
-      return;
-    }
-    if (cleanName.length > 200) {
-      setMessage('Ürün adı en fazla 200 karakter olabilir.');
-      return;
-    }
-    if (saving) return;
-
+    if (!cleanName) { setMessage('Lütfen ürünün adını yaz.'); return; }
+    if (cleanName.length > 200) { setMessage('Ürün adı en fazla 200 karakter olabilir.'); return; }
+    if (saving || photoBusy) return;
     setSaving(true);
     setMessage('');
-
-    const values = {
-      category,
-      product_name: cleanName,
-      brand: brand.trim(),
-      notes: notes.trim(),
-      status,
-    };
-
-    const response = editing
-      ? await supabase
-          .from('beauty_collection')
-          .update(values)
-          .eq('id', editing.id)
-          .eq('user_id', userId)
-      : await supabase
-          .from('beauty_collection')
-          .insert({
-            ...values,
-            user_id: userId,
-            source: 'manual' as Source,
+    let uploadedPath: string | null = null;
+    try {
+      if (selectedPhoto) uploadedPath = await uploadBeautyPhoto(userId, selectedPhoto);
+      const oldPath = editing?.image_path || null;
+      const newPath = uploadedPath || (removePhoto ? null : oldPath);
+      const values = {
+        category,
+        product_name: cleanName,
+        brand: brand.trim(),
+        notes: notes.trim(),
+        status,
+        image_path: newPath,
+      };
+      const response = editing
+        ? await supabase.from('beauty_collection').update(values)
+            .eq('id', editing.id).eq('user_id', userId)
+        : await supabase.from('beauty_collection').insert({
+            ...values, user_id: userId, source: 'manual' as Source,
           });
-
-    setSaving(false);
-
-    if (response.error) {
-      console.error('Beauty collection save:', response.error);
-      setMessage('Ürün kaydedilemedi. Lütfen tekrar dene.');
-      return;
-    }
-
-    resetForm();
-    await loadProducts();
+      if (response.error) throw response.error;
+      // Uploaded content is never deleted before the database points to the new image.
+      if (oldPath && oldPath !== newPath) {
+        void deleteBeautyPhoto(oldPath).catch(() => {});
+      }
+      resetForm();
+      await loadProducts();
+    } catch (error) {
+      if (uploadedPath) void deleteBeautyPhoto(uploadedPath).catch(() => {});
+      setMessage(error instanceof Error ? error.message : 'Ürün kaydedilemedi.');
+    } finally { setSaving(false); }
   };
 
   const deleteProduct = (product: Product) => {
