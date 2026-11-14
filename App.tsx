@@ -1,4 +1,5 @@
 import RoutineScreen from './RoutineScreen';
+import PrizmaChatScreen from './PrizmaChatScreen';
 import { PRIZMA_COLORS as C } from './theme';
 import PrizmaConfirm from './PrizmaConfirm';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
@@ -684,7 +685,7 @@ export default function App() {
 
         {/* PRİZMA AI */}
         {tab === 'PRİZMA AI' && (
-          <OutfitAIScreen userId={session.user.id} />
+          <PrizmaChatScreen userId={session.user.id} onOutfit={() => open('Gardırop')} />
         )}
 
         {/* CİLT ANALİZİ */}
