@@ -136,9 +136,12 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
   };
 
   const saveProduct = async (message: Message, product: Product, index: number, action: 'collection' | 'routine') => {
-    const key = String(message.id) + ':' + index + ':' + action + (action === 'routine' ? ':' + routinePeriod : '');
-    if (busyAction || saved.includes(key)) return;
-    setBusyAction(key);
+    const selectedPeriod = routinePeriod;
+    const alreadySaved = action === 'collection'
+      ? message.savedCollection?.includes(index)
+      : message.savedRoutines?.includes(index + ':' + selectedPeriod);
+    if (busyAction || loading || alreadySaved) return;
+    setBusyAction('save');
     setFeedback('');
     try {
       if (action === 'collection') {
@@ -150,16 +153,27 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
       } else {
         await addRoutineItem(userId, {
           title: (product.brand ? product.brand + ' — ' : '') + product.name,
-          period: routinePeriod, source: 'ai-suggestion', note: product.caution,
+          period: selectedPeriod, source: 'ai-suggestion', note: product.caution,
         });
       }
-      setSaved(old => [...old, key]);
-      setFeedback(action === 'collection' ? '✓ Koleksiyona eklendi.' : '✓ ' + routinePeriod + ' rutinine eklendi.');
-    } catch {
-      setFeedback('Kaydedilemedi. Tekrar dene.');
-    } finally {
-      setBusyAction(null);
-    }
+      const updated = messages.map(m => m.id === message.id ? ({
+        ...m,
+        savedCollection: action === 'collection' ? [...(m.savedCollection || []), index] : m.savedCollection,
+        savedRoutines: action === 'routine' ? [...(m.savedRoutines || []), index + ':' + selectedPeriod] : m.savedRoutines,
+      }) : m);
+      setMessages(updated);
+      if (activeChatId) {
+        try {
+          await saveChatMessages(userId, activeChatId, updated);
+          setChats(old => old.map(chat => chat.id === activeChatId ? { ...chat, messages: updated } : chat));
+        } catch {
+          setFeedback('Ürün eklendi ancak sohbetin kayıt durumu güncellenemedi.');
+          return;
+        }
+      }
+      setFeedback(action === 'collection' ? '✓ Koleksiyona eklendi.' : '✓ ' + selectedPeriod + ' rutinine eklendi.');
+    } catch { setFeedback('Kaydedilemedi. Tekrar dene.'); }
+    finally { setBusyAction(null); }
   };
 
   return (
