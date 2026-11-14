@@ -9,7 +9,7 @@ import SkinAnalysisScreen from './SkinAnalysisScreen';
 import BeautyCollectionScreen from './BeautyCollectionScreen';
 import BeautyAdviceScreen from './BeautyAdviceScreen';
 import OnboardingScreen, { type OnboardingAnswers } from './OnboardingScreen';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 
@@ -25,6 +25,7 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  BackHandler,
   Keyboard,
   KeyboardAvoidingView,
 } from 'react-native';
@@ -122,6 +123,30 @@ export default function App() {
   const [savingPassword, setSavingPassword] = useState(false);
 
   const [tab, setTab] = useState<Tab>('Ana Sayfa');
+  const tabHistoryRef = useRef<Tab[]>([]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !session?.user.id || !onboardingDone || editingProfile) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (logoutVisible) {
+        setLogoutVisible(false);
+        return true;
+      }
+      if (keyboardVisible) {
+        Keyboard.dismiss();
+        return true;
+      }
+      const previous = tabHistoryRef.current.pop();
+      if (previous) {
+        setTab(previous);
+      } else if (tab !== 'Ana Sayfa') {
+        setTab('Ana Sayfa');
+      }
+      // On the main screen, avoid an accidental app exit.
+      return true;
+    });
+    return () => subscription.remove();
+  }, [session?.user.id, onboardingDone, editingProfile, tab, logoutVisible, keyboardVisible]);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -383,6 +408,9 @@ export default function App() {
   };
 
   const open = (target: Tab) => {
+    if (target === tab) return;
+    tabHistoryRef.current.push(tab);
+    if (tabHistoryRef.current.length > 30) tabHistoryRef.current.shift();
     setTab(target);
   };
 
@@ -412,6 +440,7 @@ export default function App() {
         );
       } else {
         setLogoutVisible(false);
+        tabHistoryRef.current = [];
         setTab('Ana Sayfa');
       }
     } catch (error) {
