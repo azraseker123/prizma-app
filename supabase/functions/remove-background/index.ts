@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       return json({ error: "Kullanım limiti kontrol edilemedi." }, 500);
     }
     if (!ticket) {
-      return json({ error: "Arka plan kaldırma hakkın doldu (toplam 100 hak, günlük en fazla 5 işlem)." }, 429);
+      return json({ error: "Toplam 100 arka plan kaldırma hakkın doldu." }, 429);
     }
 
     let succeeded = false;
