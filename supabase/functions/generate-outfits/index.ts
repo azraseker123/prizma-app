@@ -185,6 +185,27 @@ Deno.serve(async (req) => {
       personalColors.join(", ") || "Belirtilmedi";
 
 
+    // Learn only from explicit, account-owned outfit ratings.
+    // Keep the prompt small and reference only items still in the wardrobe.
+    const { data: ratings, error: ratingsError } = await sb
+      .from("outfit_feedback")
+      .select("item_ids,sentiment,updated_at")
+      .eq("user_id", authData.user.id)
+      .order("updated_at", { ascending: false })
+      .limit(40);
+    if (ratingsError) console.warn("Outfit preferences not loaded:", ratingsError.message);
+    const itemIds = new Set(items.map(item => item.id));
+    const preferenceExamples = (ratings || [])
+      .filter((row: any) => row && (row.sentiment === "liked" || row.sentiment === "disliked") && Array.isArray(row.item_ids))
+      .map((row: any) => ({
+        sentiment: row.sentiment,
+        item_ids: row.item_ids.filter((id: unknown) => typeof id === "string" && itemIds.has(id)).slice(0, 12),
+      }))
+      .filter((row: any) => row.item_ids.length >= 2)
+      .slice(0, 24);
+    const likedCount = preferenceExamples.filter((row: any) => row.sentiment === "liked").length;
+    const dislikedCount = preferenceExamples.filter((row: any) => row.sentiment === "disliked").length;
+
     const wardrobe = items.map((item) => ({
       id: item.id,
       name: String(item.name || "").slice(0, 90),
@@ -209,11 +230,20 @@ ${preferredColors}
 Kullanıcının GERÇEK gardırobu:
 ${JSON.stringify(wardrobe)}
 
+Kullanıcının geçmişte açıkça beğendiği ve beğenmediği kombinlerdeki GERÇEK parça ID grupları:
+${JSON.stringify(preferenceExamples)}
+Kayıtlı geri bildirim sayısı: ${likedCount} beğeni, ${dislikedCount} beğenmeme.
+Bu geri bildirimler kullanıcının kendi tercih sinyalidir; bir parçaya kalıcı yasak veya kesin stil özelliği atfetme.
+
 Kurallar:
 - En fazla 3 farklı kombin öner.
 - Yalnızca verilen gardıroptaki ID'leri kullan.
 - Her kombin en az 2 farklı kıyafet içermeli.
 - Kombinler etkinliğe ve istenen tarza uygun olmalı.
+- Açıkça beğenilmiş parça birlikteliklerinden ilham al; beğenilmemiş aynı birliktelikleri mümkün olduğunca tekrar etme.
+- Yeni kombinleri keşfetmeye alan bırak; yalnızca eskileri kopyalama.
+- Geçmişte beğenilmeyen kombinin tek tek parçalarını otomatik olarak reddetme.
+- Kullanıcının son mesajındaki özel isteği eski beğenilerinden daha önemlidir.
 - Kullanıcının sevdiği renk paletlerini mümkün olduğunca dikkate al.
 - Renk tercihleri katı bir kural değildir; uyumlu kombinler önceliklidir.
 - Gardıropta uygun renkler yoksa başka renklerle de kombin oluşturabilirsin.

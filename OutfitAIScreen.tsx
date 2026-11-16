@@ -12,6 +12,9 @@ import {
 import { supabase } from './supabase';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 
+type Preference = 'liked' | 'disliked';
+const outfitKey = (ids: string[]) => [...new Set(ids)].sort().join(':');
+
 type Props = {
   userId: string;
   onSaved?: () => void;
@@ -35,6 +38,8 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
   const [generating, setGenerating] = useState(false);
   const [savingOutfit, setSavingOutfit] = useState<number | null>(null);
   const [savedOutfits, setSavedOutfits] = useState<number[]>([]);
+  const [feedback, setFeedback] = useState<Record<string, Preference>>({});
+  const [feedbackLoading, setFeedbackLoading] = useState<string | null>(null);
 
   const [outfits, setOutfits] = useState<{
     name: string;
@@ -102,6 +107,77 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
       active = false;
     };
   }, [userId]);
+
+  useEffect(() => {
+    let active = true;
+    setFeedback({});
+    const loadFeedback = async () => {
+      const { data, error } = await supabase
+        .from('outfit_feedback')
+        .select('outfit_key,sentiment')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(250);
+      if (!active) return;
+      if (error) {
+        console.warn('PRIZMA preference load:', error.message);
+        return;
+      }
+      const next: Record<string, Preference> = {};
+      (data || []).forEach(row => {
+        if (typeof row.outfit_key === 'string' &&
+          (row.sentiment === 'liked' || row.sentiment === 'disliked')) {
+          next[row.outfit_key] = row.sentiment;
+        }
+      });
+      setFeedback(next);
+    };
+    void loadFeedback();
+    return () => { active = false; };
+  }, [userId]);
+
+  async function rateOutfit(index: number, sentiment: Preference) {
+    const outfit = outfits[index];
+    if (!outfit || feedbackLoading !== null || !userId) return;
+    const key = outfitKey(outfit.item_ids);
+    const previous = feedback[key];
+    setFeedbackLoading(key);
+    try {
+      if (previous === sentiment) {
+        const { error } = await supabase
+          .from('outfit_feedback')
+          .delete()
+          .eq('user_id', userId)
+          .eq('outfit_key', key);
+        if (error) throw error;
+        setFeedback(current => {
+          const next = { ...current };
+          delete next[key];
+          return next;
+        });
+      } else {
+        const { error } = await supabase
+          .from('outfit_feedback')
+          .upsert({
+            user_id: userId,
+            outfit_key: key,
+            item_ids: [...new Set(outfit.item_ids)],
+            sentiment,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,outfit_key' });
+        if (error) throw error;
+        setFeedback(current => ({ ...current, [key]: sentiment }));
+      }
+    } catch (error) {
+      setNotice({
+        type: 'error',
+        title: 'Tercihin kaydedilemedi',
+        message: error instanceof Error ? error.message : 'Lütfen tekrar dene.',
+      });
+    } finally {
+      setFeedbackLoading(null);
+    }
+  }
 
   async function saveOutfit(index: number) {
     const outfit = outfits[index];
@@ -331,6 +407,41 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
                   );
                 })}
 
+                <View style={styles.preferenceRow}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Bu kombini beğendim"
+                    accessibilityState={{ selected: feedback[outfitKey(outfit.item_ids)] === 'liked' }}
+                    disabled={feedbackLoading !== null}
+                    onPress={() => void rateOutfit(index, 'liked')}
+                    style={[
+                      styles.preferenceButton,
+                      feedback[outfitKey(outfit.item_ids)] === 'liked' && styles.preferenceActive,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.preferenceText,
+                      feedback[outfitKey(outfit.item_ids)] === 'liked' && styles.preferenceActiveText,
+                    ]}>♡  Beğendim</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Bu kombin bana göre değil"
+                    accessibilityState={{ selected: feedback[outfitKey(outfit.item_ids)] === 'disliked' }}
+                    disabled={feedbackLoading !== null}
+                    onPress={() => void rateOutfit(index, 'disliked')}
+                    style={[
+                      styles.preferenceButton,
+                      feedback[outfitKey(outfit.item_ids)] === 'disliked' && styles.preferenceDisliked,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.preferenceText,
+                      feedback[outfitKey(outfit.item_ids)] === 'disliked' && styles.preferenceActiveText,
+                    ]}>✕  Bana göre değil</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.preferenceHint}>PRİZMA bu seçimleri sonraki kombin önerilerinde dikkate alır.</Text>
                 <TouchableOpacity
                   onPress={() => void saveOutfit(index)}
                   disabled={
@@ -400,6 +511,13 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
 }
 
 const styles = StyleSheet.create({
+  preferenceRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  preferenceButton: { flex: 1, backgroundColor: '#F3EEF7', borderRadius: 12, borderWidth: 1, borderColor: '#E5D9EB', paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center' },
+  preferenceActive: { backgroundColor: '#7851A1', borderColor: '#7851A1' },
+  preferenceDisliked: { backgroundColor: '#514661', borderColor: '#514661' },
+  preferenceText: { color: '#6F5C81', fontSize: 12, fontWeight: '700' },
+  preferenceActiveText: { color: '#FFFFFF' },
+  preferenceHint: { marginTop: 8, marginBottom: 3, fontSize: 11, lineHeight: 16, color: '#847890' },
   container: {
     flex: 1,
     backgroundColor: '#FAF7FC',
