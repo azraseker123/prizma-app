@@ -5,7 +5,7 @@ import {
   StyleSheet, Modal,
 } from 'react-native';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
-import { chooseTryOnPhoto, readTryOnPhoto, saveTryOnPhoto, deleteTryOnPhoto, validateTryOnImage, type TryOnPhoto } from './TryOnPhotoStore';
+import { chooseTryOnPhoto, readTryOnPhoto, saveTryOnPhoto, deleteTryOnPhoto, validateTryOnImage, removeSavedTryOnBackground, type TryOnPhoto } from './TryOnPhotoStore';
 
 type Props = { userId: string; onBack: () => void };
 type Notice = { type: NoticeType; title: string; message: string };
@@ -16,6 +16,7 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
   const [photo, setPhoto] = useState<{ path: string; url: string } | null>(null);
   const [draft, setDraft] = useState<TryOnPhoto | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmBg, setConfirmBg] = useState(false);
   const [consent, setConsent] = useState(false);
   const [verified, setVerified] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -70,6 +71,19 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
     finally { setBusy(false); }
   }
 
+  async function cleanSavedPhoto() {
+    if (!photo || busy) return;
+    setConfirmBg(false);
+    setBusy(true);
+    try {
+      await removeSavedTryOnBackground(userId, photo.path);
+      await reload();
+      setNotice({ type: 'success', title: 'Arka plan kaldırıldı ✦', message: 'Kayıtlı fotoğrafın güncellendi. Arka plan kaldırma hakkından 1 işlem kullanıldı.' });
+    } catch (e) {
+      setNotice({ type: 'error', title: 'Arka plan kaldırılamadı', message: e instanceof Error ? e.message : 'Tekrar deneyebilirsin.' });
+    } finally { setBusy(false); }
+  }
+
   async function remove() {
     if (!photo || busy) return;
     setBusy(true);
@@ -91,6 +105,20 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
         title={notice?.title || ''} message={notice?.message || ''}
         onClose={() => setNotice(null)}
       />
+      <Modal transparent animationType="fade" visible={confirmBg} onRequestClose={() => setConfirmBg(false)}>
+        <View style={s.overlay}>
+          <View style={s.confirmBox}>
+            <Text style={s.confirmTitle}>Arka planı kaldıralım mı?</Text>
+            <Text style={s.note}>Kayıtlı fotoğrafın Bria AI servisine gönderilecek. Bu işlem mevcut arka plan kaldırma hakkından 1 adet kullanır. Sonuç mevcut fotoğrafının yerini alacak.</Text>
+            <TouchableOpacity style={s.primary} onPress={() => void cleanSavedPhoto()} disabled={busy}>
+              <Text style={s.primaryText}>Onayla · 1 hak kullan</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.secondary} onPress={() => setConfirmBg(false)} disabled={busy}>
+              <Text style={s.secondaryText}>Vazgeç</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       <Modal transparent animationType="fade" visible={confirmDelete} onRequestClose={() => setConfirmDelete(false)}>
         <View style={s.overlay}>
           <View style={s.confirmBox}>
@@ -152,6 +180,11 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
               <Text style={s.secondaryText}>Vazgeç</Text>
             </TouchableOpacity>
           </View>
+        )}
+        {photo && !draft && (
+          <TouchableOpacity style={[s.secondary, { marginTop: 14, paddingVertical: 14 }]} disabled={busy || loading} onPress={() => setConfirmBg(true)}>
+            <Text style={s.secondaryText}>✦ Kayıtlı fotoğrafımın arka planını kaldır · 1 hak</Text>
+          </TouchableOpacity>
         )}
         {photo && !draft && (
           <TouchableOpacity style={s.deleteButton} disabled={busy} onPress={() => setConfirmDelete(true)}>
