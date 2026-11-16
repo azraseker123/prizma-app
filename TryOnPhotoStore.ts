@@ -14,7 +14,7 @@ export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | nu
     }
   }
   const pickerOptions: ImagePicker.ImagePickerOptions = {
-    mediaTypes: ['images'], allowsEditing: false, quality: 0.85,
+    mediaTypes: ['images'], allowsEditing: false, quality: camera ? 0.6 : 0.8,
   };
   const result = camera
     ? await ImagePicker.launchCameraAsync({ ...pickerOptions, cameraType: ImagePicker.CameraType.back })
@@ -22,8 +22,8 @@ export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | nu
   if (result.canceled || !result.assets?.[0]?.uri) return null;
   const reduced = await ImageManipulator.manipulateAsync(
     result.assets[0].uri,
-    [{ resize: { width: 1200 } }],
-    { format: ImageManipulator.SaveFormat.JPEG, compress: 0.8, base64: true },
+    [{ resize: { width: 960 } }],
+    { format: ImageManipulator.SaveFormat.JPEG, compress: 0.65, base64: true },
   );
   if (!reduced.base64) throw new Error('Fotoğraf okunamadı.');
   if (decode(reduced.base64).byteLength > 10 * 1024 * 1024) throw new Error('Fotoğraf 10 MB sınırını aşıyor.');
