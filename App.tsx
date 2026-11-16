@@ -726,7 +726,7 @@ export default function App() {
 
         {/* GARDIROP */}
         {tab === 'Gardırop' && (
-          <WardrobeScreen userId={session.user.id} />
+          <WardrobeScreen userId={session.user.id} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} />
         )}
 
         {/* CİLT ANALİZİ */}
