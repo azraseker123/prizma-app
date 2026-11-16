@@ -2,6 +2,7 @@ import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 import { PRIZMA_COLORS as C } from './theme';
 import PrizmaConfirm from './PrizmaConfirm';
 import OutfitAIScreen from './OutfitAIScreen';
+import TryOnPreviewModal from './TryOnPreviewModal';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -43,6 +44,7 @@ type WardrobeItemWithImage = WardrobeItem & {
 
 type Props = {
   userId: string;
+  onSetupTryOnPhoto: () => void;
 };
 
 type Outfit = {
@@ -74,7 +76,7 @@ const CATEGORIES = [
   'Diğer',
 ];
 
-export default function WardrobeScreen({ userId }: Props) {
+export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
 
   const [notice, setNotice] = useState<{
     type: NoticeType;
@@ -125,6 +127,7 @@ export default function WardrobeScreen({ userId }: Props) {
 
   const [detailItem, setDetailItem] =
     useState<WardrobeItemWithImage | null>(null);
+  const [tryOnItem, setTryOnItem] = useState<WardrobeItemWithImage | null>(null);
 
   const [activeWardrobeTab, setActiveWardrobeTab] = useState<'clothes' | 'outfits' | 'ai'>('clothes');
   const [outfits, setOutfits] = useState<Outfit[]>([]);
@@ -921,6 +924,13 @@ export default function WardrobeScreen({ userId }: Props) {
 
   return (
     <View style={styles.container}>
+      <TryOnPreviewModal
+        visible={tryOnItem !== null}
+        item={tryOnItem}
+        userId={userId}
+        onClose={() => setTryOnItem(null)}
+        onSetupPhoto={() => { setTryOnItem(null); onSetupTryOnPhoto(); }}
+      />
       <PrizmaNotice
         visible={Boolean(notice)}
         type={notice?.type || 'info'}
@@ -1381,6 +1391,13 @@ export default function WardrobeScreen({ userId }: Props) {
                     </View>
                   )}
                 </View>
+
+                <TouchableOpacity
+                  style={[styles.outlineButton, { marginTop: 14, backgroundColor: '#EDE5F5', borderColor: '#DCC7EB' }]}
+                  onPress={() => { const chosen = detailItem; setDetailItem(null); setTimeout(() => setTryOnItem(chosen), 360); }}
+                >
+                  <Text style={[styles.outlineText, { color: '#68419A', fontWeight: '800' }]}>✦ Üzerimde Dene</Text>
+                </TouchableOpacity>
 
                 {/* İSİM VE FAVORİ */}
 
@@ -1859,6 +1876,13 @@ export default function WardrobeScreen({ userId }: Props) {
                       <Text style={styles.outlineText}>
                         Detayları Gör
                       </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setTryOnItem(item)}
+                      style={[styles.outlineButton, { backgroundColor: '#F0EAF6', borderColor: '#DCC7EB' }]}
+                    >
+                      <Text style={[styles.outlineText, { color: '#68419A', fontWeight: '800' }]}>✦ Üzerimde Dene</Text>
                     </TouchableOpacity>
 
                     {/* FAVORİ BUTONU */}
