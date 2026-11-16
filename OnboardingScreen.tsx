@@ -1,4 +1,5 @@
 import SkinTypeGuide from './SkinTypeGuide';
+import UndertoneGuide from './UndertoneGuide';
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
@@ -664,22 +665,8 @@ export default function OnboardingScreen({
             >
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Alt Tonumu Nasıl Öğrenirim? ✦</Text>
-            <Text style={styles.subtitle}>
-              Doğal gün ışığında, makyajsızken yüzüne yakın sıcak (şeftali, altın)
-              ve soğuk (pembe, mavi) renkli kumaşları sırayla tutup karşılaştır.
-              Hangi renklerin daha dengeli göründüğüne bak. Tek bir yöntem kesin
-              sonuç vermez; bilek damarlarının rengi tek başına güvenilir değildir.
-            </Text>
-            <Text style={styles.subtitle}>
-              Sıcak ve soğuk renkler benzer derecede uyumluysa nötr olabilirsin.
-              Teninde yeşilimsi ya da grileşen yansımalar varsa zeytin alt ton
-              düşünülebilir. Işık, kamera ve ekran renkleri yanıltabilir.
-            </Text>
-            <Text style={styles.note}>
-              Emin değilsen “Emin değilim” seçeneğini seç. Bu bilgi kozmetik
-              renk önerilerine yardımcı olur; kesin bir analiz değildir.
-            </Text>
+            <UndertoneGuide />
+
             <TouchableOpacity
               style={styles.next}
               onPress={() => setUndertoneGuideOpen(false)}
