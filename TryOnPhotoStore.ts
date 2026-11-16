@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { decode } from 'base64-arraybuffer';
+import { decode, encode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
 const BUCKET = 'tryon-avatars';
@@ -14,16 +14,16 @@ export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | nu
     }
   }
   const pickerOptions: ImagePicker.ImagePickerOptions = {
-    mediaTypes: ['images'], allowsEditing: false, quality: 0.85,
+    mediaTypes: ['images'], allowsEditing: false, quality: camera ? 0.6 : 0.8,
   };
   const result = camera
-    ? await ImagePicker.launchCameraAsync(pickerOptions)
+    ? await ImagePicker.launchCameraAsync({ ...pickerOptions, cameraType: ImagePicker.CameraType.back })
     : await ImagePicker.launchImageLibraryAsync(pickerOptions);
   if (result.canceled || !result.assets?.[0]?.uri) return null;
   const reduced = await ImageManipulator.manipulateAsync(
     result.assets[0].uri,
-    [{ resize: { width: 1200 } }],
-    { format: ImageManipulator.SaveFormat.JPEG, compress: 0.8, base64: true },
+    [{ resize: { width: 960 } }],
+    { format: ImageManipulator.SaveFormat.JPEG, compress: 0.65, base64: true },
   );
   if (!reduced.base64) throw new Error('Fotoğraf okunamadı.');
   if (decode(reduced.base64).byteLength > 10 * 1024 * 1024) throw new Error('Fotoğraf 10 MB sınırını aşıyor.');
@@ -88,4 +88,25 @@ export async function validateTryOnImage(photo: TryOnPhoto, kind: 'person' | 'ga
   }
   if (data?.error) throw new Error(data.error);
   if (data?.valid !== true) throw new Error(typeof data?.reason === 'string' ? data.reason : 'Bu fotoğraf sanal deneme için uygun değil.');
+}
+
+/** Runs a paid background removal only after explicit action; replaces the current private avatar. */
+export async function removeSavedTryOnBackground(userId: string, path: string): Promise<void> {
+  if (!path.startsWith(userId + '/')) throw new Error('Fotoğraf yolu geçersiz.');
+  const { data: file, error: downloadError } = await supabase.storage.from(BUCKET).download(path);
+  if (downloadError || !file) throw downloadError || new Error('Fotoğraf okunamadı.');
+  const rawBytes = await file.arrayBuffer();
+  if (rawBytes.byteLength > 6 * 1024 * 1024) throw new Error('Fotoğraf işlenemeyecek kadar büyük.');
+  const { data, error } = await supabase.functions.invoke('remove-background', {
+    body: { imageBase64: encode(rawBytes), mimeType: path.endsWith('.png') ? 'image/png' : 'image/jpeg' },
+  });
+  if (error) {
+    let message = error.message || 'Arka plan kaldırılamadı.';
+    if (error.context && typeof error.context.json === 'function') {
+      try { const details = await error.context.json(); if (typeof details?.error === 'string') message = details.error; } catch { /* response not JSON */ }
+    }
+    throw new Error(message);
+  }
+  if (typeof data?.imageBase64 !== 'string' || !data.imageBase64) throw new Error('Arka plan kaldırma sonucu alınamadı.');
+  await saveTryOnPhoto(userId, { uri: 'data:image/png;base64,' + data.imageBase64, base64: data.imageBase64, mimeType: 'image/png' }, path);
 }

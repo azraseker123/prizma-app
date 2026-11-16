@@ -46,14 +46,14 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto}:Props){
  async function chooseGarment(camera:boolean){
   if(busy)return;
   if(!consent){setNotice({type:'info',title:'AI kontrol izni',message:'Fotoğrafın uygunluğunu doğrulayabilmemiz için aşağıdaki AI görsel kontrolü iznini açmalısın.'});return;}
+  setBusy(true);
   try{
    const picked=await chooseTryOnPhoto(camera);
    if(!picked)return;
-   setBusy(true);
    await validateTryOnImage(picked,'garment');
    setGarment({uri:picked.uri,name:camera?'Yeni çektiğim kıyafet':'Galeriden seçtiğim kıyafet',source:camera?'camera':'gallery'});
    setShowWardrobe(false);
-  }catch(e){setNotice({type:'error',title:'Kıyafet fotoğrafı uygun değil',message:e instanceof Error?e.message:'Lütfen net, tek bir kıyafet fotoğrafı seç.'});}
+  }catch(e){setNotice({type:'error',title:'Fotoğraf işlenemedi',message:e instanceof Error?e.message:'Lütfen yeniden dene.'});}
   finally{setBusy(false);}
  }
 
