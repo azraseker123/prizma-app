@@ -34,13 +34,14 @@ import { supabase } from './supabase';
 import AuthScreen from './AuthScreen';
 import WardrobeScreen from './WardrobeScreen';
 import TryOnProfileScreen from './TryOnProfileScreen';
+import HomeTryOnScreen from './HomeTryOnScreen';
 
 type Tab =
   | 'Ana Sayfa'
   | 'Gardırop'
   | 'PRİZMA AI'
   | 'Güzellik'
-  | 'Profil' | 'Deneme Fotoğrafım' | 'Alışveriş' | 'Cilt Analizi' | 'Bakım Koleksiyonum' | 'Cilt Danışmanı' | 'Bakım Rutini';
+  | 'Profil' | 'Deneme Fotoğrafım' | 'Sanal Deneme' | 'Alışveriş' | 'Cilt Analizi' | 'Bakım Koleksiyonum' | 'Cilt Danışmanı' | 'Bakım Rutini';
 
 
 
@@ -665,7 +666,9 @@ export default function App() {
           <PrizmaChatScreen userId={session.user.id} onOutfit={() => open('Gardırop')} />
         </KeyboardAvoidingView>
       ) : tab === 'Deneme Fotoğrafım' ? (
-        <TryOnProfileScreen userId={session.user.id} onBack={() => open('Profil')} />
+        <TryOnProfileScreen userId={session.user.id} onBack={() => open('Sanal Deneme')} />
+      ) : tab === 'Sanal Deneme' ? (
+        <HomeTryOnScreen userId={session.user.id} onBack={() => open('Ana Sayfa')} onManagePhoto={() => open('Deneme Fotoğrafım')} />
       ) : (
       <ScrollView
         style={styles.scroll}
@@ -680,6 +683,7 @@ export default function App() {
             <View style={styles.quickHomeRow}>
               {([
                 ['♧', 'Gardırop', 'Gardırop'],
+                ['✦', 'Sanal Deneme', 'Sanal Deneme'],
                 ['✧', 'Güzellik', 'Güzellik'],
                 ['▢', 'Alışveriş', 'Alışveriş'],
                 ['♡', 'Koleksiyon', 'Bakım Koleksiyonum'],
@@ -701,6 +705,7 @@ export default function App() {
             </TouchableOpacity>
             {([
               ['♧', 'Gardırop', 'Kıyafetlerin, kombinlerin ve AI stil önerileri', 'Gardırop'],
+              ['✦', 'Sanal Deneme', 'Gardıroptan seç veya yeni kıyafet fotoğrafı çek', 'Sanal Deneme'],
               ['✧', 'Güzellik', 'Cilt, saç ve makyaj rutinlerin', 'Güzellik'],
               ['▢', 'Alışveriş Analizi', 'Almadan önce birlikte değerlendirelim', 'Alışveriş'],
               ['♡', 'Koleksiyonum', 'Kaydettiğin tüm ürünler', 'Bakım Koleksiyonum'],

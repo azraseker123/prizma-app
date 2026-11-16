@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { removeBeautyBackground } from './BeautyPhotoStore';
 import {
   View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator,
   StyleSheet, Modal,
 } from 'react-native';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
-import { chooseTryOnPhoto, readTryOnPhoto, saveTryOnPhoto, deleteTryOnPhoto, type TryOnPhoto } from './TryOnPhotoStore';
+import { chooseTryOnPhoto, readTryOnPhoto, saveTryOnPhoto, deleteTryOnPhoto, validateTryOnImage, type TryOnPhoto } from './TryOnPhotoStore';
 
 type Props = { userId: string; onBack: () => void };
 type Notice = { type: NoticeType; title: string; message: string };
@@ -15,6 +16,8 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
   const [photo, setPhoto] = useState<{ path: string; url: string } | null>(null);
   const [draft, setDraft] = useState<TryOnPhoto | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const reload = useCallback(async () => {
@@ -30,7 +33,7 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
     if (busy) return;
     try {
       const chosen = await chooseTryOnPhoto(camera);
-      if (chosen) setDraft(chosen);
+      if (chosen) { setDraft(chosen); setVerified(false); setConsent(false); }
     } catch (e) {
       setNotice({ type: 'error', title: 'Fotoğraf seçilemedi', message: e instanceof Error ? e.message : 'Tekrar dene.' });
     }
@@ -38,15 +41,33 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
 
   async function save() {
     if (!draft || busy) return;
+    if (!consent) { setNotice({ type: 'info', title: 'İzin gerekli', message: 'Fotoğrafın otomatik uygunluk kontrolüne gönderilmesi için önce izin vermelisin.' }); return; }
     setBusy(true);
     try {
+      if (!verified) await validateTryOnImage(draft, 'person');
       await saveTryOnPhoto(userId, draft, photo?.path);
       setDraft(null);
+      setConsent(false);
+      setVerified(false);
       await reload();
       setNotice({ type: 'success', title: 'Fotoğrafın kaydedildi ✦', message: 'Kayıtlı fotoğrafını yeni kıyafet denemelerinde kullanabileceğiz.' });
     } catch (e) {
       setNotice({ type: 'error', title: 'Fotoğraf kaydedilemedi', message: e instanceof Error ? e.message : 'Tekrar dene.' });
     } finally { setBusy(false); }
+  }
+
+  async function removeBackground() {
+    if (!draft || busy) return;
+    if (!consent) { setNotice({ type: 'info', title: 'İzin gerekli', message: 'Fotoğrafın yapay zekâ tarafından incelenmesi için önce izin vermelisin.' }); return; }
+    setBusy(true);
+    try {
+      if (!verified) await validateTryOnImage(draft, 'person');
+      const cleaned = await removeBeautyBackground(draft.uri);
+      setDraft({ uri: cleaned.uri, base64: cleaned.base64, mimeType: 'image/png' });
+      setVerified(true);
+      setNotice({ type: 'success', title: 'Arka plan kaldırıldı', message: 'Sonucu kaydetmeden önce inceleyebilirsin. Bu işlem arka plan kaldırma hakkını kullanır.' });
+    } catch(e) { setNotice({ type: 'error', title: 'İşlem tamamlanamadı', message: e instanceof Error ? e.message : 'Tekrar deneyebilirsin.' }); }
+    finally { setBusy(false); }
   }
 
   async function remove() {
@@ -88,7 +109,7 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
         <TouchableOpacity onPress={onBack} style={s.back}><Text style={s.backText}>‹ Profilime dön</Text></TouchableOpacity>
         <Text style={s.brand}>PRİZMA ✦ VIRTUAL TRY-ON</Text>
         <Text style={s.title}>Deneme Fotoğrafım</Text>
-        <Text style={s.subtitle}>Kendi boydan fotoğrafını bir kez kaydet. Daha sonra gardırobundaki kıyafetleri bu fotoğrafta deneyebileceksin.</Text>
+        <Text style={s.subtitle}>Kıyafetli, tek kişilik ve baştan ayağa görünen fotoğrafını kaydet. AI uygunluk kontrolü boydan olmayan veya ilgisiz fotoğrafları reddeder.</Text>
 
         <View style={s.photoFrame}>
           {loading ? <ActivityIndicator size="large" color="#8050B5" /> :
@@ -104,6 +125,11 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
         </View>
 
         {draft && <Text style={s.draftBadge}>Önizleme · Fotoğraf henüz kaydedilmedi</Text>}
+        {draft && (
+          <TouchableOpacity style={[s.secondary, { marginTop: 13, padding: 14 }]} disabled={busy} onPress={() => setConsent(!consent)}>
+            <Text style={s.secondaryText}>{consent ? '☑' : '☐'} Fotoğrafımın AI uygunluk kontrolü için işlenmesine izin veriyorum.</Text>
+          </TouchableOpacity>
+        )}
         <View style={s.actions}>
           <TouchableOpacity style={s.secondary} disabled={busy || loading} onPress={() => void select(false)}>
             <Text style={s.secondaryText}>Galeriden seç</Text>
@@ -113,11 +139,16 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
           </TouchableOpacity>
         </View>
         {draft && (
+          <TouchableOpacity style={[s.secondary, { marginTop: 10, padding: 13 }]} disabled={busy || !consent} onPress={() => void removeBackground()}>
+            <Text style={s.secondaryText}>{busy ? 'İşleniyor…' : '✦ İsteğe bağlı: Arka planı kaldır (1 hak)'}</Text>
+          </TouchableOpacity>
+        )}
+        {draft && (
           <View style={s.actions}>
             <TouchableOpacity style={s.primary} disabled={busy} onPress={() => void save()}>
               <Text style={s.primaryText}>{busy ? 'Kaydediliyor…' : 'Fotoğrafımı kaydet ✦'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.secondary} disabled={busy} onPress={() => setDraft(null)}>
+            <TouchableOpacity style={s.secondary} disabled={busy} onPress={() => { setDraft(null); setConsent(false); setVerified(false); }}>
               <Text style={s.secondaryText}>Vazgeç</Text>
             </TouchableOpacity>
           </View>
@@ -130,9 +161,9 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
 
         <View style={s.guide}>
           <Text style={s.guideTitle}>✦ Daha iyi sonuç için</Text>
-          <Text style={s.guideText}>• Ayakta, baştan ayağa göründüğün bir fotoğraf kullan.\n• İyi aydınlatılmış, sade bir arka plan seç.\n• Rahat, günlük kıyafetlerle çekilmiş bir fotoğraf yeterli.\n• Fotoğrafını istediğin zaman değiştirebilir veya silebilirsin.</Text>
+          <Text style={s.guideText}>• Baş ve ayaklar kadrajın içinde olsun, tek kişi görün.\n• İyi aydınlatılmış, sade bir arka plan seç.\n• Rahat, günlük kıyafetlerle çekilmiş bir fotoğraf yeterli.\n• Fotoğrafını istediğin zaman değiştirebilir veya silebilirsin.</Text>
         </View>
-        <Text style={s.privacy}>🔒 Fotoğrafın herkese açık değildir. Hesabına bağlı özel depolamada saklanır. Sanal deneme özelliği daha sonra eklenecek; AI işlemine göndermeden önce ayrıca bilgilendirileceksin. Sonuçlar gerçek beden uyumunu garanti etmez.</Text>
+        <Text style={s.privacy}>🔒 Fotoğrafın herkese açık değildir. Kaydetmeden önce seçersen görselin Gemini AI uygunluk kontrolüne, arka plan kaldırma seçeneğini kullanırsan ayrıca Bria hizmetine gönderilir. Kayıtlı fotoğraf hesabına özel saklanır. Sanal deneme için ayrı izin istenecektir. Sonuçlar gerçek beden uyumunu garanti etmez.</Text>
         <Text style={s.dev}>Bu ekran avatar fotoğrafı kayıt altyapısının test sürümüdür. Premium üyelik doğrulaması henüz bağlanmadı.</Text>
       </ScrollView>
     </View>

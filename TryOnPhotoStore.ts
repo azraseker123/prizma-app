@@ -4,7 +4,7 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
 const BUCKET = 'tryon-avatars';
-export type TryOnPhoto = { uri: string; base64: string };
+export type TryOnPhoto = { uri: string; base64: string; mimeType?: 'image/jpeg' | 'image/png' };
 
 export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | null> {
   if (camera) {
@@ -27,7 +27,7 @@ export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | nu
   );
   if (!reduced.base64) throw new Error('Fotoğraf okunamadı.');
   if (decode(reduced.base64).byteLength > 10 * 1024 * 1024) throw new Error('Fotoğraf 10 MB sınırını aşıyor.');
-  return { uri: reduced.uri, base64: reduced.base64 };
+  return { uri: reduced.uri, base64: reduced.base64, mimeType: 'image/jpeg' };
 }
 
 export async function readTryOnPhoto(userId: string): Promise<{ path: string; url: string } | null> {
@@ -42,11 +42,12 @@ export async function readTryOnPhoto(userId: string): Promise<{ path: string; ur
 }
 
 export async function saveTryOnPhoto(userId: string, photo: TryOnPhoto, previousPath?: string): Promise<void> {
-  const path = userId + '/avatar-' + Date.now() + '-' + Math.random().toString(36).slice(2, 12) + '.jpg';
+  const mime = photo.mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
+  const path = userId + '/avatar-' + Date.now() + '-' + Math.random().toString(36).slice(2, 12) + (mime === 'image/png' ? '.png' : '.jpg');
   const bytes = decode(photo.base64);
   if (bytes.byteLength > 10 * 1024 * 1024) throw new Error('Fotoğraf 10 MB sınırını aşıyor.');
   const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, bytes, {
-    contentType: 'image/jpeg', upsert: false,
+    contentType: mime, upsert: false,
   });
   if (uploadError) throw uploadError;
   const { error: profileError } = await supabase.from('tryon_profiles').upsert({
@@ -70,4 +71,21 @@ export async function deleteTryOnPhoto(userId: string, path: string): Promise<vo
   const { error: profileError } = await supabase.from('tryon_profiles').delete()
     .eq('user_id', userId).eq('photo_path', path);
   if (profileError) throw profileError;
+}
+
+
+/** Validates real photos via a server-side AI check; fails closed on API errors. */
+export async function validateTryOnImage(photo: TryOnPhoto, kind: 'person' | 'garment'): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('validate-tryon-image', {
+    body: { imageBase64: photo.base64, kind, consent: true },
+  });
+  if (error) {
+    let message = error.message || 'Görsel kontrolü tamamlanamadı.';
+    if (error.context && typeof error.context.json === 'function') {
+      try { const detail = await error.context.json(); if (typeof detail?.error === 'string') message = detail.error; } catch { /* ignore */ }
+    }
+    throw new Error(message);
+  }
+  if (data?.error) throw new Error(data.error);
+  if (data?.valid !== true) throw new Error(typeof data?.reason === 'string' ? data.reason : 'Bu fotoğraf sanal deneme için uygun değil.');
 }
