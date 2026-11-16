@@ -44,7 +44,7 @@ type WardrobeItemWithImage = WardrobeItem & {
 
 type Props = {
   userId: string;
-  onSetupTryOnPhoto: () => void;
+  onSetupTryOnPhoto?: () => void;
 };
 
 type Outfit = {
@@ -929,7 +929,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
         item={tryOnItem}
         userId={userId}
         onClose={() => setTryOnItem(null)}
-        onSetupPhoto={() => { setTryOnItem(null); onSetupTryOnPhoto(); }}
+        onSetupPhoto={() => { setTryOnItem(null); if (onSetupTryOnPhoto) onSetupTryOnPhoto(); else showNotice('info', 'Fotoğrafını profilinden ekle ✦', 'Profil → Sanal Deneme Fotoğrafım bölümünden boydan fotoğraf yükleyebilirsin.'); }}
       />
       <PrizmaNotice
         visible={Boolean(notice)}
