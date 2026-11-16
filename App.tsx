@@ -664,6 +664,8 @@ export default function App() {
         <KeyboardAvoidingView style={styles.chatPage} behavior="padding">
           <PrizmaChatScreen userId={session.user.id} onOutfit={() => open('Gardırop')} />
         </KeyboardAvoidingView>
+      ) : tab === 'Deneme Fotoğrafım' ? (
+        <TryOnProfileScreen userId={session.user.id} onBack={() => open('Profil')} />
       ) : (
       <ScrollView
         style={styles.scroll}
@@ -790,10 +792,6 @@ export default function App() {
               <Text style={styles.compactListArrow}>›</Text>
             </TouchableOpacity>
           </View>
-        )}
-
-        {tab === 'Deneme Fotoğrafım' && (
-          <TryOnProfileScreen userId={session.user.id} onBack={() => open('Profil')} />
         )}
 
         {/* PROFİL */}
