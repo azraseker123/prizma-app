@@ -33,13 +33,14 @@ import {
 import { supabase } from './supabase';
 import AuthScreen from './AuthScreen';
 import WardrobeScreen from './WardrobeScreen';
+import TryOnProfileScreen from './TryOnProfileScreen';
 
 type Tab =
   | 'Ana Sayfa'
   | 'Gardırop'
   | 'PRİZMA AI'
   | 'Güzellik'
-  | 'Profil' | 'Alışveriş' | 'Cilt Analizi' | 'Bakım Koleksiyonum' | 'Cilt Danışmanı' | 'Bakım Rutini';
+  | 'Profil' | 'Deneme Fotoğrafım' | 'Alışveriş' | 'Cilt Analizi' | 'Bakım Koleksiyonum' | 'Cilt Danışmanı' | 'Bakım Rutini';
 
 
 
@@ -663,6 +664,8 @@ export default function App() {
         <KeyboardAvoidingView style={styles.chatPage} behavior="padding">
           <PrizmaChatScreen userId={session.user.id} onOutfit={() => open('Gardırop')} />
         </KeyboardAvoidingView>
+      ) : tab === 'Deneme Fotoğrafım' ? (
+        <TryOnProfileScreen userId={session.user.id} onBack={() => open('Profil')} />
       ) : (
       <ScrollView
         style={styles.scroll}
@@ -836,6 +839,17 @@ export default function App() {
               {loadingEditProfile && (
                 <ActivityIndicator color={C.lavender} />
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.profileInfoCard}
+              onPress={() => open('Deneme Fotoğrafım')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.profileInfoTitle}>◇ Sanal Deneme Fotoğrafım</Text>
+              <Text style={styles.profileInfoDescription}>
+                Kendi boydan fotoğrafını güvenle kaydet, değiştir veya sil. →
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
