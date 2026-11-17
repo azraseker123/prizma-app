@@ -707,7 +707,7 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === 'Ana Sayfa' && (
-          <PrizmaHome userId={session.user.id} onOpen={(page:PrizmaPage)=>open(page)} onSoon={comingSoon}/>
+          <PrizmaHome userId={session.user.id} displayName={typeof session.user.user_metadata?.full_name==='string'?session.user.user_metadata.full_name.split(' ')[0]:''} onOpen={(page:PrizmaPage)=>open(page)} onSoon={comingSoon}/>
         )}
 
         {tab === 'Stil Stüdyosu' && (
