@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 import { PRIZMA_COLORS as C } from './theme';
 
 export type PrizmaPage =
-  | 'Ana Sayfa' | 'Gardırop' | 'Stil Stüdyosu' | 'PRİZMA AI' | 'Sanal Deneme'
+  | 'Ana Sayfa' | 'Gardırop' | 'Stil Stüdyosu' | 'Kombin Oluştur' | 'PRİZMA AI' | 'Sanal Deneme'
   | 'Güzellik' | 'Cilt Danışmanı' | 'Bakım Rutini' | 'Bakım Koleksiyonum'
   | 'Cilt Analizi' | 'Alışveriş' | 'Profil' | 'Deneme Fotoğrafım';
 
@@ -126,14 +126,14 @@ export function PrizmaStudio({userId,onOpen,onSoon}:Common){
   </View>
   <Section title="Öne çıkan parçaların" action="Tümünü gör" onAction={()=>onOpen('Gardırop')}/>
   {busy?<ActivityIndicator color={C.lavender}/>:items.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:9,paddingBottom:8}}>{items.map(x=><TouchableOpacity key={x.id} onPress={()=>onOpen('Gardırop')}><Garment item={x}/></TouchableOpacity>)}</ScrollView>:<TouchableOpacity onPress={()=>onOpen('Gardırop')}><EmptyGarment label="Gardırobun boş. İlk parçanı ekle →"/></TouchableOpacity>}
-  <TouchableOpacity style={ui.primaryCTA} onPress={()=>onOpen('Gardırop')}><Text style={ui.primaryCTAText}>Kombin oluştur</Text><Text style={ui.primaryCTAText}>→</Text></TouchableOpacity>
+  <TouchableOpacity style={ui.primaryCTA} onPress={()=>onOpen('Kombin Oluştur')}><Text style={ui.primaryCTAText}>Kombin oluştur</Text><Text style={ui.primaryCTAText}>→</Text></TouchableOpacity>
   <TouchableOpacity style={ui.studioFeature} onPress={()=>onOpen('Sanal Deneme')}>
    <View style={ui.studioFeatureIcon}><Text style={{fontSize:31,color:C.navy}}>▣</Text></View>
    <View style={{flex:1}}><Text style={ui.rowTitle}>Sanal Deneme</Text><Text style={ui.rowDescription}>Kendi fotoğrafında kıyafetleri gör</Text></View>
    <Text style={ui.chevron}>›</Text>
   </TouchableOpacity>
   <Section title="Stil araçların"/>
-  <TextRow symbol="▤" title="Kombin önerileri" description="Gardırobundaki parçalarla yeni fikirler" onPress={()=>onOpen('Gardırop')}/>
+  <TextRow symbol="▤" title="Kombin önerileri" description="Gardırobundaki parçalarla yeni fikirler" onPress={()=>onOpen('Kombin Oluştur')}/>
   <TextRow symbol="▢" title="Alışveriş kararı" description="Bir ürün almadan önce değerlendir" onPress={()=>onOpen('Alışveriş')}/>
   <TextRow symbol="◉" title="PRİZMA AI sohbet" description="Moda ve güzellik üzerine konuş" onPress={()=>onOpen('PRİZMA AI')}/>
   <View style={ui.plannedRow}><Text style={ui.plannedTitle}>Valiz AI ve Stil Takvimi</Text><Text style={ui.plannedTag}>YAKINDA</Text></View>
