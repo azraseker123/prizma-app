@@ -773,16 +773,14 @@ export default function App() {
                 style={[
                   styles.tabIconWrap,
                   active && !isAI && styles.tabIconWrapActive,
-                  isAI && active && styles.aiTabIconWrap,
+                  isAI && styles.aiTabIconWrap,
                 ]}
               >
                 {isAI ? (
-                  <View style={[styles.chatBubble, active && styles.chatBubbleActive]}>
-                    <View style={[styles.chatTail, active && styles.chatTailActive]} />
-                    <View style={styles.chatDots}>
-                      {[0,1,2].map(dot => (
-                        <View key={dot} style={[styles.chatDot, active && styles.chatDotActive]} />
-                      ))}
+                  <View style={styles.aiHaloOuter}>
+                    <View style={[styles.aiHaloGlow, active && styles.aiHaloGlowActive]} />
+                    <View style={[styles.aiHaloRing, active && styles.aiHaloRingActive]}>
+                      <View style={[styles.aiHaloCore, active && styles.aiHaloCoreActive]} />
                     </View>
                   </View>
                 ) : (
@@ -1552,31 +1550,57 @@ const styles = StyleSheet.create({
   },
 
   aiTabIconWrap: {
-    backgroundColor: '#62247D',
-    borderRadius: 26,
-    width: 44,
-    height: 44,
+    width: 54,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'transparent',
   },
-  chatBubble:{
-    width:26,height:20,
-    borderRadius:8,
-    borderWidth:2,
-    borderColor:'#673385',
-    backgroundColor:'#FFFFFF',
-    alignItems:'center',justifyContent:'center',
+  aiHaloOuter: {
+    width: 52,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  chatBubbleActive:{backgroundColor:'#FFFFFF',borderColor:'#FFFFFF'},
-  chatTail:{
-    position:'absolute',left:2,bottom:-5,
-    width:8,height:8,transform:[{rotate:'45deg'}],
-    borderLeftWidth:2,borderBottomWidth:2,borderColor:'#673385',
-    backgroundColor:'#FFFFFF',
+  aiHaloGlow: {
+    position: 'absolute',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#C49BE8',
+    opacity: 0.28,
   },
-  chatTailActive:{borderColor:'#FFFFFF'},
-  chatDots:{flexDirection:'row',gap:3,alignItems:'center',justifyContent:'center'},
-  chatDot:{width:3,height:3,borderRadius:2,backgroundColor:'#673385'},
-  chatDotActive:{backgroundColor:'#673385'},
-
+  aiHaloGlowActive: {
+    backgroundColor: '#A250EE',
+    opacity: 0.42,
+  },
+  aiHaloRing: {
+    width: 39,
+    height: 39,
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: '#8A39C0',
+    backgroundColor: '#F8F0FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#8C27DC',
+    shadowOpacity: 0.65,
+    shadowRadius: 7,
+    elevation: 5,
+  },
+  aiHaloRingActive: {
+    borderColor: '#9C43EF',
+    backgroundColor: '#ECDDFF',
+    elevation: 7,
+  },
+  aiHaloCore: {
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+    backgroundColor: '#F3E7FF',
+  },
+  aiHaloCoreActive: {
+    backgroundColor: '#FFFFFF',
+  },
 
   tabIcon: {
     color: '#8A8DA4',
