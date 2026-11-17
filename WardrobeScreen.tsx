@@ -1793,7 +1793,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
           >
             {CATEGORIES.map((item) => (
               <TouchableOpacity
-                key={item}
+                key={({'Tümü':'🗂️','Üst Giyim':'👚','Alt Giyim':'👖','Elbise':'👗','Dış Giyim':'🧥','Ayakkabı':'👟','Çanta':'👜','Aksesuar':'💍','Diğer':'🧺'} as Record<string,string>)[item] || '▦'}  {item}
                 style={[
                   styles.filterChip,
                   activeFilter === item &&
@@ -2713,14 +2713,14 @@ const styles = StyleSheet.create({
   },
 
   filterChipActive: {
-    backgroundColor: C.navy,
-    borderColor: C.navy,
+    backgroundColor: '#62247D',
+    borderColor: '#62247D',
   },
 
   filterText: {
-    color: C.muted,
-    fontSize: 11,
-    fontWeight: '600',
+    color: '#4A315B',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   filterTextActive: {
