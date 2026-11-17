@@ -84,18 +84,23 @@ export function PrizmaHome({userId,onOpen,onSoon,displayName}:{displayName?:stri
    <View style={ui.agendaCalendar}><Text style={ui.agendaDay}>{new Date().getDate()}</Text><Text style={ui.agendaMonth}>{new Date().toLocaleDateString('tr-TR',{month:'short'}).toLocaleUpperCase('tr-TR')}</Text></View>
    <View style={{flex:1}}><Text style={ui.agendaTitle}>Bugün senin günün</Text><Text style={ui.agendaSubtitle}>Stil önerilerini keşfet, gardırobunu düzenle.</Text></View>
   </View>
-  <Section title="Hızlı erişim"/>
-  <View style={ui.shortcutRow}>
-   <IconTile icon="♧" label="Gardırop" onPress={()=>onOpen('Gardırop')}/>
-   <IconTile icon="▦" label="Kombin" onPress={()=>onOpen('Stil Stüdyosu')}/>
-   <IconTile icon="▣" label="Sanal deneme" onPress={()=>onOpen('Sanal Deneme')}/>
-   <IconTile icon="◉" label="Bakım" onPress={()=>onOpen('Güzellik')}/>
+  <Section title="Bugün ne yapmak istersin?"/>
+  <View style={ui.homeActionGrid}>
+   <TouchableOpacity style={ui.homeActionPrimary} onPress={()=>onOpen('Kombin Oluştur')} accessibilityRole="button">
+    <Text style={ui.homeActionOverline}>GARDIROBUNDAN</Text>
+    <Text style={ui.homeActionPrimaryTitle}>Kombin oluştur</Text>
+    <Text style={ui.homeActionPrimaryArrow}>→</Text>
+   </TouchableOpacity>
+   <TouchableOpacity style={ui.homeActionSecondary} onPress={()=>onOpen('Sanal Deneme')} accessibilityRole="button">
+    <Text style={ui.homeActionOverline}>KIYAFETİNİ GÖR</Text>
+    <Text style={ui.homeActionSecondaryTitle}>Sanal deneme</Text>
+    <Text style={ui.homeActionSecondaryArrow}>→</Text>
+   </TouchableOpacity>
   </View>
-  <TouchableOpacity style={ui.homeLuggage} onPress={onSoon}>
-   <Text style={ui.luggageIcon}>▤</Text>
-   <View style={{flex:1}}><Text style={ui.luggageTitle}>Valiz AI</Text><Text style={ui.luggageSubtitle}>Seyahat kombin planlayıcısı · Yakında</Text></View>
-   <Text style={ui.luggageArrow}>›</Text>
-  </TouchableOpacity>
+  <View style={ui.homeTextActions}>
+   <TouchableOpacity style={ui.homeTextAction} onPress={()=>onOpen('Gardırop')} accessibilityRole="button"><Text style={ui.homeTextActionLabel}>Gardırobum  ›</Text></TouchableOpacity>
+   <TouchableOpacity style={ui.homeTextAction} onPress={()=>onOpen('Güzellik')} accessibilityRole="button"><Text style={ui.homeTextActionLabel}>Güzellik & bakım  ›</Text></TouchableOpacity>
+  </View>
   <Section title="Bugün senin için" action="Gardırobuma git" onAction={()=>onOpen('Gardırop')}/>
   <TouchableOpacity style={ui.todaySuggestion} onPress={()=>onOpen('Gardırop')}>
    <View style={ui.suggestionImages}>
@@ -107,11 +112,15 @@ export function PrizmaHome({userId,onOpen,onSoon,displayName}:{displayName?:stri
     <Text style={ui.todaySuggestionSub}>{items.length?count+' parçalık gardırobundan kombin oluştur':'Kişisel stil koleksiyonunu oluşturmaya başla'}</Text></View>
    <Text style={ui.todayArrow}>→</Text>
   </TouchableOpacity>
-  <Section title="Stil ve güzellik"/>
-  <View style={ui.bottomLinkRow}>
-   <TouchableOpacity onPress={()=>onOpen('Stil Stüdyosu')} style={ui.miniLink}><Text style={ui.miniLinkIcon}>▦</Text><Text style={ui.miniLinkText}>Stil Stüdyosu  ›</Text></TouchableOpacity>
-   <TouchableOpacity onPress={()=>onOpen('Bakım Rutini')} style={ui.miniLink}><Text style={ui.miniLinkIcon}>◉</Text><Text style={ui.miniLinkText}>Bakım rutinim  ›</Text></TouchableOpacity>
-  </View>
+  <Section title="Kişisel asistanın"/>
+  <TouchableOpacity style={ui.homeChatRow} onPress={()=>onOpen('PRİZMA AI')} accessibilityRole="button">
+   <Text style={ui.homeChatIcon}>•••</Text>
+   <View style={{flex:1}}><Text style={ui.homeChatTitle}>PRİZMA AI'ya sor</Text><Text style={ui.homeChatSubtitle}>Stil, bakım ve alışveriş sorularında yanında.</Text></View>
+   <Text style={ui.homeChatArrow}>→</Text>
+  </TouchableOpacity>
+  <TouchableOpacity style={ui.homeStudioLink} onPress={()=>onOpen('Stil Stüdyosu')}>
+   <Text style={ui.homeStudioLinkText}>Stil Stüdyosu'nu keşfet</Text><Text style={ui.homeStudioLinkText}>›</Text>
+  </TouchableOpacity>
  </View>;
 }
 
@@ -143,24 +152,55 @@ export function PrizmaStudio({userId,onOpen,onSoon}:Common){
 
 export function PrizmaBeauty({onOpen,onBeautyCategory}:{onOpen:Go;onBeautyCategory:(v:'skin'|'hair'|'makeup')=>void}){
  const [category,setCategory]=useState<'Cilt'|'Saç'|'Makyaj'|'Bakım'>('Cilt');
- const choose=(v:'Cilt'|'Saç'|'Makyaj'|'Bakım')=>{setCategory(v);if(v==='Bakım'){onOpen('Bakım Rutini');return;}onBeautyCategory(v==='Cilt'?'skin':v==='Saç'?'hair':'makeup');onOpen('Cilt Danışmanı');};
+ const selection=category==='Cilt'?'skin':category==='Saç'?'hair':category==='Makyaj'?'makeup':'skin';
+ const details={
+   Cilt:{title:'Cildine özel bakım',sub:'Cilt tipini keşfet, ürünlerini ve günlük bakımını düzenle.',cta:'Cildim için ürün önerisi al'},
+   Saç:{title:'Saç bakımını keşfet',sub:'Saç ihtiyaçlarına uygun önerileri ve kullandığın ürünleri keşfet.',cta:'Saçım için ürün önerisi al'},
+   Makyaj:{title:'Makyajını kişiselleştir',sub:'Tarzına uygun ürünleri ve makyaj tercihlerini bir arada tut.',cta:'Makyaj ürünü önerisi al'},
+   Bakım:{title:'Rutinin, senin ritmin',sub:'Sabah ve akşam bakım adımlarını kolayca yönet.',cta:'Rutinimi görüntüle'},
+ }[category];
+ const openAdvice=()=>{
+  onBeautyCategory(selection==='skin'?'skin':selection==='hair'?'hair':'makeup');
+  onOpen('Cilt Danışmanı');
+ };
  return <View style={ui.page}>
   <Headline title="Güzellik" subtitle="Cilt, saç ve bakım dünyan bir arada."/>
-  <View style={ui.chips}>{(['Cilt','Saç','Makyaj','Bakım'] as const).map(v=>
-   <TouchableOpacity key={v} onPress={()=>choose(v)} style={[ui.chip,category===v&&ui.chipActive]}><Text style={[ui.chipLabel,category===v&&ui.chipLabelActive]}>{v}</Text></TouchableOpacity>)}</View>
-  <View style={ui.beautyFeature}>
-   <View style={ui.beautyBottles}><View style={ui.beautyBottleTall}/><View style={ui.beautyBottleShort}/><View style={ui.beautyJar}/></View>
-   <Text style={ui.beautyFeatureEyebrow}>SANA ÖZEL BAKIM</Text>
-   <Text style={ui.beautyFeatureTitle}>Rutinin, senin ritmin.</Text>
-   <Text style={ui.beautyFeatureSub}>Ürünlerini düzenle, sabah ve akşam bakımlarını planla.</Text>
-   <TouchableOpacity onPress={()=>onOpen('Bakım Rutini')} style={ui.primaryCTA}><Text style={ui.primaryCTAText}>Rutinimi görüntüle</Text><Text style={ui.primaryCTAText}>→</Text></TouchableOpacity>
+  <View style={ui.chips}>
+   {(['Cilt','Saç','Makyaj','Bakım'] as const).map(v=>
+    <TouchableOpacity key={v} onPress={()=>{setCategory(v);if(v!=='Bakım')onBeautyCategory(v==='Cilt'?'skin':v==='Saç'?'hair':'makeup');}} accessibilityRole="tab"
+     accessibilityState={{selected:category===v}} style={[ui.chip,category===v&&ui.chipActive]}>
+     <Text style={[ui.chipLabel,category===v&&ui.chipLabelActive]}>{v}</Text>
+    </TouchableOpacity>)}
+  </View>
+  <View style={ui.beautyFocus}>
+   <View style={ui.beautyFocusTop}>
+    <View style={ui.beautyFocusIllustration}>
+     <Text style={ui.beautyFocusIcon}>{category==='Cilt'?'◉':category==='Saç'?'≈':category==='Makyaj'?'◌':'☼'}</Text>
+    </View>
+    <View style={{flex:1}}>
+     <Text style={ui.beautyFocusEyebrow}>{category.toLocaleUpperCase('tr-TR')} · PRİZMA</Text>
+     <Text style={ui.beautyFocusTitle}>{details.title}</Text>
+     <Text style={ui.beautyFocusDescription}>{details.sub}</Text>
+    </View>
+   </View>
+   <TouchableOpacity style={ui.beautyFocusButton} onPress={()=>category==='Bakım'?onOpen('Bakım Rutini'):openAdvice()}>
+    <Text style={ui.beautyFocusButtonText}>{details.cta}</Text><Text style={ui.beautyFocusButtonArrow}>→</Text>
+   </TouchableOpacity>
+  </View>
+  <Section title="Hemen ulaş"/>
+  <View style={ui.beautyQuickGrid}>
+   <TouchableOpacity style={ui.beautyQuick} onPress={()=>onOpen('Bakım Rutini')}>
+    <Text style={ui.beautyQuickTitle}>Rutinlerim</Text><Text style={ui.beautyQuickSub}>Sabah & akşam</Text>
+   </TouchableOpacity>
+   <TouchableOpacity style={ui.beautyQuick} onPress={openAdvice}>
+    <Text style={ui.beautyQuickTitle}>AI ürün önerisi</Text><Text style={ui.beautyQuickSub}>Cilt, saç, makyaj</Text>
+   </TouchableOpacity>
   </View>
   <Section title="Bakım alanım"/>
-  <TextRow symbol="☼" title="Sabah ve akşam rutinim" description="Kayıtlı ürünlerin ve bakım sıralaman" onPress={()=>onOpen('Bakım Rutini')}/>
+  <TextRow symbol="☼" title="Bakım rutinim" description="Ürünlerini sabah ve akşam düzenle" onPress={()=>onOpen('Bakım Rutini')}/>
   <TextRow symbol="▤" title="Ürün koleksiyonum" description="Kaydettiğin güzellik ürünleri" onPress={()=>onOpen('Bakım Koleksiyonum')}/>
-  <TextRow symbol="◉" title="Cilt analizi" description="Cilt tipini keşfet, önerileri incele" onPress={()=>onOpen('Cilt Analizi')}/>
-  <TextRow symbol="▢" title="AI ile ürün önerisi" description="İhtiyacına uygun seçenekler" onPress={()=>{onBeautyCategory('skin');onOpen('Cilt Danışmanı');}}/>
-  <Text style={ui.footnote}>AI önerileri hata yapabilir; ürün etiketlerini ve kullanım talimatlarını kontrol et.</Text>
+  <TextRow symbol="◉" title="Cilt analizi" description="Cilt tipini tanı, önerileri incele" onPress={()=>onOpen('Cilt Analizi')}/>
+  <Text style={ui.footnote}>AI önerilerini kullanmadan önce ürün talimatlarını kontrol et.</Text>
  </View>;
 }
 
@@ -193,6 +233,39 @@ export function PrizmaProfile({email,onOpen,onEdit,onLogout,onSoon}:{
 
 const ui=StyleSheet.create({
  page:{paddingTop:4,paddingBottom:30},
+ homeActionGrid:{flexDirection:'row',gap:9},
+ homeActionPrimary:{backgroundColor:'#51206F',borderRadius:17,padding:16,flex:1,minHeight:112,justifyContent:'space-between'},
+ homeActionSecondary:{backgroundColor:'#F2E5F7',borderRadius:17,padding:16,flex:1,minHeight:112,justifyContent:'space-between',borderWidth:1,borderColor:'#E5D4EF'},
+ homeActionOverline:{fontSize:9,fontWeight:'800',letterSpacing:0.8,color:'#B594C6'},
+ homeActionPrimaryTitle:{fontSize:16,fontWeight:'800',color:'#FFFFFF',marginTop:7},
+ homeActionPrimaryArrow:{fontSize:22,color:'#FFFFFF',alignSelf:'flex-end'},
+ homeActionSecondaryTitle:{fontSize:16,fontWeight:'800',color:'#391947',marginTop:7},
+ homeActionSecondaryArrow:{fontSize:22,color:'#51206F',alignSelf:'flex-end'},
+ homeTextActions:{flexDirection:'row',gap:9,marginTop:9},
+ homeTextAction:{flex:1,paddingVertical:12,paddingHorizontal:13,backgroundColor:'#FFFFFF',borderRadius:11,borderWidth:1,borderColor:'#EBE1F0'},
+ homeTextActionLabel:{fontSize:12,fontWeight:'800',color:'#49205F'},
+ homeChatRow:{flexDirection:'row',alignItems:'center',padding:14,borderRadius:16,borderWidth:1,borderColor:'#E4D8EC',gap:10,backgroundColor:'#FFF'},
+ homeChatIcon:{fontSize:17,color:'#5F2C7E',backgroundColor:'#F2E9F7',overflow:'hidden',paddingHorizontal:11,paddingVertical:7,borderRadius:12,fontWeight:'800'},
+ homeChatTitle:{fontSize:14,color:C.navy,fontWeight:'800'},
+ homeChatSubtitle:{fontSize:11,color:'#776680',marginTop:4},
+ homeChatArrow:{fontSize:21,color:'#5F2C7E'},
+ homeStudioLink:{flexDirection:'row',justifyContent:'space-between',marginTop:15,paddingHorizontal:4,paddingVertical:6},
+ homeStudioLinkText:{fontSize:13,color:'#5E2B7D',fontWeight:'800'},
+ beautyFocus:{backgroundColor:'#F3EAF8',borderRadius:19,padding:16},
+ beautyFocusTop:{flexDirection:'row',gap:13,alignItems:'center'},
+ beautyFocusIllustration:{width:80,height:108,borderRadius:14,backgroundColor:'#E6D4EE',justifyContent:'center',alignItems:'center'},
+ beautyFocusIcon:{fontSize:39,color:'#66347A'},
+ beautyFocusEyebrow:{fontSize:10,color:'#7F5B8E',letterSpacing:1,fontWeight:'800'},
+ beautyFocusTitle:{fontFamily:serif,fontSize:22,lineHeight:26,color:C.navy,marginTop:5},
+ beautyFocusDescription:{fontSize:11,color:'#6C6078',marginTop:5,lineHeight:16},
+ beautyFocusButton:{backgroundColor:'#5E2778',paddingVertical:13,paddingHorizontal:15,borderRadius:12,flexDirection:'row',justifyContent:'space-between',marginTop:13,alignItems:'center'},
+ beautyFocusButtonText:{color:'#FFFFFF',fontSize:13,fontWeight:'800'},
+ beautyFocusButtonArrow:{color:'#FFFFFF',fontSize:21},
+ beautyQuickGrid:{flexDirection:'row',gap:10},
+ beautyQuick:{flex:1,minHeight:79,backgroundColor:'#FFF',padding:14,borderRadius:14,borderWidth:1,borderColor:'#E7DFEB'},
+ beautyQuickTitle:{fontSize:13,color:C.navy,fontWeight:'800'},
+ beautyQuickSub:{fontSize:11,color:'#827189',marginTop:7},
+
  homeGreeting:{flexDirection:'row',alignItems:'flex-start',gap:10,marginTop:5,marginBottom:19},
  homeWelcome:{fontFamily:serif,fontWeight:'600',color:C.navy,fontSize:25,lineHeight:30},
  homeWelcomeSubtitle:{fontSize:12,color:'#655A72',marginTop:5,lineHeight:17},

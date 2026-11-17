@@ -3,14 +3,15 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, Touc
 import { addRoutineItem, getRoutineItems, removeRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
 import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
-type Props = { userId: string; onAIRequest: () => void };
+type Props = { userId: string; onAIRequest: () => void; onBack?: () => void; initialCategory?: RoutineCategory };
 const PURPLE = '#79569A';
 const categories: { key: RoutineCategory; label: string }[] = [{key:'skin',label:'Cilt'},{key:'hair',label:'Saç'},{key:'makeup',label:'Makyaj'}];
 
-export default function RoutineScreen({ userId, onAIRequest }: Props) {
+export default function RoutineScreen({ userId, onAIRequest, onBack, initialCategory = 'skin' }: Props) {
   const [items, setItems] = useState<RoutineItem[]>([]);
   const [period, setPeriod] = useState<RoutinePeriod>('Sabah');
-  const [category, setCategory] = useState<RoutineCategory>('skin');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [category, setCategory] = useState<RoutineCategory>(initialCategory);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -73,7 +74,8 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
       setTitle('');
       setPhoto(null);
       await refresh();
-      setFeedback('Rutin adımı eklendi ✦');
+      setFeedback('Rutin adımı eklendi.');
+      setShowAddForm(false);
     } catch (error) {
       if (uploadedPath) void deleteBeautyPhoto(uploadedPath).catch(() => {});
       setFeedback(error instanceof Error ? error.message : 'Kaydedilemedi. Tekrar dene.');
@@ -95,8 +97,9 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
 
   return (
     <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
-      <Text style={s.eyebrow}>PRİZMA BEAUTY STUDIO</Text>
-      <Text style={s.title}>Bakım Rutinim ✦</Text>
+      {onBack && <TouchableOpacity accessibilityRole="button" onPress={onBack} style={{paddingVertical:8,alignSelf:'flex-start',marginBottom:11}}><Text style={{fontSize:13,color:'#5F2D7F',fontWeight:'800'}}>‹ Güzelliğe dön</Text></TouchableOpacity>}
+      <Text style={s.eyebrow}>PRİZMA / GÜZELLİK</Text>
+      <Text style={s.title}>Bakım Rutinim</Text>
       <Text style={s.desc}>Cilt, saç ve makyaj ürünlerini sabah ve akşam rutinlerine ekle.</Text>
       <View style={s.row}>
         {categories.map(c => (
@@ -105,7 +108,18 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
           </TouchableOpacity>
         ))}
       </View>
-      <View style={s.panel}>
+      <View style={s.routineActions}>
+        <TouchableOpacity onPress={onAIRequest} style={s.aiCard}>
+          <Text style={s.aiTitle}>AI ile ürün önerisi al</Text>
+          <Text style={s.aiText}>Cilt, saç ve makyaj için öneri oluştur; beğendiklerini rutinine ekle.</Text>
+          <Text style={s.aiLink}>Önerileri keşfet  →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.addToggle} onPress={()=>setShowAddForm(v=>!v)}>
+          <Text style={s.addToggleText}>{showAddForm?'Ürün eklemeyi kapat':'＋ Rutinime ürün ekle'}</Text>
+          <Text style={s.addToggleChevron}>{showAddForm?'⌃':'⌄'}</Text>
+        </TouchableOpacity>
+      </View>
+      {showAddForm && <View style={s.panel}>
         <Text style={s.panelTitle}>{categories.find(c => c.key === category)?.label} Rutinine Ürün Ekle</Text>
         <View style={s.row}>
           {(['Sabah', 'Akşam'] as const).map(p => (
@@ -139,12 +153,7 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
         <TouchableOpacity style={[s.button, (!title.trim() || busy || photoBusy) && s.disabled]} onPress={() => void add()} disabled={!title.trim() || busy || photoBusy}>
           {busy ? <ActivityIndicator color="white"/> : <Text style={s.buttonText}>+ Rutinime Ekle</Text>}
         </TouchableOpacity>
-      </View>
-      <TouchableOpacity onPress={onAIRequest} style={s.aiCard}>
-        <Text style={s.aiTitle}>✦ AI ile Ürün Önerisi Al</Text>
-        <Text style={s.aiText}>Cilt, saç ve makyaj için ürün önerisi al, incele ve onaylayarak rutinine ekle.</Text>
-        <Text style={s.aiLink}>Önerileri keşfet →</Text>
-      </TouchableOpacity>
+      </View>}
       <View style={s.info}><Text style={s.infoText}>ⓘ AI hata yapabilir. Ürün talimatları ve içeriklerini doğrula; yeni aktifleri kullanmadan önce uyumluluğunu kontrol et.</Text></View>
       {!!feedback && <Text accessibilityRole="alert" style={s.feedback}>{feedback}</Text>}
       {(['Sabah', 'Akşam'] as const).map(p => (
@@ -181,6 +190,10 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
 }
 
 const s = StyleSheet.create({
+  routineActions:{marginVertical:13,gap:10},
+  addToggle:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',padding:15,borderRadius:14,borderWidth:1,borderColor:'#DCC7E6',backgroundColor:'#FFFFFF'},
+  addToggleText:{fontWeight:'800',fontSize:13,color:'#5E297B'},
+  addToggleChevron:{fontWeight:'800',fontSize:19,color:'#5E297B'},
   photoLabel: { color: '#30203F', fontSize: 13, fontWeight: '700', marginBottom: 10 },
   photoPreview: { width: '100%', height: 165, borderRadius: 14, backgroundColor: '#F3E9F7', marginBottom: 12 },
   photoButtonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
