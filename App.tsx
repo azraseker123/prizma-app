@@ -12,6 +12,7 @@ import OnboardingScreen, { type OnboardingAnswers } from './OnboardingScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
+import * as ImagePicker from 'expo-image-picker';
 
 import {
   SafeAreaView,
@@ -125,8 +126,24 @@ export default function App() {
   const [savingPassword, setSavingPassword] = useState(false);
 
   const [tab, setTab] = useState<Tab>('Ana Sayfa');
+  const [recoveredCameraUri, setRecoveredCameraUri] = useState<string | null>(null);
   const tabHistoryRef = useRef<Tab[]>([]);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let active = true;
+    // Android may recreate MainActivity after camera capture; Expo stores the pending result.
+    void ImagePicker.getPendingResultAsync().then(result => {
+      if (!active || !result || !('assets' in result) || result.canceled || !result.assets?.[0]?.uri) return;
+      setRecoveredCameraUri(result.assets[0].uri);
+    }).catch(error => console.warn('Camera recovery unavailable:', error));
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (recoveredCameraUri && session?.user.id && onboardingDone) setTab('Sanal Deneme');
+  }, [recoveredCameraUri, session?.user.id, onboardingDone]);
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !session?.user.id || !onboardingDone || editingProfile) return;
@@ -668,7 +685,7 @@ export default function App() {
       ) : tab === 'Deneme Fotoğrafım' ? (
         <TryOnProfileScreen userId={session.user.id} onBack={() => open('Sanal Deneme')} />
       ) : tab === 'Sanal Deneme' ? (
-        <HomeTryOnScreen userId={session.user.id} onBack={() => open('Ana Sayfa')} onManagePhoto={() => open('Deneme Fotoğrafım')} />
+        <HomeTryOnScreen userId={session.user.id} onBack={() => open('Ana Sayfa')} onManagePhoto={() => open('Deneme Fotoğrafım')} recoveredCameraUri={recoveredCameraUri} onRecoveredCameraHandled={() => setRecoveredCameraUri(null)} />
       ) : (
       <ScrollView
         style={styles.scroll}
