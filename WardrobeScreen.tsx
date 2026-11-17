@@ -45,6 +45,7 @@ type WardrobeItemWithImage = WardrobeItem & {
 type Props = {
   userId: string;
   onSetupTryOnPhoto?: () => void;
+  initialTab?: 'clothes' | 'outfits' | 'ai';
 };
 
 type Outfit = {
@@ -76,7 +77,7 @@ const CATEGORIES = [
   'Diğer',
 ];
 
-export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
+export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab = 'clothes' }: Props) {
 
   const [notice, setNotice] = useState<{
     type: NoticeType;
@@ -129,7 +130,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
     useState<WardrobeItemWithImage | null>(null);
   const [tryOnItem, setTryOnItem] = useState<WardrobeItemWithImage | null>(null);
 
-  const [activeWardrobeTab, setActiveWardrobeTab] = useState<'clothes' | 'outfits' | 'ai'>('clothes');
+  const [activeWardrobeTab, setActiveWardrobeTab] = useState<'clothes' | 'outfits' | 'ai'>(initialTab);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [outfitName, setOutfitName] = useState('');
   const [editingOutfitId, setEditingOutfitId] =
