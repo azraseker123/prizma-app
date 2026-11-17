@@ -219,7 +219,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         </ScrollView>
       ) : (<>
       <View style={s.heading}>
-        <Text style={s.eyebrow}>PRİZMA ✦ KİŞİSEL ASİSTAN</Text>
+        <Text style={s.eyebrow}>PRİZMA KİŞİSEL ASİSTAN</Text>
         <Text style={s.title}>Sana nasıl yardımcı olayım?</Text>
         <Text style={s.hint}>Cilt, saç ve makyaj önerileri için yaz. Kombin önerileri Gardırop AI'da.</Text>
         <View style={s.categories}>
@@ -244,7 +244,6 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
       >
         {messages.length === 0 && (
           <View style={s.empty}>
-            <Text style={s.emptyIcon}>✦</Text>
             <Text style={s.emptyTitle}>PRİZMA'ya sor</Text>
             <Text style={s.emptyText}>Örneğin: “Hassas cildim için hafif bir nemlendirici önerir misin?”</Text>
             <Text style={s.emptyNotice}>AI hata yapabilir. Önerileri ve ürün talimatlarını kontrol et.</Text>
