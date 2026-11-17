@@ -60,6 +60,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
    const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'history'}});
    if(error||data?.error)throw new Error(data?.error||error?.message||'Geçmiş yüklenemedi.');
    setUsageItems(Array.isArray(data?.items)?data.items:[]);
+   setSupportIsAdmin(data?.isSupportAdmin===true);
   }catch(e){setNotice({type:'error',title:'Kullanım geçmişi açılamadı',message:e instanceof Error?e.message:'Tekrar deneyebilirsin.'});}
   finally{setHistoryLoading(false);}
  },[]);
@@ -78,7 +79,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
  },[]);
  useEffect(()=>{void loadUsageHistory();},[userId,loadUsageHistory]);
  // Administrative access is checked server-side; UI doesn't grant any privileges.
- useEffect(()=>{void loadSupportRecords();},[userId,loadSupportRecords]);
+
  async function removeLook(){
   if(!deleteTarget||deleting)return;
   setDeleting(true);
