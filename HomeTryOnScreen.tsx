@@ -302,7 +302,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
        </View>
       </View>)}
     </View>}
-   </View>
+   </View>}
    <View style={s.looksCard}>
     <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Denemelerim</Text><TouchableOpacity disabled={looksLoading} onPress={()=>void loadMyLooks()}><Text style={s.link}>Yenile ↻</Text></TouchableOpacity></View>
     <Text style={s.small}>Oluşturduğun kıyafet denemeleri burada saklanır. Tekrar görüntülemek için AI hakkı harcamazsın.</Text>
