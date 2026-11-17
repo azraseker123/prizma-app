@@ -3,15 +3,15 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, Touc
 import { addRoutineItem, getRoutineItems, removeRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
 import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
-type Props = { userId: string; onAIRequest: () => void; onBack?: () => void };
+type Props = { userId: string; onAIRequest: () => void; onBack?: () => void; initialCategory?: RoutineCategory };
 const PURPLE = '#79569A';
 const categories: { key: RoutineCategory; label: string }[] = [{key:'skin',label:'Cilt'},{key:'hair',label:'Saç'},{key:'makeup',label:'Makyaj'}];
 
-export default function RoutineScreen({ userId, onAIRequest, onBack }: Props) {
+export default function RoutineScreen({ userId, onAIRequest, onBack, initialCategory = 'skin' }: Props) {
   const [items, setItems] = useState<RoutineItem[]>([]);
   const [period, setPeriod] = useState<RoutinePeriod>('Sabah');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [category, setCategory] = useState<RoutineCategory>('skin');
+  const [category, setCategory] = useState<RoutineCategory>(initialCategory);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
