@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { decode, encode } from 'base64-arraybuffer';
+import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
 const BUCKET = 'tryon-avatars';
@@ -99,10 +99,23 @@ export async function removeSavedTryOnBackground(userId: string, path: string): 
   if (!path.startsWith(userId + '/')) throw new Error('Fotoğraf yolu geçersiz.');
   const { data: file, error: downloadError } = await supabase.storage.from(BUCKET).download(path);
   if (downloadError || !file) throw downloadError || new Error('Fotoğraf okunamadı.');
-  const rawBytes = await file.arrayBuffer();
-  if (rawBytes.byteLength > 6 * 1024 * 1024) throw new Error('Fotoğraf işlenemeyecek kadar büyük.');
+  // React Native Blob.arrayBuffer() is not reliably available on Android.
+  // FileReader.readAsDataURL is the supported approach for Supabase downloaded Blob.
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Fotoğraf okunamadı.'));
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) {
+        reject(new Error('Fotoğraf okunamadı.')); return;
+      }
+      resolve(dataUrl.slice(dataUrl.indexOf(',') + 1));
+    };
+    reader.readAsDataURL(file);
+  });
+  if (base64.length > 8_000_000) throw new Error('Fotoğraf işlenemeyecek kadar büyük.');
   const { data, error } = await supabase.functions.invoke('remove-background', {
-    body: { imageBase64: encode(rawBytes), mimeType: path.endsWith('.png') ? 'image/png' : 'image/jpeg' },
+    body: { imageBase64: base64, mimeType: path.endsWith('.png') ? 'image/png' : 'image/jpeg' },
   });
   if (error) {
     let message = error.message || 'Arka plan kaldırılamadı.';
