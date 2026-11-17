@@ -17,7 +17,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
  const [busy,setBusy]=useState(false);
  const [consent,setConsent]=useState(false);
  const [pendingGarment,setPendingGarment]=useState<TryOnPhoto|null>(null);
- const [premium,setPremium]=useState<{active:boolean;remaining:number;monthlyLimit:number}|null>(null);
+ const [premium,setPremium]=useState<{active:boolean;remaining:number;monthlyLimit:number;testAccess:boolean;providerReady:boolean}|null>(null);
  const [tryOnConsent,setTryOnConsent]=useState(false);
  const [ownsPhoto,setOwnsPhoto]=useState(false);
  const [tryOnJob,setTryOnJob]=useState<string|null>(null);
@@ -32,7 +32,12 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
   finally{setLoading(false);}
  },[userId]);
  useEffect(()=>{void reload();},[reload]);
- useEffect(()=>{let active=true;void supabase.functions.invoke('virtual-tryon',{body:{action:'eligibility'}}).then(({data,error})=>{if(active&&!error&&!data?.error)setPremium({active:data.active===true,remaining:typeof data.remaining==='number'?data.remaining:0,monthlyLimit:15});}).catch(()=>{});return()=>{active=false;};},[userId]);
+ const refreshTryOnAccess=useCallback(async()=>{
+   const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'eligibility'}});
+   if(error||data?.error){setNotice({type:'error',title:'Sanal deneme doğrulanamadı',message:data?.error||error?.message||'Tekrar deneyebilirsin.'});return;}
+   setPremium({active:data.active===true,remaining:typeof data.remaining==='number'?data.remaining:0,monthlyLimit:typeof data.monthlyLimit==='number'?data.monthlyLimit:15,testAccess:data.testAccess===true,providerReady:data.providerReady===true});
+ },[]);
+ useEffect(()=>{void refreshTryOnAccess();},[userId,refreshTryOnAccess]);
  useEffect(()=>{
   if(!tryOnJob||tryOnStatus!=='processing')return;
   let active=true;
@@ -104,7 +109,8 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
  async function startTryOn(){
   if(!person||!garment||busy)return;
   if(!tryOnConsent||!ownsPhoto){setNotice({type:'info',title:'Onay gerekli',message:'Fotoğrafını sanal denemede kullanmak için izin kutularını işaretlemelisin.'});return;}
-  if(!premium?.active||premium.remaining<=0){setNotice({type:'info',title:'Premium gerekiyor',message:'Sanal deneme için aktif Premium üyelik ve kullanım hakkı gerekli.'});return;}
+  if(!premium?.active||premium.remaining<=0){setNotice({type:'info',title:'Kullanım hakkı gerekli',message:'Sanal deneme için aktif Premium veya test erişimi gerekli.'});return;}
+  if(!premium.providerReady){setNotice({type:'info',title:'AI bağlantısı eksik',message:'Sanal deneme API anahtarı henüz sunucuya tanımlanmadı.'});return;}
   setBusy(true);setTryOnStatus('starting');setResultUrl(null);
   try{
    const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'start',consent:true,ownsPersonPhoto:true,...(garment.itemId?{wardrobeItemId:garment.itemId}:{garmentBase64:garment.base64})}});
@@ -173,9 +179,10 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     {resultUrl?<View style={s.resultCard}><Text style={s.resultTitle}>✦ Sanal deneme hazır</Text><Image source={{uri:resultUrl}} style={s.resultImage} resizeMode="contain"/><Text style={s.small}>Bu bir AI görselleştirmesidir; gerçek kalıp veya beden uyumunu garanti etmez.</Text></View>:null}
     <TouchableOpacity onPress={()=>setOwnsPhoto(!ownsPhoto)} style={s.consent}><Text style={s.consentText}>{ownsPhoto?'☑':'☐'} Bu fotoğraf bana ait veya fotoğraftaki kişinin kullanım izni var.</Text></TouchableOpacity>
     <TouchableOpacity onPress={()=>setTryOnConsent(!tryOnConsent)} style={s.consent}><Text style={s.consentText}>{tryOnConsent?'☑':'☐'} Fotoğraflarımın kıyafet denemesi için harici AI hizmetinde işlenmesini kabul ediyorum.</Text></TouchableOpacity>
-    <TouchableOpacity style={[s.primaryTryon,(!premium?.active||!person||!garment||tryOnStatus==='starting'||tryOnStatus==='processing')&&s.disabledButton]} disabled={!person||!garment||!premium?.active||premium.remaining<=0||busy||tryOnStatus==='starting'||tryOnStatus==='processing'} onPress={()=>void startTryOn()}><Text style={s.primaryTryonText}>{tryOnStatus==='starting'||tryOnStatus==='processing'?'✦ Sanal deneme hazırlanıyor…':premium?.active?'✦ AI ile Üzerimde Dene':'✦ Sanal Deneme · Premium'}</Text></TouchableOpacity>
+    <TouchableOpacity style={[s.primaryTryon,(!premium?.active||!premium.providerReady||!person||!garment||tryOnStatus==='starting'||tryOnStatus==='processing')&&s.disabledButton]} disabled={!person||!garment||!premium?.active||!premium.providerReady||premium.remaining<=0||busy||tryOnStatus==='starting'||tryOnStatus==='processing'} onPress={()=>void startTryOn()}><Text style={s.primaryTryonText}>{tryOnStatus==='starting'||tryOnStatus==='processing'?'✦ Sanal deneme hazırlanıyor…':premium?.active?(premium.providerReady?'✦ AI ile Üzerimde Dene':'✦ AI bağlantısı hazırlanıyor'):'✦ Sanal Deneme · Premium'}</Text></TouchableOpacity>
     {tryOnStatus==='processing'&&<ActivityIndicator style={{marginTop:12}} color="#8050B5"/>}
-    <Text style={s.small}>{premium?.active?`Kalan sanal deneme hakkın: ${premium.remaining} / ${premium.monthlyLimit}`:'Gerçek AI sanal deneme, aktif Premium üyelikte kullanılabilir. Premium doğrulaması açılana kadar ücretli işlem gönderilmez.'}</Text>
+    <Text style={s.small}>{premium?.active?`${premium.testAccess?'Geliştirme testi':'Premium'} · Kalan deneme: ${premium.remaining} / ${premium.monthlyLimit}${premium.providerReady?'':' · API anahtarı eksik'}`:'Gerçek sanal deneme Premium üyelikte kullanılabilir. Test yetkisi ödeme gerektirmez.'}</Text>
+    <TouchableOpacity style={s.wardrobeButton} onPress={()=>void refreshTryOnAccess()}><Text style={s.wardrobeText}>↻ Erişimi yeniden kontrol et</Text></TouchableOpacity>
     {tryOnJob&&tryOnStatus==='processing'&&<TouchableOpacity style={s.wardrobeButton} onPress={()=>{setTryOnStatus('idle');setTimeout(()=>setTryOnStatus('processing'),0);}}><Text style={s.wardrobeText}>↻ Sonucu yeniden kontrol et</Text></TouchableOpacity>}
    </View>
   </ScrollView>
