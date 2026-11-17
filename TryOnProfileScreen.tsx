@@ -121,12 +121,12 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
         <View style={s.overlay}>
           <View style={s.confirmBox}>
             <Text style={s.confirmTitle}>Arka planı kaldıralım mı?</Text>
-            <Text style={s.note}>Kayıtlı fotoğrafın Bria AI servisine gönderilecek. Bu işlem mevcut arka plan kaldırma hakkından 1 adet kullanır. Sonuç mevcut fotoğrafının yerini alacak.</Text>
-            <TouchableOpacity style={s.primary} onPress={() => void cleanSavedPhoto()} disabled={busy}>
-              <Text style={s.primaryText}>Onayla · 1 hak kullan</Text>
+            <Text style={s.note}>Fotoğrafın arka planını kaldırmak için Bria AI kullanılır. İşlem 1 hakkını kullanır ve mevcut fotoğrafını yeni görselle değiştirir.</Text>
+            <TouchableOpacity style={s.modalPrimary} onPress={() => void cleanSavedPhoto()} disabled={busy}>
+              <Text style={s.modalPrimaryText}>Arka planı kaldır</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.secondary} onPress={() => setConfirmBg(false)} disabled={busy}>
-              <Text style={s.secondaryText}>Vazgeç</Text>
+            <TouchableOpacity style={s.modalSecondary} onPress={() => setConfirmBg(false)} disabled={busy}>
+              <Text style={s.modalSecondaryText}>Vazgeç</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -180,7 +180,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
         </View>
         {draft && (
           <TouchableOpacity style={[s.secondary, { marginTop: 10, padding: 13 }]} disabled={busy || !consent} onPress={() => void removeBackground()}>
-            <Text style={s.secondaryText}>{busy ? 'İşleniyor…' : '✦ İsteğe bağlı: Arka planı kaldır (1 hak)'}</Text>
+            <Text style={s.secondaryText}>{busy ? 'İşleniyor…' : '✦ Arka planı kaldır'}</Text>
           </TouchableOpacity>
         )}
         {draft && (
@@ -195,7 +195,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
         )}
         {photo && !draft && (
           <TouchableOpacity style={[s.secondary, { marginTop: 14, paddingVertical: 14 }]} disabled={busy || loading} onPress={() => setConfirmBg(true)}>
-            <Text style={s.secondaryText}>✦ Kayıtlı fotoğrafımın arka planını kaldır · 1 hak</Text>
+            <Text style={s.secondaryText}>✦ Arka planı kaldır</Text>
           </TouchableOpacity>
         )}
         {photo && !draft && (
@@ -206,10 +206,9 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
 
         <View style={s.guide}>
           <Text style={s.guideTitle}>✦ Daha iyi sonuç için</Text>
-          <Text style={s.guideText}>• Baş ve ayaklar kadrajın içinde olsun, tek kişi görün.\n• İyi aydınlatılmış, sade bir arka plan seç.\n• Rahat, günlük kıyafetlerle çekilmiş bir fotoğraf yeterli.\n• Fotoğrafını istediğin zaman değiştirebilir veya silebilirsin.</Text>
+          <Text style={s.guideText}>{['• Başın ve ayakların fotoğrafta bulunsun.', '• Net ışıkta, sade bir arka plan seç.', '• Günlük kıyafetler yeterli.', '• Fotoğrafını istediğin zaman değiştirebilir veya silebilirsin.'].join('\n')}</Text>
         </View>
-        <Text style={s.privacy}>🔒 Fotoğrafın herkese açık değildir. Kaydetmeden önce seçersen görselin Gemini AI uygunluk kontrolüne, arka plan kaldırma seçeneğini kullanırsan ayrıca Bria hizmetine gönderilir. Kayıtlı fotoğraf hesabına özel saklanır. Sanal deneme için ayrı izin istenecektir. Sonuçlar gerçek beden uyumunu garanti etmez.</Text>
-        <Text style={s.dev}>Bu ekran avatar fotoğrafı kayıt altyapısının test sürümüdür. Premium üyelik doğrulaması henüz bağlanmadı.</Text>
+        <Text style={s.privacy}>🔒 Fotoğrafın hesabına özel saklanır. AI fotoğraf kontrolünde Gemini, arka plan kaldırmada Bria kullanılır. Gerçek sanal denemeden önce ayrıca onay istenir.</Text>
       </ScrollView>
     </View>
   );
@@ -242,7 +241,11 @@ const s = StyleSheet.create({
   privacy: { color: '#766A83', lineHeight: 19, marginTop: 18, fontSize: 11 },
   dev: { color: '#9E91AD', lineHeight: 18, marginTop: 10, fontSize: 10 },
   overlay: { flex: 1, backgroundColor: 'rgba(13,9,28,0.6)', justifyContent: 'center', padding: 22 },
-  confirmBox: { backgroundColor: 'white', padding: 20, borderRadius: 20 },
+  confirmBox: { backgroundColor: '#FFFFFF', padding: 22, borderRadius: 20, width: '100%', alignSelf: 'center' },
+  modalPrimary: { flexGrow: 0, flexShrink: 0, width: '100%', height: 52, borderRadius: 13, backgroundColor: '#8050B5', alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+  modalPrimaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', textAlign: 'center' },
+  modalSecondary: { flexGrow: 0, flexShrink: 0, width: '100%', height: 48, borderRadius: 13, backgroundColor: '#EEE5F5', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  modalSecondaryText: { color: '#724D93', fontSize: 14, fontWeight: '800', textAlign: 'center' },
   confirmTitle: { color: '#302048', fontSize: 18, fontWeight: '800', textAlign: 'center' },
   danger: { backgroundColor: '#A3546D', borderRadius: 13, alignItems: 'center', padding: 14, marginTop: 18 },
 });
