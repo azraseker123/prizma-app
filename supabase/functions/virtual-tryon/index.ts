@@ -42,7 +42,8 @@ Deno.serve(async(req)=>{
     creditUsed:j.status!=="failed",resultDeleted:j.status==="deleted",
     reference:j.id.slice(0,8).toUpperCase()
   }));
-  return json({items});
+  const {data:supportAccess}=await admin.from("tryon_support_admins").select("enabled").eq("user_id",user.id).maybeSingle();
+  return json({items,isSupportAdmin:supportAccess?.enabled===true});
  }
  if(action==="admin-history"){
   const {data:adminAccess,error:permissionError}=await admin.from("tryon_support_admins")
