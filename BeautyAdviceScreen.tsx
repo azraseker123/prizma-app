@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { supabase } from './supabase';
 
-type Props = { userId: string; initialCategory?: 'skin' | 'hair' | 'makeup' };
+type Props = { userId: string; initialCategory?: 'skin' | 'hair' | 'makeup'; onBack?: () => void };
 
 type Product = {
   name: string;
@@ -21,7 +21,7 @@ type Advice = {
   disclaimer: string;
 };
 
-export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }: Props) {
+export default function BeautyAdviceScreen({ userId, initialCategory = 'skin', onBack }: Props) {
   const [category, setCategory] = useState<'skin' | 'hair' | 'makeup'>(initialCategory);
   const [concern, setConcern] = useState('');
   const [loading, setLoading] = useState(false);
@@ -140,8 +140,9 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.eyebrow}>THE BEAUTY ADVISOR</Text>
-      <Text style={styles.title}>PRİZMA Güzellik Danışmanı ✦</Text>
+      {onBack && <TouchableOpacity accessibilityRole="button" onPress={onBack} style={{paddingVertical:8,alignSelf:'flex-start',marginBottom:11}}><Text style={{fontSize:13,color:'#5F2D7F',fontWeight:'800'}}>‹ Güzelliğe dön</Text></TouchableOpacity>}
+      <Text style={styles.eyebrow}>PRİZMA / GÜZELLİK</Text>
+      <Text style={styles.title}>Güzellik Danışmanı</Text>
 
       <Text style={styles.description}>
         Cilt, saç ve makyaj ihtiyaçların için
