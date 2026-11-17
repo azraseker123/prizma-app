@@ -105,7 +105,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     <TouchableOpacity onPress={()=>setConsent(!consent)} style={s.consent}>
      <Text style={s.consentText}>{consent?'☑':'☐'} Yeni fotoğrafımı AI uygunluk kontrolüne göndermeyi kabul ediyorum.</Text>
     </TouchableOpacity>
-    <Text style={s.small}>Yeni fotoğraflar Gemini AI tarafından kontrol edilir. Kontrol için günde en fazla 10 istek yapılabilir; kontrol sonucu hatalı olabilir.</Text>
+    <Text style={s.small}>Yeni fotoğraflar Gemini AI tarafından kontrol edilir. Kontrol için 24 saat içinde en fazla 15 istek yapılabilir; kontrol sonucu hatalı olabilir.</Text>
     <View style={s.buttonRow}>
      <TouchableOpacity style={s.secondary} disabled={busy} onPress={()=>void chooseGarment(true)}><Text style={s.secondaryText}>📷 Fotoğraf çek</Text></TouchableOpacity>
      <TouchableOpacity style={s.secondary} disabled={busy} onPress={()=>void chooseGarment(false)}><Text style={s.secondaryText}>▧ Galeriden seç</Text></TouchableOpacity>
