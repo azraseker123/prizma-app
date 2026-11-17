@@ -742,7 +742,7 @@ export default function App() {
         )}
 
         {tab === 'Bakım Rutini' && (
-          <RoutineScreen userId={session.user.id} onBack={() => open('Güzellik')} onAIRequest={() => { setBeautyCategory('skin'); open('Cilt Danışmanı'); }} />
+          <RoutineScreen userId={session.user.id} initialCategory={beautyCategory} onBack={() => open('Güzellik')} onAIRequest={() => { setBeautyCategory('skin'); open('Cilt Danışmanı'); }} />
         )}
 
         {tab === 'Güzellik' && (
