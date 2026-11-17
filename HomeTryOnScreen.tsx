@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from './supabase';
-import { chooseTryOnPhoto, readTryOnPhoto, validateTryOnImage, type TryOnPhoto } from './TryOnPhotoStore';
+import { chooseTryOnPhoto, readTryOnPhoto, validateTryOnImage, prepareTryOnPhoto, type TryOnPhoto } from './TryOnPhotoStore';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 
 type WardrobeChoice={id:string;name:string;category:string;image_path:string;imageUrl:string|null};
-type Props={userId:string;onBack:()=>void;onManagePhoto:()=>void};
+type Props={userId:string;onBack:()=>void;onManagePhoto:()=>void;recoveredCameraUri?:string|null;onRecoveredCameraHandled?:()=>void};
 
-export default function HomeTryOnScreen({userId,onBack,onManagePhoto}:Props){
+export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCameraUri,onRecoveredCameraHandled}:Props){
  const [person,setPerson]=useState<{path:string;url:string}|null>(null);
  const [garment,setGarment]=useState<{name:string;uri:string;source:'camera'|'gallery'|'wardrobe'}|null>(null);
  const [wardrobe,setWardrobe]=useState<WardrobeChoice[]>([]);
@@ -16,6 +16,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto}:Props){
  const [showWardrobe,setShowWardrobe]=useState(false);
  const [busy,setBusy]=useState(false);
  const [consent,setConsent]=useState(false);
+ const [pendingGarment,setPendingGarment]=useState<TryOnPhoto|null>(null);
  const [notice,setNotice]=useState<{type:NoticeType;title:string;message:string}|null>(null);
 
  const reload=useCallback(async()=>{
@@ -25,6 +26,14 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto}:Props){
   finally{setLoading(false);}
  },[userId]);
  useEffect(()=>{void reload();},[reload]);
+ useEffect(()=>{
+  if(!recoveredCameraUri)return;
+  let cancelled=false;
+  prepareTryOnPhoto(recoveredCameraUri).then(photo=>{if(!cancelled){setPendingGarment(photo);setNotice({type:'info',title:'Kamera fotoğrafın geri alındı',message:'Çektiğin fotoğraf hazır. AI kontrol iznini açıp Fotoğrafı Kontrol Et seçeneğine basabilirsin.'});}})
+  .catch(e=>{if(!cancelled)setNotice({type:'error',title:'Kamera fotoğrafı açılamadı',message:e instanceof Error?e.message:'Galeriden seçebilirsin.'});})
+  .finally(()=>{if(!cancelled)onRecoveredCameraHandled?.();});
+  return()=>{cancelled=true};
+ },[recoveredCameraUri]);
 
  async function loadWardrobe(){
   setShowWardrobe(true);
@@ -50,10 +59,21 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto}:Props){
   try{
    const picked=await chooseTryOnPhoto(camera);
    if(!picked)return;
+   setPendingGarment(picked);
    await validateTryOnImage(picked,'garment');
    setGarment({uri:picked.uri,name:camera?'Yeni çektiğim kıyafet':'Galeriden seçtiğim kıyafet',source:camera?'camera':'gallery'});
+   setPendingGarment(null);
    setShowWardrobe(false);
   }catch(e){setNotice({type:'error',title:'Fotoğraf işlenemedi',message:e instanceof Error?e.message:'Lütfen yeniden dene.'});}
+  finally{setBusy(false);}
+ }
+
+ async function verifyRecoveredPhoto(){
+  if(!pendingGarment||busy)return;
+  if(!consent){setNotice({type:'info',title:'AI kontrol izni',message:'Fotoğraf kontrolü için izin vermelisin.'});return;}
+  setBusy(true);
+  try{await validateTryOnImage(pendingGarment,'garment');setGarment({uri:pendingGarment.uri,name:'Çektiğim kıyafet',source:'camera'});setPendingGarment(null);}
+  catch(e){setNotice({type:'error',title:'Fotoğraf kontrolü tamamlanamadı',message:e instanceof Error?e.message:'Aynı fotoğrafı yeniden deneyebilirsin.'});}
   finally{setBusy(false);}
  }
 
@@ -91,6 +111,11 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto}:Props){
      <TouchableOpacity style={s.secondary} disabled={busy} onPress={()=>void chooseGarment(false)}><Text style={s.secondaryText}>▧ Galeriden seç</Text></TouchableOpacity>
     </View>
     <TouchableOpacity style={s.wardrobeButton} disabled={busy} onPress={()=>void loadWardrobe()}><Text style={s.wardrobeText}>◇ Gardırobumdan seç</Text></TouchableOpacity>
+    {pendingGarment&&<View style={s.pendingCard}>
+      <Image source={{uri:pendingGarment.uri}} style={s.pendingPhoto} resizeMode="contain"/>
+      <Text style={s.small}>Fotoğrafın hazır ancak henüz doğrulanmadı; yeniden çekmen gerekmiyor.</Text>
+      <TouchableOpacity style={s.wardrobeButton} disabled={busy} onPress={()=>void verifyRecoveredPhoto()}><Text style={s.wardrobeText}>✦ Fotoğrafı kontrol et</Text></TouchableOpacity>
+    </View>}
     {busy&&<ActivityIndicator style={{marginTop:12}} color="#8050B5"/>}
     {showWardrobe&&<View style={s.wardrobeList}>
      <View style={s.cardHeading}><Text style={s.cardTitle}>Gardırobumdaki parçalar</Text><TouchableOpacity onPress={()=>setShowWardrobe(false)}><Text style={s.link}>Kapat</Text></TouchableOpacity></View>
@@ -116,6 +141,8 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto}:Props){
 
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:'#FAF9FC'},content:{padding:20,paddingBottom:90},
+ pendingCard:{padding:12,marginTop:14,backgroundColor:'#F5EFF8',borderRadius:14},
+ pendingPhoto:{height:180,width:'100%'},
  back:{color:'#8050B5',fontWeight:'800',fontSize:13,marginBottom:22},
  eyebrow:{color:'#9575B0',fontSize:10,fontWeight:'800',letterSpacing:1.5},
  title:{fontSize:28,fontWeight:'800',color:'#25193A',marginTop:6},
