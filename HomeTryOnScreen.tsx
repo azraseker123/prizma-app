@@ -213,11 +213,16 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
   <PrizmaNotice visible={!!notice} type={notice?.type||'info'} title={notice?.title||''} message={notice?.message||''} onClose={()=>setNotice(null)}/>
   <ScrollView contentContainerStyle={s.content}>
    <TouchableOpacity onPress={onBack}><Text style={s.back}>‹ Ana sayfaya dön</Text></TouchableOpacity>
-   <Text style={s.eyebrow}>PRİZMA ✦ FITTING ROOM</Text>
+   <Text style={s.eyebrow}>PRİZMA / STİL STÜDYOSU</Text>
    <Text style={s.title}>Sanal Deneme</Text>
-   <Text style={s.description}>Kendi fotoğrafını kullan. Gardırobundan kıyafet seçebilir veya mağazada gördüğün bir kıyafetin fotoğrafını o anda çekebilirsin.</Text>
+   <Text style={s.description}>Bir kıyafeti seç, kendi fotoğrafında nasıl durduğunu gör.</Text>
+   <View style={s.stepRow}>
+    <View style={[s.stepItem,person&&s.stepReady]}><Text style={s.stepNumber}>01</Text><Text style={s.stepName}>Fotoğrafım</Text></View>
+    <View style={[s.stepItem,garment&&s.stepReady]}><Text style={s.stepNumber}>02</Text><Text style={s.stepName}>Kıyafet</Text></View>
+    <View style={[s.stepItem,tryOnStatus==='completed'&&s.stepReady]}><Text style={s.stepNumber}>03</Text><Text style={s.stepName}>Sonuç</Text></View>
+   </View>
    <View style={s.card}>
-    <View style={s.cardHeading}><Text style={s.cardTitle}>01 · Benim fotoğrafım</Text><TouchableOpacity onPress={onManagePhoto}><Text style={s.link}>Değiştir ›</Text></TouchableOpacity></View>
+    <View style={s.cardHeading}><Text style={s.cardTitle}>Fotoğrafım</Text><TouchableOpacity onPress={onManagePhoto}><Text style={s.link}>Değiştir ›</Text></TouchableOpacity></View>
     {loading?<ActivityIndicator color="#8050B5"/>:person?
      <Image source={{uri:person.url}} style={s.personPhoto} resizeMode="contain"/>:
      <TouchableOpacity style={s.emptyPerson} onPress={onManagePhoto}><Text style={s.emptyIcon}>◇</Text><Text style={s.emptyText}>Boydan fotoğrafını ekle →</Text></TouchableOpacity>}
@@ -225,7 +230,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     <TouchableOpacity style={s.textAction} onPress={onManagePhoto}><Text style={s.link}>{person?'Fotoğrafımı düzenle / Arka planı kaldır':'Fotoğrafımı yükle'}</Text></TouchableOpacity>
    </View>
    <View style={s.card}>
-    <Text style={s.cardTitle}>02 · Denemek istediğim kıyafet</Text>
+    <Text style={s.cardTitle}>Denemek istediğim kıyafet</Text>
     {garment?<View style={s.chosen}><Image source={{uri:garment.uri}} style={s.garmentImage} resizeMode="contain"/><Text style={s.chosenName}>{garment.name}</Text></View>:
      <View style={s.emptyGarment}><Text style={s.emptyIcon}>✦</Text><Text style={s.emptyText}>Henüz kıyafet seçilmedi</Text></View>}
     <TouchableOpacity onPress={()=>setConsent(!consent)} style={s.consent}>
@@ -253,15 +258,15 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     </View>}
    </View>
    <View style={s.preview}>
-    <Text style={s.cardTitle}>03 · Önizleme</Text>
+    <Text style={s.cardTitle}>Önizleme</Text>
     <View style={s.previewRow}>
      <View style={s.previewBox}>{person?<Image source={{uri:person.url}} style={s.previewImage} resizeMode="contain"/>:<Text style={s.small}>Benim fotoğrafım</Text>}</View>
      <View style={s.previewBox}>{garment?<Image source={{uri:garment.uri}} style={s.previewImage} resizeMode="contain"/>:<Text style={s.small}>Kıyafet fotoğrafı</Text>}</View>
     </View>
-    {resultUrl?<View style={s.resultCard}><Text style={s.resultTitle}>✦ Sanal deneme hazır</Text><Image source={{uri:resultUrl}} style={s.resultImage} resizeMode="contain"/><Text style={s.small}>Bu bir AI görselleştirmesidir; gerçek kalıp veya beden uyumunu garanti etmez.</Text></View>:null}
+    {resultUrl?<View style={s.resultCard}><Text style={s.resultTitle}>Sanal denemen hazır</Text><Image source={{uri:resultUrl}} style={s.resultImage} resizeMode="contain"/><Text style={s.small}>Bu bir AI görselleştirmesidir; gerçek kalıp veya beden uyumunu garanti etmez.</Text></View>:null}
     <TouchableOpacity onPress={()=>setOwnsPhoto(!ownsPhoto)} style={s.consent}><Text style={s.consentText}>{ownsPhoto?'☑':'☐'} Bu fotoğraf bana ait veya fotoğraftaki kişinin kullanım izni var.</Text></TouchableOpacity>
     <TouchableOpacity onPress={()=>setTryOnConsent(!tryOnConsent)} style={s.consent}><Text style={s.consentText}>{tryOnConsent?'☑':'☐'} Fotoğraflarımın kıyafet denemesi için harici AI hizmetinde işlenmesini kabul ediyorum.</Text></TouchableOpacity>
-    <TouchableOpacity style={[s.primaryTryon,(!premium?.active||!premium.providerReady||!person||!garment||tryOnStatus==='starting'||tryOnStatus==='processing')&&s.disabledButton]} disabled={!person||!garment||!premium?.active||!premium.providerReady||premium.remaining<=0||busy||tryOnStatus==='starting'||tryOnStatus==='processing'} onPress={()=>void startTryOn()}><Text style={s.primaryTryonText}>{tryOnStatus==='starting'||tryOnStatus==='processing'?'✦ Sanal deneme hazırlanıyor…':premium?.active?(premium.providerReady?'✦ AI ile Üzerimde Dene':'✦ AI bağlantısı hazırlanıyor'):'✦ Sanal Deneme · Premium'}</Text></TouchableOpacity>
+    <TouchableOpacity style={[s.primaryTryon,(!premium?.active||!premium.providerReady||!person||!garment||tryOnStatus==='starting'||tryOnStatus==='processing')&&s.disabledButton]} disabled={!person||!garment||!premium?.active||!premium.providerReady||premium.remaining<=0||busy||tryOnStatus==='starting'||tryOnStatus==='processing'} onPress={()=>void startTryOn()}><Text style={s.primaryTryonText}>{tryOnStatus==='starting'||tryOnStatus==='processing'?'Sanal denemen hazırlanıyor…':premium?.active?(premium.providerReady?'Üzerimde Dene':'✦ AI bağlantısı hazırlanıyor'):'Sanal Deneme · Premium'}</Text></TouchableOpacity>
     {tryOnStatus==='processing'&&<ActivityIndicator style={{marginTop:12}} color="#8050B5"/>}
     <Text style={s.small}>{premium?.active?`${premium.testAccess?'Geliştirme testi':'Premium'} · Kalan deneme: ${premium.remaining} / ${premium.monthlyLimit}${premium.providerReady?'':' · API anahtarı eksik'}`:'Gerçek sanal deneme Premium üyelikte kullanılabilir. Test yetkisi ödeme gerektirmez.'}</Text>
     <TouchableOpacity style={s.wardrobeButton} onPress={()=>void refreshTryOnAccess()}><Text style={s.wardrobeText}>↻ Erişimi yeniden kontrol et</Text></TouchableOpacity>
@@ -269,7 +274,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
    </View>
    <View style={s.looksCard}>
     <View style={s.cardHeading}>
-     <Text style={s.cardTitle}>✦ Kullanım Geçmişim</Text>
+     <Text style={s.cardTitle}>Kullanım Geçmişim</Text>
      <TouchableOpacity onPress={()=>{setHistoryOpen(!historyOpen);if(!historyOpen)void loadUsageHistory();}}><Text style={s.link}>{historyOpen?'Gizle':'Görüntüle ›'}</Text></TouchableOpacity>
     </View>
     <Text style={s.small}>Her sanal denemenin işlem kaydını görebilirsin. Görseli silmek hakkını geri yüklemez.</Text>
@@ -288,7 +293,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     </View>}
    </View>
    {supportIsAdmin&&<View style={s.looksCard}>
-    <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Yönetici İşlem Geçmişi</Text>
+    <View style={s.cardHeading}><Text style={s.cardTitle}>Yönetici İşlem Geçmişi</Text>
      <TouchableOpacity onPress={()=>{setSupportOpen(!supportOpen);if(!supportOpen)void loadSupportRecords();}}><Text style={s.link}>{supportOpen?'Gizle':'Görüntüle ›'}</Text></TouchableOpacity>
     </View>
     {supportOpen&&<View>
@@ -304,7 +309,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     </View>}
    </View>}
    <View style={s.looksCard}>
-    <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Denemelerim</Text><TouchableOpacity disabled={looksLoading} onPress={()=>void loadMyLooks()}><Text style={s.link}>Yenile ↻</Text></TouchableOpacity></View>
+    <View style={s.cardHeading}><Text style={s.cardTitle}>Denemelerim</Text><TouchableOpacity disabled={looksLoading} onPress={()=>void loadMyLooks()}><Text style={s.link}>Yenile ↻</Text></TouchableOpacity></View>
     <Text style={s.small}>Oluşturduğun kıyafet denemeleri burada saklanır. Tekrar görüntülemek için AI hakkı harcamazsın.</Text>
     {looksLoading?<ActivityIndicator style={{marginTop:20}} color="#8050B5"/>:myLooks.length===0?
      <View style={s.looksEmpty}><Text style={s.emptyIcon}>✦</Text><Text style={s.emptyText}>Henüz kayıtlı denemen yok</Text></View>:
@@ -318,14 +323,19 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
 }
 
 const s=StyleSheet.create({
- root:{flex:1,backgroundColor:'#FAF9FC'},content:{padding:20,paddingBottom:90},
+ root:{flex:1,backgroundColor:'#FDFBFE'},content:{padding:19,paddingBottom:90},
+ stepRow:{flexDirection:'row',gap:7,marginBottom:18},
+ stepItem:{flex:1,flexDirection:'column',alignItems:'center',borderWidth:1,borderColor:'#ECE2F0',paddingVertical:12,backgroundColor:'#FFF',borderRadius:13},
+ stepReady:{backgroundColor:'#F1E5F7',borderColor:'#C9A8D9'},
+ stepNumber:{fontSize:11,color:'#7D468E',fontWeight:'800'},
+ stepName:{fontSize:11,color:'#32253F',fontWeight:'800',marginTop:4},
  usageRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#ECE4F0'},
  usageMain:{color:'#382748',fontSize:12,fontWeight:'800'},
  usageMeta:{color:'#80718F',fontSize:11,marginTop:4},
  usageCredit:{fontSize:12,fontWeight:'800'},
  usageCreditSpent:{color:'#7F4BA0'},
  usageCreditReturned:{color:'#447E65'},
- looksCard:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E8DFF0',borderRadius:19,padding:16,marginTop:16},
+ looksCard:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E8DFF0',borderRadius:18,padding:16,marginTop:16},
  looksEmpty:{height:120,alignItems:'center',justifyContent:'center',backgroundColor:'#F7F3FA',borderRadius:12,marginTop:12},
  lookGrid:{flexDirection:'row',flexWrap:'wrap',gap:9,marginTop:15},
  lookTile:{width:'31%',backgroundColor:'#F7F3FA',borderRadius:10,overflow:'hidden',paddingBottom:6},
@@ -341,7 +351,7 @@ const s=StyleSheet.create({
  confirmCancelText:{color:'#5D4772',fontWeight:'800'},
  confirmDelete:{flex:1,paddingVertical:13,alignItems:'center',backgroundColor:'#A04768',borderRadius:11},
  confirmDeleteText:{color:'#FFF',fontWeight:'800'},
- primaryTryon:{backgroundColor:'#8050B5',borderRadius:14,paddingVertical:16,alignItems:'center',marginTop:14},
+ primaryTryon:{backgroundColor:'#5A2475',borderRadius:14,paddingVertical:16,alignItems:'center',marginTop:14},
  primaryTryonText:{color:'#FFFFFF',fontWeight:'800',fontSize:13},
  resultCard:{padding:10,backgroundColor:'#F4EDF8',borderRadius:14,marginBottom:12},
  resultTitle:{color:'#372447',fontSize:15,fontWeight:'800',marginBottom:12},
@@ -350,9 +360,9 @@ const s=StyleSheet.create({
  pendingPhoto:{height:180,width:'100%'},
  back:{color:'#8050B5',fontWeight:'800',fontSize:13,marginBottom:22},
  eyebrow:{color:'#9575B0',fontSize:10,fontWeight:'800',letterSpacing:1.5},
- title:{fontSize:28,fontWeight:'800',color:'#25193A',marginTop:6},
+ title:{fontSize:30,fontFamily:'serif',fontWeight:'600',color:'#25193A',marginTop:6},
  description:{color:'#6C607C',fontSize:13,lineHeight:21,marginTop:8,marginBottom:16},
- card:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E8DFF0',borderRadius:20,padding:16,marginBottom:15},
+ card:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E8DFF0',borderRadius:18,padding:15,marginBottom:14},
  cardHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:11},
  cardTitle:{color:'#352346',fontSize:15,fontWeight:'800',marginBottom:8},
  link:{color:'#754BA3',fontSize:12,fontWeight:'800'},
@@ -374,7 +384,7 @@ const s=StyleSheet.create({
  wardrobeRow:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:9,borderBottomWidth:1,borderColor:'#F0EBF5'},
  thumbnail:{width:50,height:64,borderRadius:7,backgroundColor:'#F1EAF6'},
  wardrobeName:{fontWeight:'800',color:'#352647',fontSize:12},
- preview:{padding:16,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E8DFF0',borderRadius:19},
+ preview:{padding:16,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E8DFF0',borderRadius:18},
  previewRow:{flexDirection:'row',gap:10,marginVertical:12},
  previewBox:{flex:1,height:200,borderRadius:13,backgroundColor:'#F4EDF8',alignItems:'center',justifyContent:'center'},
  previewImage:{width:'100%',height:'100%'},
