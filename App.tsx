@@ -772,14 +772,14 @@ export default function App() {
                 style={[
                   styles.tabIconWrap,
                   active && !isAI && styles.tabIconWrapActive,
-                  isAI && styles.aiTabIconWrap,
+                  isAI && active && styles.aiTabIconWrap,
                 ]}
               >
                 <Text
                   style={[
                     styles.tabIcon,
                     active && styles.tabIconActive,
-                    isAI && styles.aiTabIcon,
+                    isAI && active && styles.aiTabIcon,
                   ]}
                 >
                   {item.icon}
