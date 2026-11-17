@@ -54,7 +54,7 @@ type Tab =
 const tabs: { name: Tab; icon: string }[] = [
   { name: 'Ana Sayfa', icon: '⌂' },
   { name: 'Gardırop', icon: '♧' },
-  { name: 'Stil Stüdyosu', icon: '▦' },
+  { name: 'PRİZMA AI', icon: '•••' },
   { name: 'Güzellik', icon: '◉' },
   { name: 'Profil', icon: '○' },
 ];
@@ -758,8 +758,8 @@ export default function App() {
       {/* ALT MENÜ: klavye açıkken sohbet yazma alanına yer bırak */}
       {!(tab === 'PRİZMA AI' && keyboardVisible) && <View style={styles.tabBar}>
         {tabs.map((item) => {
-          const active = tab === item.name || (tab === 'Kombin Oluştur' && item.name === 'Stil Stüdyosu');
-          const isAI = item.name === 'Stil Stüdyosu';
+          const active = tab === item.name;
+          const isAI = item.name === 'PRİZMA AI';
 
           return (
             <TouchableOpacity
@@ -794,7 +794,7 @@ export default function App() {
                   active && styles.tabLabelActive,
                 ]}
               >
-                {item.name === 'Stil Stüdyosu' ? 'Stüdyo' : item.name}
+                {item.name === 'PRİZMA AI' ? 'PRİZMA AI' : item.name}
               </Text>
             </TouchableOpacity>
           );
@@ -1565,7 +1565,8 @@ const styles = StyleSheet.create({
 
   aiTabIcon: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: 16,
+    letterSpacing: 1,
   },
 
   tabLabel: {
