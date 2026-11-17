@@ -1793,7 +1793,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
           >
             {CATEGORIES.map((item) => (
               <TouchableOpacity
-                key={({'Tümü':'🗂️','Üst Giyim':'👚','Alt Giyim':'👖','Elbise':'👗','Dış Giyim':'🧥','Ayakkabı':'👟','Çanta':'👜','Aksesuar':'💍','Diğer':'🧺'} as Record<string,string>)[item] || '▦'}  {item}
+                key={item}
                 style={[
                   styles.filterChip,
                   activeFilter === item &&
@@ -1808,7 +1808,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
                       styles.filterTextActive,
                   ]}
                 >
-                  {item}
+                  {({'Tümü':'🗂️','Üst Giyim':'👚','Alt Giyim':'👖','Elbise':'👗','Dış Giyim':'🧥','Ayakkabı':'👟','Çanta':'👜','Aksesuar':'💍','Diğer':'🧺'} as Record<string,string>)[item] || '▦'}  {item}
                 </Text>
               </TouchableOpacity>
             ))}
