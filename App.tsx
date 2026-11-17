@@ -1006,10 +1006,9 @@ const styles = StyleSheet.create({
 
   brandText: {
     color: C.navy,
-    fontSize: 25,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    letterSpacing: 4,
-    fontWeight: '600',
+    fontSize: 24,
+    letterSpacing: 3.2,
+    fontWeight: '800',
   },
 
   brandStar: {
