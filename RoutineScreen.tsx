@@ -3,11 +3,11 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, Touc
 import { addRoutineItem, getRoutineItems, removeRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
 import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
-type Props = { userId: string; onAIRequest: () => void };
+type Props = { userId: string; onAIRequest: () => void; onBack?: () => void };
 const PURPLE = '#79569A';
 const categories: { key: RoutineCategory; label: string }[] = [{key:'skin',label:'Cilt'},{key:'hair',label:'Saç'},{key:'makeup',label:'Makyaj'}];
 
-export default function RoutineScreen({ userId, onAIRequest }: Props) {
+export default function RoutineScreen({ userId, onAIRequest, onBack }: Props) {
   const [items, setItems] = useState<RoutineItem[]>([]);
   const [period, setPeriod] = useState<RoutinePeriod>('Sabah');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -97,7 +97,8 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
 
   return (
     <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
-      <Text style={s.eyebrow}>PRİZMA BEAUTY STUDIO</Text>
+      {onBack && <TouchableOpacity accessibilityRole="button" onPress={onBack} style={{paddingVertical:8,alignSelf:'flex-start',marginBottom:11}}><Text style={{fontSize:13,color:'#5F2D7F',fontWeight:'800'}}>‹ Güzelliğe dön</Text></TouchableOpacity>}
+      <Text style={s.eyebrow}>PRİZMA / GÜZELLİK</Text>
       <Text style={s.title}>Bakım Rutinim</Text>
       <Text style={s.desc}>Cilt, saç ve makyaj ürünlerini sabah ve akşam rutinlerine ekle.</Text>
       <View style={s.row}>
