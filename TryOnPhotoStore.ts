@@ -6,6 +6,13 @@ import { supabase } from './supabase';
 const BUCKET = 'tryon-avatars';
 export type TryOnPhoto = { uri: string; base64: string; mimeType?: 'image/jpeg' | 'image/png' };
 
+export async function prepareTryOnPhoto(uri: string): Promise<TryOnPhoto> {
+  const reduced = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 960 } }], { format: ImageManipulator.SaveFormat.JPEG, compress: 0.65, base64: true });
+  if (!reduced.base64) throw new Error('Fotoğraf okunamadı.');
+  if (decode(reduced.base64).byteLength > 10 * 1024 * 1024) throw new Error('Fotoğraf 10 MB sınırını aşıyor.');
+  return { uri: reduced.uri, base64: reduced.base64, mimeType: 'image/jpeg' };
+}
+
 export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | null> {
   if (camera) {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -20,14 +27,7 @@ export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | nu
     ? await ImagePicker.launchCameraAsync({ ...pickerOptions, cameraType: ImagePicker.CameraType.back })
     : await ImagePicker.launchImageLibraryAsync(pickerOptions);
   if (result.canceled || !result.assets?.[0]?.uri) return null;
-  const reduced = await ImageManipulator.manipulateAsync(
-    result.assets[0].uri,
-    [{ resize: { width: 960 } }],
-    { format: ImageManipulator.SaveFormat.JPEG, compress: 0.65, base64: true },
-  );
-  if (!reduced.base64) throw new Error('Fotoğraf okunamadı.');
-  if (decode(reduced.base64).byteLength > 10 * 1024 * 1024) throw new Error('Fotoğraf 10 MB sınırını aşıyor.');
-  return { uri: reduced.uri, base64: reduced.base64, mimeType: 'image/jpeg' };
+  return prepareTryOnPhoto(result.assets[0].uri);
 }
 
 export async function readTryOnPhoto(userId: string): Promise<{ path: string; url: string } | null> {
