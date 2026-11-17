@@ -12,6 +12,9 @@ import OnboardingScreen, { type OnboardingAnswers } from './OnboardingScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PENDING_TRYON_CAMERA_KEY } from './TryOnPhotoStore';
 
 import {
   SafeAreaView,
@@ -125,8 +128,33 @@ export default function App() {
   const [savingPassword, setSavingPassword] = useState(false);
 
   const [tab, setTab] = useState<Tab>('Ana Sayfa');
+  const [recoveredCameraUri, setRecoveredCameraUri] = useState<string | null>(null);
+  const [recoveredCameraPurpose, setRecoveredCameraPurpose] = useState<'person' | 'garment'>('garment');
   const tabHistoryRef = useRef<Tab[]>([]);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let active = true;
+    // Android may recreate MainActivity after camera capture; Expo stores the pending result.
+    void (async () => {
+      const raw = await AsyncStorage.getItem(PENDING_TRYON_CAMERA_KEY);
+      const result = await ImagePicker.getPendingResultAsync();
+      if (!active || !result || !('assets' in result) || result.canceled || !result.assets?.[0]?.uri) return;
+      let purpose: 'person' | 'garment' = 'garment';
+      try {
+        const saved = raw ? JSON.parse(raw) : null;
+        if (saved && Date.now() - Number(saved.time) < 10 * 60 * 1000 && saved.purpose === 'person') purpose = 'person';
+      } catch { /* missing camera intent */ }
+      await AsyncStorage.removeItem(PENDING_TRYON_CAMERA_KEY);
+      if (active) { setRecoveredCameraPurpose(purpose); setRecoveredCameraUri(result.assets[0].uri); }
+    })().catch(error => console.warn('Camera recovery unavailable:', error));
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (recoveredCameraUri && session?.user.id && onboardingDone) setTab(recoveredCameraPurpose === 'person' ? 'Deneme Fotoğrafım' : 'Sanal Deneme');
+  }, [recoveredCameraUri, recoveredCameraPurpose, session?.user.id, onboardingDone]);
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !session?.user.id || !onboardingDone || editingProfile) return;
@@ -666,9 +694,9 @@ export default function App() {
           <PrizmaChatScreen userId={session.user.id} onOutfit={() => open('Gardırop')} />
         </KeyboardAvoidingView>
       ) : tab === 'Deneme Fotoğrafım' ? (
-        <TryOnProfileScreen userId={session.user.id} onBack={() => open('Sanal Deneme')} />
+        <TryOnProfileScreen userId={session.user.id} onBack={() => open('Sanal Deneme')} recoveredCameraUri={recoveredCameraPurpose === 'person' ? recoveredCameraUri : null} onRecoveredCameraHandled={() => setRecoveredCameraUri(null)} />
       ) : tab === 'Sanal Deneme' ? (
-        <HomeTryOnScreen userId={session.user.id} onBack={() => open('Ana Sayfa')} onManagePhoto={() => open('Deneme Fotoğrafım')} />
+        <HomeTryOnScreen userId={session.user.id} onBack={() => open('Ana Sayfa')} onManagePhoto={() => open('Deneme Fotoğrafım')} recoveredCameraUri={recoveredCameraPurpose === 'garment' ? recoveredCameraUri : null} onRecoveredCameraHandled={() => setRecoveredCameraUri(null)} />
       ) : (
       <ScrollView
         style={styles.scroll}

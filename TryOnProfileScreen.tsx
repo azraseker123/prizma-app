@@ -5,12 +5,12 @@ import {
   StyleSheet, Modal,
 } from 'react-native';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
-import { chooseTryOnPhoto, readTryOnPhoto, saveTryOnPhoto, deleteTryOnPhoto, validateTryOnImage, removeSavedTryOnBackground, type TryOnPhoto } from './TryOnPhotoStore';
+import { chooseTryOnPhoto, readTryOnPhoto, saveTryOnPhoto, deleteTryOnPhoto, validateTryOnImage, removeSavedTryOnBackground, prepareTryOnPhoto, type TryOnPhoto } from './TryOnPhotoStore';
 
-type Props = { userId: string; onBack: () => void };
+type Props = { userId: string; onBack: () => void; recoveredCameraUri?: string | null; onRecoveredCameraHandled?: () => void };
 type Notice = { type: NoticeType; title: string; message: string };
 
-export default function TryOnProfileScreen({ userId, onBack }: Props) {
+export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri, onRecoveredCameraHandled }: Props) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<{ path: string; url: string } | null>(null);
@@ -29,11 +29,23 @@ export default function TryOnProfileScreen({ userId, onBack }: Props) {
   }, [userId]);
 
   useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    if (!recoveredCameraUri) return;
+    let active = true;
+    void prepareTryOnPhoto(recoveredCameraUri).then(result => {
+      if (!active) return;
+      setDraft(result); setVerified(false); setConsent(false);
+      setNotice({ type: 'info', title: 'Kamera fotoğrafın geri geldi', message: 'Çektiğin fotoğrafı yeniden çekmene gerek yok. Uygunluk kontrolüne izin verip kaydedebilirsin.' });
+    }).catch(error => {
+      if (active) setNotice({ type: 'error', title: 'Fotoğraf geri yüklenemedi', message: error instanceof Error ? error.message : 'Galeriden yüklemeyi deneyebilirsin.' });
+    }).finally(() => { if (active) onRecoveredCameraHandled?.(); });
+    return () => { active = false; };
+  }, [recoveredCameraUri]);
 
   async function select(camera: boolean) {
     if (busy) return;
     try {
-      const chosen = await chooseTryOnPhoto(camera);
+      const chosen = await chooseTryOnPhoto(camera, 'person');
       if (chosen) { setDraft(chosen); setVerified(false); setConsent(false); }
     } catch (e) {
       setNotice({ type: 'error', title: 'Fotoğraf seçilemedi', message: e instanceof Error ? e.message : 'Tekrar dene.' });
