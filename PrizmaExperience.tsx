@@ -152,7 +152,7 @@ export function PrizmaStudio({userId,onOpen,onSoon}:Common){
 
 export function PrizmaBeauty({onOpen,onBeautyCategory}:{onOpen:Go;onBeautyCategory:(v:'skin'|'hair'|'makeup')=>void}){
  const [category,setCategory]=useState<'Cilt'|'Saç'|'Makyaj'|'Bakım'>('Cilt');
- const selection=category==='Cilt'?'skin':category==='Saç'?'hair':'makeup';
+ const selection=category==='Cilt'?'skin':category==='Saç'?'hair':category==='Makyaj'?'makeup':'skin';
  const details={
    Cilt:{title:'Cildine özel bakım',sub:'Cilt tipini keşfet, ürünlerini ve günlük bakımını düzenle.',cta:'Cildim için ürün önerisi al'},
    Saç:{title:'Saç bakımını keşfet',sub:'Saç ihtiyaçlarına uygun önerileri ve kullandığın ürünleri keşfet.',cta:'Saçım için ürün önerisi al'},
@@ -167,7 +167,7 @@ export function PrizmaBeauty({onOpen,onBeautyCategory}:{onOpen:Go;onBeautyCatego
   <Headline title="Güzellik" subtitle="Cilt, saç ve bakım dünyan bir arada."/>
   <View style={ui.chips}>
    {(['Cilt','Saç','Makyaj','Bakım'] as const).map(v=>
-    <TouchableOpacity key={v} onPress={()=>setCategory(v)} accessibilityRole="tab"
+    <TouchableOpacity key={v} onPress={()=>{setCategory(v);if(v!=='Bakım')onBeautyCategory(v==='Cilt'?'skin':v==='Saç'?'hair':'makeup');}} accessibilityRole="tab"
      accessibilityState={{selected:category===v}} style={[ui.chip,category===v&&ui.chipActive]}>
      <Text style={[ui.chipLabel,category===v&&ui.chipLabelActive]}>{v}</Text>
     </TouchableOpacity>)}
