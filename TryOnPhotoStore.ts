@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { decode, encode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
@@ -13,7 +14,8 @@ export async function prepareTryOnPhoto(uri: string): Promise<TryOnPhoto> {
   return { uri: reduced.uri, base64: reduced.base64, mimeType: 'image/jpeg' };
 }
 
-export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | null> {
+export const PENDING_TRYON_CAMERA_KEY = 'prizma:pending-tryon-camera-v1';
+export async function chooseTryOnPhoto(camera: boolean, purpose: 'person' | 'garment' = 'garment'): Promise<TryOnPhoto | null> {
   if (camera) {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
@@ -23,9 +25,11 @@ export async function chooseTryOnPhoto(camera: boolean): Promise<TryOnPhoto | nu
   const pickerOptions: ImagePicker.ImagePickerOptions = {
     mediaTypes: ['images'], allowsEditing: false, quality: camera ? 0.6 : 0.8,
   };
+  if (camera) await AsyncStorage.setItem(PENDING_TRYON_CAMERA_KEY, JSON.stringify({ purpose, time: Date.now() }));
   const result = camera
     ? await ImagePicker.launchCameraAsync({ ...pickerOptions, cameraType: ImagePicker.CameraType.back })
     : await ImagePicker.launchImageLibraryAsync(pickerOptions);
+  if (camera) await AsyncStorage.removeItem(PENDING_TRYON_CAMERA_KEY);
   if (result.canceled || !result.assets?.[0]?.uri) return null;
   return prepareTryOnPhoto(result.assets[0].uri);
 }
