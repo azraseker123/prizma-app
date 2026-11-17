@@ -975,9 +975,9 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
       <View style={styles.wardrobeCategoryPreview}>
         {(['Üst Giyim','Alt Giyim','Dış Giyim','Ayakkabı','Çanta','Aksesuar'] as const).map((categoryName,idx)=>(
           <TouchableOpacity key={categoryName} style={styles.wardrobeCategoryTile} onPress={()=>{setActiveWardrobeTab('clothes');setActiveFilter(categoryName);}}>
-            <Text style={styles.wardrobeCategorySymbol}>{['♧','▥','▤','⌁','▢','○'][idx]}</Text>
+            <Text style={styles.wardrobeCategorySymbol}>{['👚','👖','🧥','👟','👜','💍'][idx]}</Text>
             <Text style={styles.wardrobeCategoryName} numberOfLines={1}>{categoryName}</Text>
-            <Text style={styles.wardrobeCategoryCount}>{items.filter(x=>x.category===categoryName).length}</Text>
+            <Text style={styles.wardrobeCategoryCount}>{items.filter(x=>x.category===categoryName).length} parça</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -1968,12 +1968,12 @@ const styles = StyleSheet.create({
   wardrobeAddCircle:{width:42,height:42,borderRadius:21,alignItems:'center',justifyContent:'center',backgroundColor:'#5A2275'},
   wardrobeAddPlus:{color:'#FFFFFF',fontSize:27,lineHeight:32},
   wardrobeCategoryPreview:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:7,marginBottom:17},
-  wardrobeCategoryTile:{width:'31.5%',minHeight:78,borderRadius:13,backgroundColor:'#F6F0F8',padding:8,alignItems:'center',justifyContent:'center'},
-  wardrobeCategorySymbol:{fontSize:20,color:'#623078'},
-  wardrobeCategoryName:{fontSize:10,fontWeight:'800',color:'#271E3C',marginTop:3},
-  wardrobeCategoryCount:{fontSize:10,color:'#85748A',marginTop:2},
+  wardrobeCategoryTile:{width:'31.5%',minHeight:91,borderRadius:15,backgroundColor:'#F6F0F8',padding:8,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#ECE1F0'},
+  wardrobeCategorySymbol:{fontSize:29,marginBottom:3},
+  wardrobeCategoryName:{fontSize:11,fontWeight:'800',color:'#271E3C',marginTop:3},
+  wardrobeCategoryCount:{fontSize:10,color:'#85748A',marginTop:3},
   wardrobeCompactIcon: { color: '#6D47AD', fontSize: 29, lineHeight: 34 },
-  wardrobeCompactTitle: { color: '#221637', fontSize: 29, fontFamily: Platform.OS==='ios'?'Georgia':'serif', fontWeight: '600', marginBottom: 4 },
+  wardrobeCompactTitle: { color: '#221637', fontSize: 27, fontWeight: '800', letterSpacing:-0.55, marginBottom: 4 },
   wardrobeCompactDescription: { color: '#645777', fontSize: 12, lineHeight: 18 },
   compactWardrobeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 10 },
   compactCount: { color: '#59466D', fontSize: 13, fontWeight: '700' },
