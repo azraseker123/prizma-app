@@ -185,6 +185,8 @@ export function PrizmaProfile({email,onOpen,onEdit,onLogout,onSoon}:{
   <Section title="Hesabım"/>
   <TextRow symbol="♕" title="PRİZMA Premium" description="Abonelik sistemi hazırlanıyor" onPress={onSoon}/>
   <TextRow symbol="▢" title="Sanal deneme fotoğrafım" onPress={()=>onOpen('Deneme Fotoğrafım')}/>
+  <TextRow symbol="⚙" title="Gizlilik ve ayarlar" description="Hesap ayarları bölümü hazırlanıyor" onPress={onSoon}/>
+  <TextRow symbol="?" title="Yardım ve destek" description="Destek merkezi hazırlanıyor" onPress={onSoon}/>
   <TouchableOpacity style={ui.logout} onPress={onLogout}><Text style={ui.logoutLabel}>Çıkış yap  →</Text></TouchableOpacity>
  </View>;
 }
