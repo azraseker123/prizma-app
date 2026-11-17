@@ -24,13 +24,13 @@ Deno.serve(async(req)=>{
  const action=body.action==="start"?"start":body.action==="status"?"status":body.action==="eligibility"?"eligibility":null;
  if(!action)return json({error:"Geçersiz işlem."},400);
  if(action==="eligibility"){
-  const {data,error}=await admin.from("tryon_entitlements").select("status,period_start,period_end,monthly_limit").eq("user_id",user.id).maybeSingle();
+  const {data,error}=await admin.from("tryon_entitlements").select("status,period_start,period_end,monthly_limit,grant_source").eq("user_id",user.id).maybeSingle();
   if(error)return json({error:"Premium bilgisi alınamadı."},503);
-  const active=data?.status==="active"&&Date.now()>=Date.parse(data.period_start)&&Date.now()<Date.parse(data.period_end);
-  if(!active)return json({active:false,remaining:0,monthlyLimit:15});
+  const active=(data?.status==="active"||data?.status==="test")&&Date.now()>=Date.parse(data.period_start)&&Date.now()<Date.parse(data.period_end);
+  if(!active)return json({active:false,remaining:0,monthlyLimit:15,testAccess:false,providerReady:Boolean(Deno.env.get("FASHN_API_KEY"))});
   const {count,error:countError}=await admin.from("tryon_jobs").select("id",{head:true,count:"exact"}).eq("user_id",user.id).gte("created_at",data.period_start).lt("created_at",data.period_end).neq("status","failed");
   if(countError)return json({error:"Kullanım hakkı alınamadı."},503);
-  return json({active:true,remaining:Math.max(0,data.monthly_limit-(count??0)),monthlyLimit:data.monthly_limit});
+  return json({active:true,remaining:Math.max(0,data.monthly_limit-(count??0)),monthlyLimit:data.monthly_limit,testAccess:data?.grant_source==="development"||data?.status==="test",providerReady:Boolean(Deno.env.get("FASHN_API_KEY"))});
  }
  if(action==="start"){
   if(body.consent!==true)return json({error:"Fotoğrafların sanal deneme için harici AI servisine gönderilmesine onay vermelisin."},400);
