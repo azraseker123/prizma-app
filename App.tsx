@@ -43,6 +43,7 @@ import HomeTryOnScreen from './HomeTryOnScreen';
 type Tab =
   | 'Ana Sayfa'
   | 'Stil Stüdyosu'
+  | 'Kombin Oluştur'
   | 'Gardırop'
   | 'PRİZMA AI'
   | 'Güzellik'
@@ -722,8 +723,8 @@ export default function App() {
         )}
 
         {/* GARDIROP */}
-        {tab === 'Gardırop' && (
-          <WardrobeScreen userId={session.user.id} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} />
+        {(tab === 'Gardırop' || tab === 'Kombin Oluştur') && (
+          <WardrobeScreen userId={session.user.id} initialTab={tab === 'Kombin Oluştur' ? 'ai' : 'clothes'} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} />
         )}
 
         {/* CİLT ANALİZİ */}
@@ -757,7 +758,7 @@ export default function App() {
       {/* ALT MENÜ: klavye açıkken sohbet yazma alanına yer bırak */}
       {!(tab === 'PRİZMA AI' && keyboardVisible) && <View style={styles.tabBar}>
         {tabs.map((item) => {
-          const active = tab === item.name;
+          const active = tab === item.name || (tab === 'Kombin Oluştur' && item.name === 'Stil Stüdyosu');
           const isAI = item.name === 'Stil Stüdyosu';
 
           return (
