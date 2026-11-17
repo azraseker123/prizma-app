@@ -19,7 +19,7 @@ Deno.serve(async(req)=>{
  let body:Record<string,unknown>;
  try{body=await req.json();if(!body||typeof body!=="object")throw Error("bad request");}
  catch{return json({error:"İstek okunamadı."},400);}
- const action=body.action==="start"?"start":body.action==="status"?"status":body.action==="eligibility"?"eligibility":body.action==="gallery"?"gallery":body.action==="delete"?"delete":null;
+ const action=body.action==="start"?"start":body.action==="status"?"status":body.action==="eligibility"?"eligibility":body.action==="gallery"?"gallery":body.action==="delete"?"delete":body.action==="history"?"history":body.action==="admin-history"?"admin-history":null;
  if(!action)return json({error:"Geçersiz işlem."},400);
  if(action==="eligibility"){
   const {data,error}=await admin.from("tryon_entitlements").select("status,period_start,period_end,monthly_limit,grant_source").eq("user_id",user.id).maybeSingle();
@@ -29,6 +29,46 @@ Deno.serve(async(req)=>{
   const {count,error:countError}=await admin.from("tryon_jobs").select("id",{head:true,count:"exact"}).eq("user_id",user.id).gte("created_at",data.period_start).lt("created_at",data.period_end).neq("status","failed");
   if(countError)return json({error:"Kullanım hakkı alınamadı."},503);
   return json({active:true,remaining:Math.max(0,data.monthly_limit-(count??0)),monthlyLimit:data.monthly_limit,testAccess:data?.grant_source==="development"||data?.status==="test",providerReady:Boolean(Deno.env.get("BRIA_API_TOKEN"))});
+ }
+ if(action==="history"){
+  const {data:jobs,error}=await admin.from("tryon_jobs")
+    .select("id,status,created_at,updated_at,prediction_id")
+    .eq("user_id",user.id).order("created_at",{ascending:false}).limit(100);
+  if(error)return json({error:"Kullanım geçmişi alınamadı."},503);
+  // The credit ledger is counted using the same definition as quota reservation:
+  // failed jobs are released; completed and deleted jobs count as one use.
+  const items=(jobs??[]).map(j=>({
+    id:j.id,createdAt:j.created_at,updatedAt:j.updated_at,status:j.status,
+    creditUsed:j.status!=="failed",resultDeleted:j.status==="deleted",
+    reference:j.id.slice(0,8).toUpperCase()
+  }));
+  const {data:supportAccess}=await admin.from("tryon_support_admins").select("enabled").eq("user_id",user.id).maybeSingle();
+  return json({items,isSupportAdmin:supportAccess?.enabled===true});
+ }
+ if(action==="admin-history"){
+  const {data:adminAccess,error:permissionError}=await admin.from("tryon_support_admins")
+    .select("enabled").eq("user_id",user.id).maybeSingle();
+  if(permissionError||adminAccess?.enabled!==true)return json({error:"Bu işlem için yönetici yetkisi gerekli."},403);
+  // Administrators can inspect operational metadata, never private image URLs.
+  let query=admin.from("tryon_jobs")
+    .select("id,user_id,status,created_at,updated_at,prediction_id,result_path")
+    .order("created_at",{ascending:false}).limit(100);
+  if(typeof body.targetUserId==="string"&&uuid.test(body.targetUserId))query=query.eq("user_id",body.targetUserId);
+  const {data:jobs,error}=await query;
+  if(error)return json({error:"Yönetici kayıtları alınamadı."},503);
+  const {data:events,error:eventError}=await admin.from("tryon_audit_events")
+    .select("job_id,event_type,from_status,to_status,event_time,credit_effect,source")
+    .in("job_id",(jobs??[]).map(j=>j.id).length?(jobs??[]).map(j=>j.id):["00000000-0000-0000-0000-000000000000"])
+    .order("event_time",{ascending:true}).limit(1000);
+  if(eventError)return json({error:"Denetim kayıtları alınamadı."},503);
+  return json({items:(jobs??[]).map(j=>({
+    id:j.id,userId:j.user_id,status:j.status,createdAt:j.created_at,updatedAt:j.updated_at,
+    providerJobExists:!!j.prediction_id,resultRetained:!!j.result_path,
+    history:(events??[]).filter(e=>e.job_id===j.id).map(e=>({
+      type:e.event_type,from:e.from_status,to:e.to_status,time:e.event_time,
+      creditEffect:e.credit_effect,historicalSnapshot:e.source==="backfill_current_state"
+    }))
+  }))});
  }
  if(action==="gallery"){
   const {data:jobs,error}=await admin.from("tryon_jobs").select("id,created_at,result_path").eq("user_id",user.id).eq("status","completed").not("result_path","is",null).order("created_at",{ascending:false}).limit(60);
