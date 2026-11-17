@@ -9,7 +9,7 @@ type Props={userId:string;onBack:()=>void;onManagePhoto:()=>void;recoveredCamera
 
 export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCameraUri,onRecoveredCameraHandled}:Props){
  const [person,setPerson]=useState<{path:string;url:string}|null>(null);
- const [garment,setGarment]=useState<{name:string;uri:string;source:'camera'|'gallery'|'wardrobe'}|null>(null);
+ const [garment,setGarment]=useState<{name:string;uri:string;source:'camera'|'gallery'|'wardrobe';itemId?:string;base64?:string}|null>(null);
  const [wardrobe,setWardrobe]=useState<WardrobeChoice[]>([]);
  const [loading,setLoading]=useState(true);
  const [loadingWardrobe,setLoadingWardrobe]=useState(false);
@@ -17,6 +17,12 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
  const [busy,setBusy]=useState(false);
  const [consent,setConsent]=useState(false);
  const [pendingGarment,setPendingGarment]=useState<TryOnPhoto|null>(null);
+ const [premium,setPremium]=useState<{active:boolean;remaining:number;monthlyLimit:number}|null>(null);
+ const [tryOnConsent,setTryOnConsent]=useState(false);
+ const [ownsPhoto,setOwnsPhoto]=useState(false);
+ const [tryOnJob,setTryOnJob]=useState<string|null>(null);
+ const [tryOnStatus,setTryOnStatus]=useState<'idle'|'starting'|'processing'|'completed'|'failed'>('idle');
+ const [resultUrl,setResultUrl]=useState<string|null>(null);
  const [notice,setNotice]=useState<{type:NoticeType;title:string;message:string}|null>(null);
 
  const reload=useCallback(async()=>{
@@ -26,6 +32,24 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
   finally{setLoading(false);}
  },[userId]);
  useEffect(()=>{void reload();},[reload]);
+ useEffect(()=>{let active=true;void supabase.functions.invoke('virtual-tryon',{body:{action:'eligibility'}}).then(({data,error})=>{if(active&&!error&&!data?.error)setPremium({active:data.active===true,remaining:typeof data.remaining==='number'?data.remaining:0,monthlyLimit:15});}).catch(()=>{});return()=>{active=false;};},[userId]);
+ useEffect(()=>{
+  if(!tryOnJob||tryOnStatus!=='processing')return;
+  let active=true;
+  let attempts=0;
+  const poll=async()=>{
+   if(!active||attempts>=45)return;
+   attempts++;
+   const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'status',jobId:tryOnJob}});
+   if(!active)return;
+   if(error||data?.error){if(attempts===45)setNotice({type:'info',title:'Sonuç kontrolü sürüyor',message:'İşlem numarası korunuyor. Sonucu yeniden kontrol edebilirsin.'});return;}
+   if(data?.status==='completed'&&typeof data?.url==='string'){setResultUrl(data.url);setTryOnStatus('completed');setPremium(v=>v?{...v,remaining:Math.max(0,v.remaining-1)}:v);}
+   else if(data?.status==='failed'){setTryOnStatus('failed');setNotice({type:'error',title:'Sanal deneme tamamlanamadı',message:data.error||'Başarısız işlem hakkından düşmez.'});}
+  };
+  const interval=setInterval(()=>void poll(),4000);
+  void poll();
+  return()=>{active=false;clearInterval(interval);};
+ },[tryOnJob,tryOnStatus]);
  useEffect(()=>{
   if(!recoveredCameraUri)return;
   let cancelled=false;
@@ -61,7 +85,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
    if(!picked)return;
    setPendingGarment(picked);
    await validateTryOnImage(picked,'garment');
-   setGarment({uri:picked.uri,name:camera?'Yeni çektiğim kıyafet':'Galeriden seçtiğim kıyafet',source:camera?'camera':'gallery'});
+   setGarment({uri:picked.uri,base64:picked.base64,name:camera?'Yeni çektiğim kıyafet':'Galeriden seçtiğim kıyafet',source:camera?'camera':'gallery'});
    setPendingGarment(null);
    setShowWardrobe(false);
   }catch(e){setNotice({type:'error',title:'Fotoğraf işlenemedi',message:e instanceof Error?e.message:'Lütfen yeniden dene.'});}
@@ -72,14 +96,28 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
   if(!pendingGarment||busy)return;
   if(!consent){setNotice({type:'info',title:'AI kontrol izni',message:'Fotoğraf kontrolü için izin vermelisin.'});return;}
   setBusy(true);
-  try{await validateTryOnImage(pendingGarment,'garment');setGarment({uri:pendingGarment.uri,name:'Çektiğim kıyafet',source:'camera'});setPendingGarment(null);}
+  try{await validateTryOnImage(pendingGarment,'garment');setGarment({uri:pendingGarment.uri,base64:pendingGarment.base64,name:'Çektiğim kıyafet',source:'camera'});setPendingGarment(null);}
   catch(e){setNotice({type:'error',title:'Fotoğraf kontrolü tamamlanamadı',message:e instanceof Error?e.message:'Aynı fotoğrafı yeniden deneyebilirsin.'});}
+  finally{setBusy(false);}
+ }
+
+ async function startTryOn(){
+  if(!person||!garment||busy)return;
+  if(!tryOnConsent||!ownsPhoto){setNotice({type:'info',title:'Onay gerekli',message:'Fotoğrafını sanal denemede kullanmak için izin kutularını işaretlemelisin.'});return;}
+  if(!premium?.active||premium.remaining<=0){setNotice({type:'info',title:'Premium gerekiyor',message:'Sanal deneme için aktif Premium üyelik ve kullanım hakkı gerekli.'});return;}
+  setBusy(true);setTryOnStatus('starting');setResultUrl(null);
+  try{
+   const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'start',consent:true,ownsPersonPhoto:true,...(garment.itemId?{wardrobeItemId:garment.itemId}:{garmentBase64:garment.base64})}});
+   if(error||data?.error)throw new Error(data?.error||error?.message||'Sanal deneme başlatılamadı.');
+   if(!data?.jobId)throw new Error('Sanal deneme işlem numarası alınamadı.');
+   setTryOnJob(data.jobId);setTryOnStatus('processing');
+  }catch(e){setTryOnStatus('failed');setNotice({type:'error',title:'Sanal deneme başlatılamadı',message:e instanceof Error?e.message:'Tekrar deneyebilirsin.'});}
   finally{setBusy(false);}
  }
 
  function chooseWardrobe(choice:WardrobeChoice){
   if(!choice.imageUrl){setNotice({type:'error',title:'Fotoğraf bulunamadı',message:'Bu gardırop parçasının fotoğrafı açılamıyor.'});return;}
-  setGarment({uri:choice.imageUrl,name:choice.name,source:'wardrobe'});
+  setGarment({uri:choice.imageUrl,name:choice.name,source:'wardrobe',itemId:choice.id});
   setShowWardrobe(false);
  }
 
@@ -132,8 +170,13 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
      <View style={s.previewBox}>{person?<Image source={{uri:person.url}} style={s.previewImage} resizeMode="contain"/>:<Text style={s.small}>Benim fotoğrafım</Text>}</View>
      <View style={s.previewBox}>{garment?<Image source={{uri:garment.uri}} style={s.previewImage} resizeMode="contain"/>:<Text style={s.small}>Kıyafet fotoğrafı</Text>}</View>
     </View>
-    <View style={s.disabledButton}><Text style={s.disabledText}>✦ AI ile Üzerimde Dene · Yakında</Text></View>
-    <Text style={s.small}>Şu an iki fotoğrafı hazırlıyoruz; henüz yeni görüntü oluşturulmuyor veya sanal deneme hakkı kullanılmıyor. Gerçek sanal denemeye geçmeden önce ayrı izin ve Premium hak kontrolü eklenecek.</Text>
+    {resultUrl?<View style={s.resultCard}><Text style={s.resultTitle}>✦ Sanal deneme hazır</Text><Image source={{uri:resultUrl}} style={s.resultImage} resizeMode="contain"/><Text style={s.small}>Bu bir AI görselleştirmesidir; gerçek kalıp veya beden uyumunu garanti etmez.</Text></View>:null}
+    <TouchableOpacity onPress={()=>setOwnsPhoto(!ownsPhoto)} style={s.consent}><Text style={s.consentText}>{ownsPhoto?'☑':'☐'} Bu fotoğraf bana ait veya fotoğraftaki kişinin kullanım izni var.</Text></TouchableOpacity>
+    <TouchableOpacity onPress={()=>setTryOnConsent(!tryOnConsent)} style={s.consent}><Text style={s.consentText}>{tryOnConsent?'☑':'☐'} Fotoğraflarımın kıyafet denemesi için harici AI hizmetinde işlenmesini kabul ediyorum.</Text></TouchableOpacity>
+    <TouchableOpacity style={[s.primaryTryon,(!premium?.active||!person||!garment||tryOnStatus==='starting'||tryOnStatus==='processing')&&s.disabledButton]} disabled={!person||!garment||!premium?.active||premium.remaining<=0||busy||tryOnStatus==='starting'||tryOnStatus==='processing'} onPress={()=>void startTryOn()}><Text style={s.primaryTryonText}>{tryOnStatus==='starting'||tryOnStatus==='processing'?'✦ Sanal deneme hazırlanıyor…':premium?.active?'✦ AI ile Üzerimde Dene':'✦ Sanal Deneme · Premium'}</Text></TouchableOpacity>
+    {tryOnStatus==='processing'&&<ActivityIndicator style={{marginTop:12}} color="#8050B5"/>}
+    <Text style={s.small}>{premium?.active?`Kalan sanal deneme hakkın: ${premium.remaining} / ${premium.monthlyLimit}`:'Gerçek AI sanal deneme, aktif Premium üyelikte kullanılabilir. Premium doğrulaması açılana kadar ücretli işlem gönderilmez.'}</Text>
+    {tryOnJob&&tryOnStatus==='processing'&&<TouchableOpacity style={s.wardrobeButton} onPress={()=>{setTryOnStatus('idle');setTimeout(()=>setTryOnStatus('processing'),0);}}><Text style={s.wardrobeText}>↻ Sonucu yeniden kontrol et</Text></TouchableOpacity>}
    </View>
   </ScrollView>
  </View>;
@@ -141,6 +184,11 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
 
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:'#FAF9FC'},content:{padding:20,paddingBottom:90},
+ primaryTryon:{backgroundColor:'#8050B5',borderRadius:14,paddingVertical:16,alignItems:'center',marginTop:14},
+ primaryTryonText:{color:'#FFFFFF',fontWeight:'800',fontSize:13},
+ resultCard:{padding:10,backgroundColor:'#F4EDF8',borderRadius:14,marginBottom:12},
+ resultTitle:{color:'#372447',fontSize:15,fontWeight:'800',marginBottom:12},
+ resultImage:{width:'100%',height:370},
  pendingCard:{padding:12,marginTop:14,backgroundColor:'#F5EFF8',borderRadius:14},
  pendingPhoto:{height:180,width:'100%'},
  back:{color:'#8050B5',fontWeight:'800',fontSize:13,marginBottom:22},
