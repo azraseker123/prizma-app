@@ -25,6 +25,13 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
  const [resultUrl,setResultUrl]=useState<string|null>(null);
  const [myLooks,setMyLooks]=useState<Array<{id:string;createdAt:string;url:string}>>([]);
  const [looksLoading,setLooksLoading]=useState(false);
+ const [usageItems,setUsageItems]=useState<Array<{id:string;reference:string;createdAt:string;updatedAt:string;status:string;creditUsed:boolean;resultDeleted:boolean}>>([]);
+ const [historyLoading,setHistoryLoading]=useState(false);
+ const [historyOpen,setHistoryOpen]=useState(false);
+ const [supportIsAdmin,setSupportIsAdmin]=useState(false);
+ const [supportOpen,setSupportOpen]=useState(false);
+ const [supportRecords,setSupportRecords]=useState<Array<{id:string;userId:string;status:string;createdAt:string;updatedAt:string;providerJobExists:boolean;resultRetained:boolean;history:Array<{type:string;time:string;creditEffect:string;historicalSnapshot:boolean}>}>>([]);
+ const [supportLoading,setSupportLoading]=useState(false);
  const [selectedLook,setSelectedLook]=useState<{id:string;createdAt:string;url:string}|null>(null);
  const [deleteTarget,setDeleteTarget]=useState<string|null>(null);
  const [deleting,setDeleting]=useState(false);
@@ -47,6 +54,31 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
   finally{setLooksLoading(false);}
  },[]);
  useEffect(()=>{void loadMyLooks();},[userId,loadMyLooks]);
+ const loadUsageHistory=useCallback(async()=>{
+  setHistoryLoading(true);
+  try{
+   const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'history'}});
+   if(error||data?.error)throw new Error(data?.error||error?.message||'Geçmiş yüklenemedi.');
+   setUsageItems(Array.isArray(data?.items)?data.items:[]);
+  }catch(e){setNotice({type:'error',title:'Kullanım geçmişi açılamadı',message:e instanceof Error?e.message:'Tekrar deneyebilirsin.'});}
+  finally{setHistoryLoading(false);}
+ },[]);
+ const loadSupportRecords=useCallback(async()=>{
+  setSupportLoading(true);
+  try{
+   const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'admin-history'}});
+   if(error||data?.error){
+    const description=data?.error||error?.message||'Yönetici kayıtları yüklenemedi.';
+    if(description.includes('yetkisi gerekli')){setSupportIsAdmin(false);return;}
+    throw new Error(description);
+   }
+   setSupportIsAdmin(true);setSupportRecords(Array.isArray(data?.items)?data.items:[]);
+  }catch(e){setNotice({type:'error',title:'Yönetici kayıtları açılamadı',message:e instanceof Error?e.message:'Tekrar deneyebilirsin.'});}
+  finally{setSupportLoading(false);}
+ },[]);
+ useEffect(()=>{void loadUsageHistory();},[userId,loadUsageHistory]);
+ // Administrative access is checked server-side; UI doesn't grant any privileges.
+ useEffect(()=>{void loadSupportRecords();},[userId,loadSupportRecords]);
  async function removeLook(){
   if(!deleteTarget||deleting)return;
   setDeleting(true);
@@ -58,6 +90,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
    setSelectedLook(v=>v?.id===deleteTarget?null:v);
    setDeleteTarget(null);
    setNotice({type:'success',title:'Deneme silindi',message:'Görselin koleksiyonundan kaldırıldı.'});
+   void loadUsageHistory();
   }catch(e){setNotice({type:'error',title:'Deneme silinemedi',message:e instanceof Error?e.message:'Tekrar dene.'});}
   finally{setDeleting(false);}
  }
@@ -77,13 +110,13 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
    const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'status',jobId:tryOnJob}});
    if(!active)return;
    if(error||data?.error){if(attempts===45)setNotice({type:'info',title:'Sonuç kontrolü sürüyor',message:'İşlem numarası korunuyor. Sonucu yeniden kontrol edebilirsin.'});return;}
-   if(data?.status==='completed'&&typeof data?.url==='string'){setResultUrl(data.url);setTryOnStatus('completed');void loadMyLooks();setPremium(v=>v?{...v,remaining:Math.max(0,v.remaining-1)}:v);}
+   if(data?.status==='completed'&&typeof data?.url==='string'){setResultUrl(data.url);setTryOnStatus('completed');void loadMyLooks();void loadUsageHistory();setPremium(v=>v?{...v,remaining:Math.max(0,v.remaining-1)}:v);}
    else if(data?.status==='failed'){setTryOnStatus('failed');setNotice({type:'error',title:'Sanal deneme tamamlanamadı',message:data.error||'Başarısız işlem hakkından düşmez.'});}
   };
   const interval=setInterval(()=>void poll(),4000);
   void poll();
   return()=>{active=false;clearInterval(interval);};
- },[tryOnJob,tryOnStatus,loadMyLooks]);
+ },[tryOnJob,tryOnStatus,loadMyLooks,loadUsageHistory]);
  useEffect(()=>{
   if(!recoveredCameraUri)return;
   let cancelled=false;
@@ -234,6 +267,42 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     {tryOnJob&&tryOnStatus==='processing'&&<TouchableOpacity style={s.wardrobeButton} onPress={()=>{setTryOnStatus('idle');setTimeout(()=>setTryOnStatus('processing'),0);}}><Text style={s.wardrobeText}>↻ Sonucu yeniden kontrol et</Text></TouchableOpacity>}
    </View>
    <View style={s.looksCard}>
+    <View style={s.cardHeading}>
+     <Text style={s.cardTitle}>✦ Kullanım Geçmişim</Text>
+     <TouchableOpacity onPress={()=>{setHistoryOpen(!historyOpen);if(!historyOpen)void loadUsageHistory();}}><Text style={s.link}>{historyOpen?'Gizle':'Görüntüle ›'}</Text></TouchableOpacity>
+    </View>
+    <Text style={s.small}>Her sanal denemenin işlem kaydını görebilirsin. Görseli silmek hakkını geri yüklemez.</Text>
+    {historyOpen&&<View>
+     <TouchableOpacity onPress={()=>void loadUsageHistory()} disabled={historyLoading} style={s.wardrobeButton}><Text style={s.wardrobeText}>↻ Geçmişi yenile</Text></TouchableOpacity>
+     {historyLoading?<ActivityIndicator color="#8050B5" style={{marginTop:12}}/>:usageItems.length===0?
+      <Text style={s.small}>Henüz kullanım kaydı bulunmuyor.</Text>:
+      usageItems.map(x=><View key={x.id} style={s.usageRow}>
+       <View style={{flex:1}}>
+        <Text style={s.usageMain}>{new Date(x.createdAt).toLocaleString('tr-TR',{dateStyle:'medium',timeStyle:'short'})}</Text>
+        <Text style={s.usageMeta}>İşlem #{x.reference} · {x.resultDeleted?'Görsel silindi':x.status==='completed'?'Tamamlandı':x.status==='failed'?'Başarısız':x.status==='submitted'||x.status==='processing'||x.status==='reserved'?'İşlem sürüyor':x.status}</Text>
+       </View>
+       <Text style={[s.usageCredit,x.creditUsed?s.usageCreditSpent:s.usageCreditReturned]}>{x.creditUsed?'1 hak':'0 hak'}</Text>
+      </View>)}
+     <Text style={s.small}>Başarısız işlemlerde hak kullanılmaz. İşlemi başlatılan ve henüz sonuçlanmayan denemeler geçici olarak kullanım sınırına dahil edilir.</Text>
+    </View>}
+   </View>
+   {supportIsAdmin&&<View style={s.looksCard}>
+    <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Yönetici İşlem Geçmişi</Text>
+     <TouchableOpacity onPress={()=>{setSupportOpen(!supportOpen);if(!supportOpen)void loadSupportRecords();}}><Text style={s.link}>{supportOpen?'Gizle':'Görüntüle ›'}</Text></TouchableOpacity>
+    </View>
+    {supportOpen&&<View>
+     <TouchableOpacity disabled={supportLoading} style={s.wardrobeButton} onPress={()=>void loadSupportRecords()}><Text style={s.wardrobeText}>↻ Kayıtları yenile</Text></TouchableOpacity>
+     {supportLoading?<ActivityIndicator color="#8050B5"/>:
+      supportRecords.map(x=><View key={x.id} style={s.usageRow}>
+       <View style={{flex:1}}>
+        <Text style={s.usageMain}>#{x.id.slice(0,8).toUpperCase()} · {x.status}</Text>
+        <Text style={s.usageMeta}>Hesap: {x.userId.slice(0,8)}… · {new Date(x.createdAt).toLocaleString('tr-TR')}</Text>
+        {x.history.map((h,i)=><Text key={i} style={s.usageMeta}>{new Date(h.time).toLocaleString('tr-TR')}: {h.historicalSnapshot?'Eski kaydın durumu':h.type} · {h.creditEffect==='released'?'Hak iade':h.creditEffect==='reserved'?'Hak ayrıldı':'Hak korundu'}</Text>)}
+       </View>
+      </View>)}
+    </View>}
+   </View>
+   <View style={s.looksCard}>
     <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Denemelerim</Text><TouchableOpacity disabled={looksLoading} onPress={()=>void loadMyLooks()}><Text style={s.link}>Yenile ↻</Text></TouchableOpacity></View>
     <Text style={s.small}>Oluşturduğun kıyafet denemeleri burada saklanır. Tekrar görüntülemek için AI hakkı harcamazsın.</Text>
     {looksLoading?<ActivityIndicator style={{marginTop:20}} color="#8050B5"/>:myLooks.length===0?
@@ -249,6 +318,12 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
 
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:'#FAF9FC'},content:{padding:20,paddingBottom:90},
+ usageRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#ECE4F0'},
+ usageMain:{color:'#382748',fontSize:12,fontWeight:'800'},
+ usageMeta:{color:'#80718F',fontSize:11,marginTop:4},
+ usageCredit:{fontSize:12,fontWeight:'800'},
+ usageCreditSpent:{color:'#7F4BA0'},
+ usageCreditReturned:{color:'#447E65'},
  looksCard:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E8DFF0',borderRadius:19,padding:16,marginTop:16},
  looksEmpty:{height:120,alignItems:'center',justifyContent:'center',backgroundColor:'#F7F3FA',borderRadius:12,marginTop:12},
  lookGrid:{flexDirection:'row',flexWrap:'wrap',gap:9,marginTop:15},
