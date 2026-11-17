@@ -69,50 +69,49 @@ function EmptyGarment({label}:{label:string}) {
  return <View style={ui.emptyGarment}><Text style={ui.emptyIcon}>♧</Text><Text style={ui.emptyText}>{label}</Text></View>;
 }
 
-export function PrizmaHome({userId,onOpen,onSoon}:Common){
+export function PrizmaHome({userId,onOpen,onSoon,displayName}:{displayName?:string}&Common){
  const {items,count,busy}=useWardrobePreview(userId);
- const [mood,setMood]=useState<'Minimal'|'İddialı'|'Rahat'>('Minimal');
- const moodCaption=mood==='Minimal'?'Sade parçalar, güçlü bir bütünlük':mood==='İddialı'?'Cesur detaylar, sana özgü stil':'Rahat parçalarla gününü kolaylaştır';
  const today=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
+ const hour=new Date().getHours();
+ const salutation=hour<11?'Günaydın':hour<18?'Merhaba':'İyi akşamlar';
  return <View style={ui.page}>
-  <Text style={ui.eyebrow}>{today.toLocaleUpperCase('tr-TR')}</Text>
-  <Headline title="Bugün nasıl\nhissediyorsun?" subtitle="Ruh hâlini seç, stiline yön ver."/>
-  <View style={ui.chips}>{(['Minimal','İddialı','Rahat'] as const).map(x=>
-   <TouchableOpacity key={x} style={[ui.chip,mood===x&&ui.chipActive]} onPress={()=>setMood(x)}>
-    <Text style={[ui.chipLabel,mood===x&&ui.chipLabelActive]}>{x}</Text>
-   </TouchableOpacity>)}</View>
-  <View style={ui.homeFeature}>
-   <View style={ui.homeFeatureText}>
-    <Text style={ui.eyebrow}>BUGÜNÜN STİLİ · {mood.toLocaleUpperCase('tr-TR')}</Text>
-    <Text style={ui.featureTitle}>{moodCaption}</Text>
-    <TouchableOpacity style={ui.roundCTA} onPress={()=>onOpen('Gardırop')} accessibilityRole="button">
-     <Text style={ui.roundCTAText}>Kombin oluştur  →</Text>
-    </TouchableOpacity>
-   </View>
-   <View style={ui.featureLooks}>
-    {busy?<ActivityIndicator color={C.lavender}/>:items.length?
-      items.slice(0,3).map(x=><View key={x.id} style={ui.featurePhoto}>{x.url?<Image source={{uri:x.url}} resizeMode="contain" style={ui.photo}/>:<Text style={ui.fallbackGarment}>▤</Text>}</View>):
-      <View style={ui.featureEmpty}><Text style={ui.featureEmptyIcon}>♧</Text><Text style={ui.featureEmptyText}>Stilini oluşturmak için ilk parçanı ekle</Text></View>}
-   </View>
+  <View style={ui.homeGreeting}>
+   <View style={{flex:1}}><Text style={ui.homeWelcome}>{salutation}{displayName?', '+displayName:''}</Text>
+    <Text style={ui.homeWelcomeSubtitle}>Bugün stiline nasıl yön vermek istersin?</Text></View>
+   <Text style={ui.homeDate}>{today}</Text>
   </View>
-  <View style={ui.summaryStrip}><Text style={ui.summaryLabel}>Gardırobum</Text><Text style={ui.summaryValue}>{count===null?'—':count} parça</Text>
-   <TouchableOpacity onPress={()=>onOpen('Gardırop')}><Text style={ui.sectionAction}>Görüntüle  ›</Text></TouchableOpacity></View>
+  <View style={ui.homeAgenda}>
+   <View style={ui.agendaCalendar}><Text style={ui.agendaDay}>{new Date().getDate()}</Text><Text style={ui.agendaMonth}>{new Date().toLocaleDateString('tr-TR',{month:'short'}).toLocaleUpperCase('tr-TR')}</Text></View>
+   <View style={{flex:1}}><Text style={ui.agendaTitle}>Bugün senin günün</Text><Text style={ui.agendaSubtitle}>Stil önerilerini keşfet, gardırobunu düzenle.</Text></View>
+  </View>
   <Section title="Hızlı erişim"/>
   <View style={ui.shortcutRow}>
    <IconTile icon="♧" label="Gardırop" onPress={()=>onOpen('Gardırop')}/>
    <IconTile icon="▦" label="Kombin" onPress={()=>onOpen('Stil Stüdyosu')}/>
    <IconTile icon="▣" label="Sanal deneme" onPress={()=>onOpen('Sanal Deneme')}/>
-   <IconTile icon="◯" label="Güzellik" onPress={()=>onOpen('Güzellik')}/>
+   <IconTile icon="◉" label="Bakım" onPress={()=>onOpen('Güzellik')}/>
   </View>
-  <Section title="Sana özel" action="Stil Stüdyosu" onAction={()=>onOpen('Stil Stüdyosu')}/>
-  <TouchableOpacity style={ui.wideEditorial} onPress={()=>onOpen('Sanal Deneme')}>
-   <View style={{flex:1}}><Text style={ui.editorialEyebrow}>PRİZMA SANAL DENEME</Text>
-    <Text style={ui.editorialTitle}>Kıyafeti almadan\nüzerinde gör.</Text>
-    <Text style={ui.editorialLink}>Denemeye başla  →</Text></View>
-   <View style={ui.editorialArt}><Text style={ui.editorialArtText}>▧</Text></View>
+  <TouchableOpacity style={ui.homeLuggage} onPress={onSoon}>
+   <Text style={ui.luggageIcon}>▤</Text>
+   <View style={{flex:1}}><Text style={ui.luggageTitle}>Valiz AI</Text><Text style={ui.luggageSubtitle}>Seyahat kombin planlayıcısı · Yakında</Text></View>
+   <Text style={ui.luggageArrow}>›</Text>
   </TouchableOpacity>
-  <View style={ui.bottomLinkRow}><TouchableOpacity onPress={()=>onOpen('Bakım Rutini')} style={ui.miniLink}><Text style={ui.miniLinkIcon}>◉</Text><Text style={ui.miniLinkText}>Bakım rutinim  ›</Text></TouchableOpacity>
-   <TouchableOpacity onPress={()=>onOpen('Alışveriş')} style={ui.miniLink}><Text style={ui.miniLinkIcon}>▢</Text><Text style={ui.miniLinkText}>Alışveriş kararı  ›</Text></TouchableOpacity></View>
+  <Section title="Bugün senin için" action="Gardırobuma git" onAction={()=>onOpen('Gardırop')}/>
+  <TouchableOpacity style={ui.todaySuggestion} onPress={()=>onOpen('Gardırop')}>
+   <View style={ui.suggestionImages}>
+    {busy?<ActivityIndicator color={C.lavender}/>:items.length?items.slice(0,3).map(item=>
+     <View key={item.id} style={ui.suggestionImage}>{item.url?<Image source={{uri:item.url}} style={ui.photo} resizeMode="contain"/>:<Text style={ui.fallbackGarment}>▤</Text>}</View>
+    ):<View style={ui.suggestionPlaceholder}><Text style={ui.suggestionPlaceholderIcon}>♧</Text></View>}
+   </View>
+   <View style={{flex:1}}><Text style={ui.todaySuggestionTitle}>{items.length?'Parçalarınla yeni bir görünüm oluştur':'İlk kıyafetini ekle'}</Text>
+    <Text style={ui.todaySuggestionSub}>{items.length?count+' parçalık gardırobundan kombin oluştur':'Kişisel stil koleksiyonunu oluşturmaya başla'}</Text></View>
+   <Text style={ui.todayArrow}>→</Text>
+  </TouchableOpacity>
+  <Section title="Stil ve güzellik"/>
+  <View style={ui.bottomLinkRow}>
+   <TouchableOpacity onPress={()=>onOpen('Stil Stüdyosu')} style={ui.miniLink}><Text style={ui.miniLinkIcon}>▦</Text><Text style={ui.miniLinkText}>Stil Stüdyosu  ›</Text></TouchableOpacity>
+   <TouchableOpacity onPress={()=>onOpen('Bakım Rutini')} style={ui.miniLink}><Text style={ui.miniLinkIcon}>◉</Text><Text style={ui.miniLinkText}>Bakım rutinim  ›</Text></TouchableOpacity>
+  </View>
  </View>;
 }
 
@@ -192,6 +191,30 @@ export function PrizmaProfile({email,onOpen,onEdit,onLogout,onSoon}:{
 
 const ui=StyleSheet.create({
  page:{paddingTop:4,paddingBottom:30},
+ homeGreeting:{flexDirection:'row',alignItems:'flex-start',gap:10,marginTop:5,marginBottom:19},
+ homeWelcome:{fontFamily:serif,fontWeight:'600',color:C.navy,fontSize:25,lineHeight:30},
+ homeWelcomeSubtitle:{fontSize:12,color:'#655A72',marginTop:5,lineHeight:17},
+ homeDate:{fontSize:10,color:'#6D5D7E',maxWidth:87,textAlign:'right',lineHeight:15,marginTop:3},
+ homeAgenda:{flexDirection:'row',gap:13,alignItems:'center',padding:14,borderRadius:17,backgroundColor:'#F4EBF8'},
+ agendaCalendar:{height:55,width:52,backgroundColor:'#FFFFFF',borderRadius:13,justifyContent:'center',alignItems:'center'},
+ agendaDay:{fontFamily:serif,fontSize:22,color:C.navy,lineHeight:25},
+ agendaMonth:{fontSize:10,fontWeight:'800',color:'#774291'},
+ agendaTitle:{fontSize:13,color:C.navy,fontWeight:'800'},
+ agendaSubtitle:{fontSize:11,color:'#756780',marginTop:4,lineHeight:16},
+ homeLuggage:{marginTop:19,flexDirection:'row',alignItems:'center',backgroundColor:'#57216F',borderRadius:16,padding:16,gap:12},
+ luggageIcon:{fontSize:31,color:'#F6EBFC'},
+ luggageTitle:{fontFamily:serif,fontSize:18,fontWeight:'600',color:'#FFFFFF'},
+ luggageSubtitle:{fontSize:11,color:'#F2DDF8',marginTop:4},
+ luggageArrow:{fontSize:27,color:'#FFFFFF'},
+ todaySuggestion:{flexDirection:'row',alignItems:'center',gap:11,backgroundColor:'#F4EDF7',borderRadius:17,padding:10},
+ suggestionImages:{width:119,height:88,flexDirection:'row',gap:3,alignItems:'center'},
+ suggestionImage:{flex:1,height:85,backgroundColor:'#FFFFFF',borderRadius:7,overflow:'hidden'},
+ suggestionPlaceholder:{width:100,height:80,backgroundColor:'#E7D5EF',borderRadius:10,justifyContent:'center',alignItems:'center'},
+ suggestionPlaceholderIcon:{fontSize:31,color:'#673586'},
+ todaySuggestionTitle:{fontSize:12,fontWeight:'800',color:C.navy,lineHeight:16},
+ todaySuggestionSub:{fontSize:10,color:'#70637B',marginTop:5,lineHeight:15},
+ todayArrow:{fontSize:20,color:'#5A2474'},
+
  heading:{marginBottom:22},
  eyebrow:{fontSize:10,letterSpacing:1.5,color:'#7B5B90',fontWeight:'800',marginBottom:9},
  title:{fontFamily:serif,fontSize:31,lineHeight:37,color:C.navy,fontWeight:'600'},
