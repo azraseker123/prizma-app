@@ -19,8 +19,33 @@ Deno.serve(async(req)=>{
  let body:Record<string,unknown>;
  try{body=await req.json();if(!body||typeof body!=="object")throw Error("bad request");}
  catch{return json({error:"İstek okunamadı."},400);}
- const action=body.action==="start"?"start":body.action==="status"?"status":body.action==="eligibility"?"eligibility":null;
+ const action=body.action==="start"?"start":body.action==="status"?"status":body.action==="eligibility"?"eligibility":body.action==="history"?"history":body.action==="delete-result"?"delete-result":null;
  if(!action)return json({error:"Geçersiz işlem."},400);
+ if(action==="history"){
+   const {data:jobs,error:historyError}=await admin.from("tryon_jobs")
+     .select("id,created_at,result_path")
+     .eq("user_id",user.id).eq("status","completed").not("result_path","is",null)
+     .order("created_at",{ascending:false}).limit(60);
+   if(historyError)return json({error:"Denemelerin yüklenemedi."},503);
+   const entries=await Promise.all((jobs||[]).filter((job:{result_path:string|null})=>job.result_path?.startsWith(user.id+"/")).map(async(job:{id:string;created_at:string;result_path:string})=>{
+     const {data,error}=await admin.storage.from("tryon-results").createSignedUrl(job.result_path,3600);
+     return error||!data?.signedUrl?null:{id:job.id,createdAt:job.created_at,imageUrl:data.signedUrl};
+   }));
+   return json({items:entries.filter(Boolean)});
+ }
+ if(action==="delete-result"){
+   if(typeof body.jobId!=="string"||!uuid.test(body.jobId))return json({error:"Geçersiz deneme."},400);
+   const {data:job,error:findError}=await admin.from("tryon_jobs").select("id,status,result_path").eq("user_id",user.id).eq("id",body.jobId).maybeSingle();
+   if(findError||!job||job.status!=="completed")return json({error:"Deneme bulunamadı."},404);
+   if(!job.result_path)return json({deleted:true});
+   if(!job.result_path.startsWith(user.id+"/"))return json({error:"Fotoğraf silinemedi."},403);
+   const {error:storageError}=await admin.storage.from("tryon-results").remove([job.result_path]);
+   if(storageError)return json({error:"Görsel silinemedi. Tekrar deneyebilirsin."},503);
+   // Preserve completed job and quota accounting even after image deletion.
+   const {error:updateError}=await admin.from("tryon_jobs").update({result_path:null,updated_at:new Date().toISOString()}).eq("user_id",user.id).eq("id",job.id);
+   if(updateError)return json({error:"Görsel silindi ancak kayıt güncellenemedi. Tekrar dene."},503);
+   return json({deleted:true});
+ }
  if(action==="eligibility"){
   const {data,error}=await admin.from("tryon_entitlements").select("status,period_start,period_end,monthly_limit,grant_source").eq("user_id",user.id).maybeSingle();
   if(error)return json({error:"Premium bilgisi alınamadı."},503);
