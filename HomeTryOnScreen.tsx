@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from './supabase';
 import { chooseTryOnPhoto, readTryOnPhoto, validateTryOnImage, prepareTryOnPhoto, type TryOnPhoto } from './TryOnPhotoStore';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
@@ -23,6 +23,11 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
  const [tryOnJob,setTryOnJob]=useState<string|null>(null);
  const [tryOnStatus,setTryOnStatus]=useState<'idle'|'starting'|'processing'|'completed'|'failed'>('idle');
  const [resultUrl,setResultUrl]=useState<string|null>(null);
+ const [myLooks,setMyLooks]=useState<Array<{id:string;createdAt:string;url:string}>>([]);
+ const [looksLoading,setLooksLoading]=useState(false);
+ const [selectedLook,setSelectedLook]=useState<{id:string;createdAt:string;url:string}|null>(null);
+ const [deleteTarget,setDeleteTarget]=useState<string|null>(null);
+ const [deleting,setDeleting]=useState(false);
  const [notice,setNotice]=useState<{type:NoticeType;title:string;message:string}|null>(null);
 
  const reload=useCallback(async()=>{
@@ -32,6 +37,30 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
   finally{setLoading(false);}
  },[userId]);
  useEffect(()=>{void reload();},[reload]);
+ const loadMyLooks=useCallback(async()=>{
+  setLooksLoading(true);
+  try{
+   const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'gallery'}});
+   if(error||data?.error)throw new Error(data?.error||error?.message||'Denemelerin yüklenemedi.');
+   setMyLooks(Array.isArray(data?.items)?data.items:[]);
+  }catch(e){setNotice({type:'error',title:'Denemelerim açılamadı',message:e instanceof Error?e.message:'Tekrar deneyebilirsin.'});}
+  finally{setLooksLoading(false);}
+ },[]);
+ useEffect(()=>{void loadMyLooks();},[userId,loadMyLooks]);
+ async function removeLook(){
+  if(!deleteTarget||deleting)return;
+  setDeleting(true);
+  try{
+   const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'delete',jobId:deleteTarget}});
+   if(error||data?.error||data?.deleted!==true)throw new Error(data?.error||error?.message||'Silinemedi.');
+   if(tryOnJob===deleteTarget)setResultUrl(null);
+   setMyLooks(list=>list.filter(x=>x.id!==deleteTarget));
+   setSelectedLook(v=>v?.id===deleteTarget?null:v);
+   setDeleteTarget(null);
+   setNotice({type:'success',title:'Deneme silindi',message:'Görselin koleksiyonundan kaldırıldı.'});
+  }catch(e){setNotice({type:'error',title:'Deneme silinemedi',message:e instanceof Error?e.message:'Tekrar dene.'});}
+  finally{setDeleting(false);}
+ }
  const refreshTryOnAccess=useCallback(async()=>{
    const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'eligibility'}});
    if(error||data?.error){setNotice({type:'error',title:'Sanal deneme doğrulanamadı',message:data?.error||error?.message||'Tekrar deneyebilirsin.'});return;}
@@ -48,13 +77,13 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
    const {data,error}=await supabase.functions.invoke('virtual-tryon',{body:{action:'status',jobId:tryOnJob}});
    if(!active)return;
    if(error||data?.error){if(attempts===45)setNotice({type:'info',title:'Sonuç kontrolü sürüyor',message:'İşlem numarası korunuyor. Sonucu yeniden kontrol edebilirsin.'});return;}
-   if(data?.status==='completed'&&typeof data?.url==='string'){setResultUrl(data.url);setTryOnStatus('completed');setPremium(v=>v?{...v,remaining:Math.max(0,v.remaining-1)}:v);}
+   if(data?.status==='completed'&&typeof data?.url==='string'){setResultUrl(data.url);setTryOnStatus('completed');void loadMyLooks();setPremium(v=>v?{...v,remaining:Math.max(0,v.remaining-1)}:v);}
    else if(data?.status==='failed'){setTryOnStatus('failed');setNotice({type:'error',title:'Sanal deneme tamamlanamadı',message:data.error||'Başarısız işlem hakkından düşmez.'});}
   };
   const interval=setInterval(()=>void poll(),4000);
   void poll();
   return()=>{active=false;clearInterval(interval);};
- },[tryOnJob,tryOnStatus]);
+ },[tryOnJob,tryOnStatus,loadMyLooks]);
  useEffect(()=>{
   if(!recoveredCameraUri)return;
   let cancelled=false;
@@ -128,6 +157,28 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
  }
 
  return <View style={s.root}>
+  <Modal visible={!!selectedLook} transparent animationType="fade" onRequestClose={()=>setSelectedLook(null)}>
+   <View style={s.lookModalOverlay}>
+    <View style={s.lookModalCard}>
+     <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Denemem</Text><TouchableOpacity onPress={()=>setSelectedLook(null)}><Text style={s.link}>Kapat ✕</Text></TouchableOpacity></View>
+     {selectedLook&&<Image source={{uri:selectedLook.url}} resizeMode="contain" style={s.lookLarge}/>}
+     <Text style={s.small}>AI ile oluşturulmuş bir görseldir.</Text>
+     <TouchableOpacity style={s.removeLookButton} onPress={()=>setDeleteTarget(selectedLook?.id||null)}><Text style={s.removeLookText}>Denemeyi sil</Text></TouchableOpacity>
+    </View>
+   </View>
+  </Modal>
+  <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={()=>{if(!deleting)setDeleteTarget(null);}}>
+   <View style={s.lookModalOverlay}>
+    <View style={s.confirmLookCard}>
+     <Text style={s.resultTitle}>Bu denemeyi silelim mi?</Text>
+     <Text style={s.small}>Oluşturulan görsel koleksiyonundan kaldırılır. Kullandığın sanal deneme hakkı geri yüklenmez.</Text>
+     <View style={s.confirmButtons}>
+      <TouchableOpacity disabled={deleting} style={s.confirmCancel} onPress={()=>setDeleteTarget(null)}><Text style={s.confirmCancelText}>Vazgeç</Text></TouchableOpacity>
+      <TouchableOpacity disabled={deleting} style={s.confirmDelete} onPress={()=>void removeLook()}><Text style={s.confirmDeleteText}>{deleting?'Siliniyor…':'Evet, sil'}</Text></TouchableOpacity>
+     </View>
+    </View>
+   </View>
+  </Modal>
   <PrizmaNotice visible={!!notice} type={notice?.type||'info'} title={notice?.title||''} message={notice?.message||''} onClose={()=>setNotice(null)}/>
   <ScrollView contentContainerStyle={s.content}>
    <TouchableOpacity onPress={onBack}><Text style={s.back}>‹ Ana sayfaya dön</Text></TouchableOpacity>
@@ -185,12 +236,38 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     <TouchableOpacity style={s.wardrobeButton} onPress={()=>void refreshTryOnAccess()}><Text style={s.wardrobeText}>↻ Erişimi yeniden kontrol et</Text></TouchableOpacity>
     {tryOnJob&&tryOnStatus==='processing'&&<TouchableOpacity style={s.wardrobeButton} onPress={()=>{setTryOnStatus('idle');setTimeout(()=>setTryOnStatus('processing'),0);}}><Text style={s.wardrobeText}>↻ Sonucu yeniden kontrol et</Text></TouchableOpacity>}
    </View>
+   <View style={s.looksCard}>
+    <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Denemelerim</Text><TouchableOpacity disabled={looksLoading} onPress={()=>void loadMyLooks()}><Text style={s.link}>Yenile ↻</Text></TouchableOpacity></View>
+    <Text style={s.small}>Oluşturduğun kıyafet denemeleri burada saklanır. Tekrar görüntülemek için AI hakkı harcamazsın.</Text>
+    {looksLoading?<ActivityIndicator style={{marginTop:20}} color="#8050B5"/>:myLooks.length===0?
+     <View style={s.looksEmpty}><Text style={s.emptyIcon}>✦</Text><Text style={s.emptyText}>Henüz kayıtlı denemen yok</Text></View>:
+     <View style={s.lookGrid}>{myLooks.map(item=><TouchableOpacity key={item.id} style={s.lookTile} onPress={()=>setSelectedLook(item)}>
+      <Image style={s.lookThumb} source={{uri:item.url}} resizeMode="cover"/>
+      <Text style={s.lookDate}>{new Date(item.createdAt).toLocaleDateString('tr-TR')}</Text>
+     </TouchableOpacity>)}</View>}
+   </View>
   </ScrollView>
  </View>;
 }
 
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:'#FAF9FC'},content:{padding:20,paddingBottom:90},
+ looksCard:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E8DFF0',borderRadius:19,padding:16,marginTop:16},
+ looksEmpty:{height:120,alignItems:'center',justifyContent:'center',backgroundColor:'#F7F3FA',borderRadius:12,marginTop:12},
+ lookGrid:{flexDirection:'row',flexWrap:'wrap',gap:9,marginTop:15},
+ lookTile:{width:'31%',backgroundColor:'#F7F3FA',borderRadius:10,overflow:'hidden',paddingBottom:6},
+ lookThumb:{width:'100%',height:142},lookDate:{fontSize:10,color:'#705D83',textAlign:'center',marginTop:5},
+ lookModalOverlay:{flex:1,backgroundColor:'rgba(20,12,32,0.65)',justifyContent:'center',padding:20},
+ lookModalCard:{backgroundColor:'#FFF',borderRadius:20,padding:17,maxHeight:'90%'},
+ lookLarge:{height:440,width:'100%',backgroundColor:'#F7F3FA',borderRadius:12},
+ removeLookButton:{borderWidth:1,borderColor:'#E2B7C3',borderRadius:11,paddingVertical:13,alignItems:'center',marginTop:14},
+ removeLookText:{color:'#9F3C5E',fontWeight:'800',fontSize:13},
+ confirmLookCard:{backgroundColor:'#FFF',borderRadius:20,padding:20},
+ confirmButtons:{flexDirection:'row',gap:10,marginTop:20},
+ confirmCancel:{flex:1,paddingVertical:13,alignItems:'center',backgroundColor:'#EDE7F3',borderRadius:11},
+ confirmCancelText:{color:'#5D4772',fontWeight:'800'},
+ confirmDelete:{flex:1,paddingVertical:13,alignItems:'center',backgroundColor:'#A04768',borderRadius:11},
+ confirmDeleteText:{color:'#FFF',fontWeight:'800'},
  primaryTryon:{backgroundColor:'#8050B5',borderRadius:14,paddingVertical:16,alignItems:'center',marginTop:14},
  primaryTryonText:{color:'#FFFFFF',fontWeight:'800',fontSize:13},
  resultCard:{padding:10,backgroundColor:'#F4EDF8',borderRadius:14,marginBottom:12},
