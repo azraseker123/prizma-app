@@ -19,7 +19,7 @@ Deno.serve(async(req)=>{
  let body:Record<string,unknown>;
  try{body=await req.json();if(!body||typeof body!=="object")throw Error("bad request");}
  catch{return json({error:"İstek okunamadı."},400);}
- const action=body.action==="start"?"start":body.action==="status"?"status":body.action==="eligibility"?"eligibility":null;
+ const action=body.action==="start"?"start":body.action==="status"?"status":body.action==="eligibility"?"eligibility":body.action==="gallery"?"gallery":body.action==="delete"?"delete":null;
  if(!action)return json({error:"Geçersiz işlem."},400);
  if(action==="eligibility"){
   const {data,error}=await admin.from("tryon_entitlements").select("status,period_start,period_end,monthly_limit,grant_source").eq("user_id",user.id).maybeSingle();
@@ -29,6 +29,29 @@ Deno.serve(async(req)=>{
   const {count,error:countError}=await admin.from("tryon_jobs").select("id",{head:true,count:"exact"}).eq("user_id",user.id).gte("created_at",data.period_start).lt("created_at",data.period_end).neq("status","failed");
   if(countError)return json({error:"Kullanım hakkı alınamadı."},503);
   return json({active:true,remaining:Math.max(0,data.monthly_limit-(count??0)),monthlyLimit:data.monthly_limit,testAccess:data?.grant_source==="development"||data?.status==="test",providerReady:Boolean(Deno.env.get("BRIA_API_TOKEN"))});
+ }
+ if(action==="gallery"){
+  const {data:jobs,error}=await admin.from("tryon_jobs").select("id,created_at,result_path").eq("user_id",user.id).eq("status","completed").not("result_path","is",null).order("created_at",{ascending:false}).limit(60);
+  if(error)return json({error:"Denemelerin yüklenemedi."},503);
+  const items: Array<{id:string;createdAt:string;url:string}> = [];
+  for(const job of jobs??[]){
+    if(!job.result_path?.startsWith(user.id+"/"))continue;
+    const signed=await admin.storage.from("tryon-results").createSignedUrl(job.result_path,3600);
+    if(!signed.error&&signed.data?.signedUrl)items.push({id:job.id,createdAt:job.created_at,url:signed.data.signedUrl});
+  }
+  return json({items});
+ }
+ if(action==="delete"){
+  if(typeof body.jobId!=="string"||!uuid.test(body.jobId))return json({error:"Geçersiz deneme."},400);
+  const {data:job,error:jobError}=await admin.from("tryon_jobs").select("id,status,result_path").eq("id",body.jobId).eq("user_id",user.id).maybeSingle();
+  if(jobError||!job)return json({error:"Deneme bulunamadı."},404);
+  if(job.status==="deleted")return json({deleted:true});
+  if(job.status!=="completed"||!job.result_path?.startsWith(user.id+"/"))return json({error:"Bu görsel silinemiyor."},400);
+  const removed=await admin.storage.from("tryon-results").remove([job.result_path]);
+  if(removed.error){console.error("Tryon delete storage",removed.error.message);return json({error:"Görsel silinemedi. Yeniden dene."},503);}
+  const {error:dbError}=await admin.from("tryon_jobs").update({status:"deleted",result_path:null,updated_at:new Date().toISOString()}).eq("id",job.id).eq("user_id",user.id).eq("status","completed");
+  if(dbError){console.error("Tryon delete record",dbError.message);return json({error:"Görsel silindi fakat kayıt güncellenemedi."},503);}
+  return json({deleted:true});
  }
  if(action==="start"){
   if(body.consent!==true)return json({error:"Fotoğrafların sanal deneme için harici AI servisine gönderilmesine onay vermelisin."},400);
