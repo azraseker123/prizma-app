@@ -157,26 +157,23 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
  }
 
  return <View style={s.root}>
-  <Modal visible={!!selectedLook} transparent animationType="fade" onRequestClose={()=>setSelectedLook(null)}>
+  <Modal visible={!!selectedLook} transparent animationType="fade" onRequestClose={()=>{if(!deleting){setDeleteTarget(null);setSelectedLook(null);}}}>
    <View style={s.lookModalOverlay}>
-    <View style={s.lookModalCard}>
-     <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Denemem</Text><TouchableOpacity onPress={()=>setSelectedLook(null)}><Text style={s.link}>Kapat ✕</Text></TouchableOpacity></View>
-     {selectedLook&&<Image source={{uri:selectedLook.url}} resizeMode="contain" style={s.lookLarge}/>}
-     <Text style={s.small}>AI ile oluşturulmuş bir görseldir.</Text>
-     <TouchableOpacity style={s.removeLookButton} onPress={()=>setDeleteTarget(selectedLook?.id||null)}><Text style={s.removeLookText}>Denemeyi sil</Text></TouchableOpacity>
-    </View>
-   </View>
-  </Modal>
-  <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={()=>{if(!deleting)setDeleteTarget(null);}}>
-   <View style={s.lookModalOverlay}>
-    <View style={s.confirmLookCard}>
-     <Text style={s.resultTitle}>Bu denemeyi silelim mi?</Text>
-     <Text style={s.small}>Oluşturulan görsel koleksiyonundan kaldırılır. Kullandığın sanal deneme hakkı geri yüklenmez.</Text>
-     <View style={s.confirmButtons}>
-      <TouchableOpacity disabled={deleting} style={s.confirmCancel} onPress={()=>setDeleteTarget(null)}><Text style={s.confirmCancelText}>Vazgeç</Text></TouchableOpacity>
-      <TouchableOpacity disabled={deleting} style={s.confirmDelete} onPress={()=>void removeLook()}><Text style={s.confirmDeleteText}>{deleting?'Siliniyor…':'Evet, sil'}</Text></TouchableOpacity>
-     </View>
-    </View>
+    {deleteTarget?
+     <View style={s.confirmLookCard}>
+      <Text style={s.resultTitle}>Bu denemeyi silelim mi?</Text>
+      <Text style={s.small}>Oluşturulan görsel koleksiyonundan kaldırılır. Kullandığın sanal deneme hakkı geri yüklenmez.</Text>
+      <View style={s.confirmButtons}>
+       <TouchableOpacity disabled={deleting} style={s.confirmCancel} onPress={()=>setDeleteTarget(null)}><Text style={s.confirmCancelText}>Vazgeç</Text></TouchableOpacity>
+       <TouchableOpacity disabled={deleting} style={s.confirmDelete} onPress={()=>void removeLook()}><Text style={s.confirmDeleteText}>{deleting?'Siliniyor…':'Evet, sil'}</Text></TouchableOpacity>
+      </View>
+     </View>:
+     <View style={s.lookModalCard}>
+      <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Denemem</Text><TouchableOpacity onPress={()=>setSelectedLook(null)}><Text style={s.link}>Kapat ✕</Text></TouchableOpacity></View>
+      {selectedLook&&<Image source={{uri:selectedLook.url}} resizeMode="contain" style={s.lookLarge}/>}
+      <Text style={s.small}>AI ile oluşturulmuş bir görseldir.</Text>
+      <TouchableOpacity style={s.removeLookButton} onPress={()=>setDeleteTarget(selectedLook?.id||null)}><Text style={s.removeLookText}>Denemeyi sil</Text></TouchableOpacity>
+     </View>}
    </View>
   </Modal>
   <PrizmaNotice visible={!!notice} type={notice?.type||'info'} title={notice?.title||''} message={notice?.message||''} onClose={()=>setNotice(null)}/>
