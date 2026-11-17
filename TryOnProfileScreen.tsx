@@ -13,6 +13,7 @@ type Notice = { type: NoticeType; title: string; message: string };
 export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri, onRecoveredCameraHandled }: Props) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [backgroundBusy, setBackgroundBusy] = useState(false);
   const [photo, setPhoto] = useState<{ path: string; url: string } | null>(null);
   const [draft, setDraft] = useState<TryOnPhoto | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -73,6 +74,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
     if (!draft || busy) return;
     if (!consent) { setNotice({ type: 'info', title: 'İzin gerekli', message: 'Fotoğrafın yapay zekâ tarafından incelenmesi için önce izin vermelisin.' }); return; }
     setBusy(true);
+    setBackgroundBusy(true);
     try {
       if (!verified) await validateTryOnImage(draft, 'person');
       const cleaned = await removeBeautyBackground(draft.uri);
@@ -80,20 +82,21 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
       setVerified(true);
       setNotice({ type: 'success', title: 'Arka plan kaldırıldı', message: 'Sonucu kaydetmeden önce inceleyebilirsin. Bu işlem arka plan kaldırma hakkını kullanır.' });
     } catch(e) { setNotice({ type: 'error', title: 'İşlem tamamlanamadı', message: e instanceof Error ? e.message : 'Tekrar deneyebilirsin.' }); }
-    finally { setBusy(false); }
+    finally { setBackgroundBusy(false); setBusy(false); }
   }
 
   async function cleanSavedPhoto() {
     if (!photo || busy) return;
     setConfirmBg(false);
     setBusy(true);
+    setBackgroundBusy(true);
     try {
       await removeSavedTryOnBackground(userId, photo.path);
       await reload();
       setNotice({ type: 'success', title: 'Arka plan kaldırıldı ✦', message: 'Kayıtlı fotoğrafın güncellendi. Arka plan kaldırma hakkından 1 işlem kullanıldı.' });
     } catch (e) {
       setNotice({ type: 'error', title: 'Arka plan kaldırılamadı', message: e instanceof Error ? e.message : 'Tekrar deneyebilirsin.' });
-    } finally { setBusy(false); }
+    } finally { setBackgroundBusy(false); setBusy(false); }
   }
 
   async function remove() {
@@ -117,11 +120,20 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
         title={notice?.title || ''} message={notice?.message || ''}
         onClose={() => setNotice(null)}
       />
+      <Modal transparent animationType="fade" visible={backgroundBusy} onRequestClose={() => {}}>
+        <View style={s.overlay}>
+          <View style={s.progressCard}>
+            <ActivityIndicator size="large" color="#8050B5" />
+            <Text style={s.progressTitle}>Arka plan kaldırılıyor…</Text>
+            <Text style={s.progressSubtitle}>Fotoğrafın hazırlanıyor.</Text>
+          </View>
+        </View>
+      </Modal>
       <Modal transparent animationType="fade" visible={confirmBg} onRequestClose={() => setConfirmBg(false)}>
         <View style={s.overlay}>
           <View style={s.confirmBox}>
             <Text style={s.confirmTitle}>Arka planı kaldıralım mı?</Text>
-            <Text style={s.note}>Fotoğrafın arka planını kaldırmak için Bria AI kullanılır. İşlem 1 hakkını kullanır ve mevcut fotoğrafını yeni görselle değiştirir.</Text>
+            <Text style={s.note}>Bu işlem 1 arka plan kaldırma hakkını kullanır ve kayıtlı fotoğrafını günceller. Fotoğrafın işlenmek üzere bir dış AI hizmetine gönderilir.</Text>
             <TouchableOpacity style={s.modalPrimary} onPress={() => void cleanSavedPhoto()} disabled={busy}>
               <Text style={s.modalPrimaryText}>Arka planı kaldır</Text>
             </TouchableOpacity>
@@ -208,7 +220,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
           <Text style={s.guideTitle}>✦ Daha iyi sonuç için</Text>
           <Text style={s.guideText}>{['• Başın ve ayakların fotoğrafta bulunsun.', '• Net ışıkta, sade bir arka plan seç.', '• Günlük kıyafetler yeterli.', '• Fotoğrafını istediğin zaman değiştirebilir veya silebilirsin.'].join('\n')}</Text>
         </View>
-        <Text style={s.privacy}>🔒 Fotoğrafın hesabına özel saklanır. AI fotoğraf kontrolünde Gemini, arka plan kaldırmada Bria kullanılır. Gerçek sanal denemeden önce ayrıca onay istenir.</Text>
+        <Text style={s.privacy}>🔒 Fotoğrafın hesabına özel saklanır. Fotoğraf kontrolü ve arka plan kaldırma için seçtiğin görsel AI hizmetleriyle işlenir.</Text>
       </ScrollView>
     </View>
   );
@@ -242,6 +254,9 @@ const s = StyleSheet.create({
   dev: { color: '#9E91AD', lineHeight: 18, marginTop: 10, fontSize: 10 },
   overlay: { flex: 1, backgroundColor: 'rgba(13,9,28,0.6)', justifyContent: 'center', padding: 22 },
   confirmBox: { backgroundColor: '#FFFFFF', padding: 22, borderRadius: 20, width: '100%', alignSelf: 'center' },
+  progressCard: { backgroundColor: '#FFFFFF', borderRadius: 22, width: '100%', paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' },
+  progressTitle: { fontSize: 18, fontWeight: '800', color: '#302048', textAlign: 'center', marginTop: 18 },
+  progressSubtitle: { fontSize: 12, color: '#766A83', textAlign: 'center', marginTop: 8 },
   modalPrimary: { flexGrow: 0, flexShrink: 0, width: '100%', height: 52, borderRadius: 13, backgroundColor: '#8050B5', alignItems: 'center', justifyContent: 'center', marginTop: 20 },
   modalPrimaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', textAlign: 'center' },
   modalSecondary: { flexGrow: 0, flexShrink: 0, width: '100%', height: 48, borderRadius: 13, backgroundColor: '#EEE5F5', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
