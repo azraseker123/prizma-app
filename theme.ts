@@ -1,14 +1,14 @@
-// PRİZMA ortak tasarım renkleri.
-// Ekran yerleşimi ve davranışları bu dosyadan etkilenmez.
+// PRİZMA onaylı modern mor görsel kimliği.
+// Mevcut davranış ve Supabase entegrasyonları renk sistemiyle değişmez.
 export const PRIZMA_COLORS = {
-  navy: '#172044',
-  ink: '#172044',
-  lavender: '#6D47AD',
-  lilac: '#EDE5F8',
-  background: '#FAF9FE',
+  navy: '#231A34',
+  ink: '#231A34',
+  lavender: '#692786',
+  lilac: '#EEE3F5',
+  background: '#FDFBFE',
   white: '#FFFFFF',
-  muted: '#74758C',
-  border: '#E9E3F2',
-  pale: '#F0E9F8',
-  rose: '#C05D78',
+  muted: '#746A7E',
+  border: '#EAE2ED',
+  pale: '#F6F0F9',
+  rose: '#BA5576',
 } as const;

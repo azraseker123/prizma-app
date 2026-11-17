@@ -1,4 +1,5 @@
 import RoutineScreen from './RoutineScreen';
+import { PrizmaHome, PrizmaStudio, PrizmaBeauty, PrizmaProfile, type PrizmaPage } from './PrizmaExperience';
 import PrizmaChatScreen from './PrizmaChatScreen';
 import { PRIZMA_COLORS as C } from './theme';
 import PrizmaConfirm from './PrizmaConfirm';
@@ -41,6 +42,8 @@ import HomeTryOnScreen from './HomeTryOnScreen';
 
 type Tab =
   | 'Ana Sayfa'
+  | 'Stil Stüdyosu'
+  | 'Kombin Oluştur'
   | 'Gardırop'
   | 'PRİZMA AI'
   | 'Güzellik'
@@ -50,9 +53,9 @@ type Tab =
 
 const tabs: { name: Tab; icon: string }[] = [
   { name: 'Ana Sayfa', icon: '⌂' },
-  { name: 'Gardırop', icon: '◇' },
-  { name: 'PRİZMA AI', icon: '✦' },
-  { name: 'Güzellik', icon: '♡' },
+  { name: 'Gardırop', icon: '♧' },
+  { name: 'Stil Stüdyosu', icon: '▦' },
+  { name: 'Güzellik', icon: '◉' },
   { name: 'Profil', icon: '○' },
 ];
 
@@ -678,14 +681,14 @@ export default function App() {
           onPress={() => open('Ana Sayfa')}
         >
           <Text style={styles.brandText}>PRİZMA</Text>
-          <Text style={styles.brandStar}>✦</Text>
+
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.profileCircle}
           onPress={() => open('Profil')}
         >
-          <Text style={styles.profileCircleText}>♡</Text>
+          <Text style={styles.profileCircleText}>○</Text>
         </TouchableOpacity>
       </View>
 
@@ -705,49 +708,11 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === 'Ana Sayfa' && (
-          <View style={styles.compactHome}>
-            <Text style={styles.compactHomeWelcome}>Merhaba ✦</Text>
-            <Text style={styles.compactHomeSub}>Bugün ne yapmak istersin?</Text>
-            <View style={styles.quickHomeRow}>
-              {([
-                ['♧', 'Gardırop', 'Gardırop'],
-                ['✦', 'Sanal Deneme', 'Sanal Deneme'],
-                ['✧', 'Güzellik', 'Güzellik'],
-                ['▢', 'Alışveriş', 'Alışveriş'],
-                ['♡', 'Koleksiyon', 'Bakım Koleksiyonum'],
-              ] as const).map(([icon, title, target]) => (
-                <TouchableOpacity key={title} style={styles.quickHomeItem} onPress={() => open(target)}>
-                  <View style={styles.quickHomeIconBox}><Text style={styles.quickHomeIcon}>{icon}</Text></View>
-                  <Text style={styles.quickHomeLabel}>{title}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity style={styles.compactAIHero} onPress={() => open('PRİZMA AI')}>
-              <View pointerEvents="none" style={styles.compactAIOrbOne} />
-              <View pointerEvents="none" style={styles.compactAIOrbTwo} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.compactAIName}>PRİZMA AI ✦</Text>
-                <Text style={styles.compactAIDesc}>Kişisel asistanın her an yanında.</Text>
-              </View>
-              <Text style={styles.compactAIArrow}>➜</Text>
-            </TouchableOpacity>
-            {([
-              ['♧', 'Gardırop', 'Kıyafetlerin, kombinlerin ve AI stil önerileri', 'Gardırop'],
-              ['✦', 'Sanal Deneme', 'Gardıroptan seç veya yeni kıyafet fotoğrafı çek', 'Sanal Deneme'],
-              ['✧', 'Güzellik', 'Cilt, saç ve makyaj rutinlerin', 'Güzellik'],
-              ['▢', 'Alışveriş Analizi', 'Almadan önce birlikte değerlendirelim', 'Alışveriş'],
-              ['♡', 'Koleksiyonum', 'Kaydettiğin tüm ürünler', 'Bakım Koleksiyonum'],
-            ] as const).map(([icon, title, description, target]) => (
-              <TouchableOpacity key={title} style={styles.compactHomeListCard} onPress={() => open(target)}>
-                <View style={styles.compactListIcon}><Text style={styles.compactListIconText}>{icon}</Text></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.compactListTitle}>{title}</Text>
-                  <Text style={styles.compactListDesc}>{description}</Text>
-                </View>
-                <Text style={styles.compactListArrow}>›</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <PrizmaHome userId={session.user.id} displayName={typeof session.user.user_metadata?.full_name==='string'?session.user.user_metadata.full_name.split(' ')[0]:''} onOpen={(page:PrizmaPage)=>open(page)} onSoon={comingSoon}/>
+        )}
+
+        {tab === 'Stil Stüdyosu' && (
+          <PrizmaStudio userId={session.user.id} onOpen={(page:PrizmaPage)=>open(page)} onSoon={comingSoon}/>
         )}
 
         {tab === 'Alışveriş' && (
@@ -758,8 +723,8 @@ export default function App() {
         )}
 
         {/* GARDIROP */}
-        {tab === 'Gardırop' && (
-          <WardrobeScreen userId={session.user.id} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} />
+        {(tab === 'Gardırop' || tab === 'Kombin Oluştur') && (
+          <WardrobeScreen userId={session.user.id} initialTab={tab === 'Kombin Oluştur' ? 'ai' : 'clothes'} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} />
         )}
 
         {/* CİLT ANALİZİ */}
@@ -780,120 +745,12 @@ export default function App() {
           <RoutineScreen userId={session.user.id} onAIRequest={() => { setBeautyCategory('skin'); open('Cilt Danışmanı'); }} />
         )}
 
-        {/* GÜZELLİK */}
         {tab === 'Güzellik' && (
-          <View style={styles.compactBeauty}>
-            <Text style={styles.compactBeautyTitle}>♡  Güzellik</Text>
-            <Text style={styles.compactBeautySub}>Cilt, saç ve makyaj rutinlerini yönet.</Text>
-            <View style={styles.beautyCategoryRow}>
-              {([
-                ['◉', 'Cilt', 'Cilt Danışmanı'],
-                ['♧', 'Saç', 'Cilt Danışmanı'],
-                ['✎', 'Makyaj', 'Cilt Danışmanı'],
-                ['▤', 'Rutin', 'Bakım Rutini'],
-              ] as const).map(([icon, label, target]) => (
-                <TouchableOpacity key={label} style={styles.beautyCategory} onPress={() => {
-                  if (label === 'Cilt' || label === 'Saç' || label === 'Makyaj') {
-                    setBeautyCategory(label === 'Cilt' ? 'skin' : label === 'Saç' ? 'hair' : 'makeup');
-                  }
-                  open(target);
-                }}>
-                  <Text style={styles.beautyCategoryIcon}>{icon}</Text>
-                  <Text style={styles.beautyCategoryLabel}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.compactBeautySection}>Hızlı Araçlar</Text>
-            <View style={styles.beautyToolsGrid}>
-              {([
-                ['▦', 'Manuel Rutin Ekle', 'Sabah / akşam', 'Bakım Rutini'],
-                ['✧', 'AI ile Ürün Önerisi', 'Rutinine ekle', 'Cilt Danışmanı'],
-                ['♡', 'Bakım Koleksiyonum', 'Kaydettiğin ürünler', 'Bakım Koleksiyonum'],
-                ['♢', 'İçerik Analizi', 'Ürünleri değerlendir', 'Alışveriş'],
-              ] as const).map(([icon, title, desc, target]) => (
-                <TouchableOpacity key={title} style={styles.beautyTool} onPress={() => open(target)}>
-                  <Text style={styles.beautyToolIcon}>{icon}</Text>
-                  <Text style={styles.beautyToolTitle}>{title}</Text>
-                  <Text style={styles.beautyToolDesc}>{desc}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={{ fontSize: 11, color: "#725A81", marginBottom: 15 }}>ⓘ AI önerileri hata yapabilir. Ürün talimatlarını doğrula.</Text>
-            <Text style={styles.compactBeautySection}>Koleksiyonum</Text>
-            <TouchableOpacity style={styles.beautyCollectionLink} onPress={() => open('Bakım Koleksiyonum')}>
-              <Text style={styles.beautyCollectionLinkText}>Kaydettiğin ürünleri görüntüle</Text>
-              <Text style={styles.compactListArrow}>›</Text>
-            </TouchableOpacity>
-          </View>
+          <PrizmaBeauty onOpen={(page:PrizmaPage)=>open(page)} onBeautyCategory={setBeautyCategory}/>
         )}
-
-        {/* PROFİL */}
         {tab === 'Profil' && (
-          <>
-            <Text style={styles.eyebrow}>
-              YOUR PRİZMA PROFILE
-            </Text>
-
-            <Text style={styles.pageTitle}>
-              Profilim
-            </Text>
-
-            <View style={styles.profileCard}>
-              <View style={styles.profileAvatar}>
-                <Text style={styles.profileAvatarText}>
-                  ✦
-                </Text>
-              </View>
-
-              <Text style={styles.profileWelcome}>
-                PRİZMA'ya hoş geldin
-              </Text>
-
-              <Text style={styles.profileEmail}>
-                {session.user.email || emailName}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.profileInfoCard}
-              onPress={() => { void openProfileEditor(); }}
-              disabled={loadingEditProfile}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.profileInfoTitle}>
-                ✦ PRİZMA İmzan
-              </Text>
-
-              <Text style={styles.profileInfoDescription}>
-                Stil, cilt, saç ve makyaj tercihlerini
-                görüntüle ve düzenle. →
-              </Text>
-
-              {loadingEditProfile && (
-                <ActivityIndicator color={C.lavender} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.profileInfoCard}
-              onPress={() => open('Deneme Fotoğrafım')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.profileInfoTitle}>◇ Sanal Deneme Fotoğrafım</Text>
-              <Text style={styles.profileInfoDescription}>
-                Kendi boydan fotoğrafını güvenle kaydet, değiştir veya sil. →
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-            >
-              <Text style={styles.logoutText}>
-                Çıkış Yap →
-              </Text>
-            </TouchableOpacity>
-          </>
+          <PrizmaProfile email={session.user.email||emailName} onOpen={(page:PrizmaPage)=>open(page)}
+            onEdit={()=>{void openProfileEditor();}} onLogout={handleLogout} onSoon={comingSoon}/>
         )}
       </ScrollView>
       )}
@@ -901,8 +758,8 @@ export default function App() {
       {/* ALT MENÜ: klavye açıkken sohbet yazma alanına yer bırak */}
       {!(tab === 'PRİZMA AI' && keyboardVisible) && <View style={styles.tabBar}>
         {tabs.map((item) => {
-          const active = tab === item.name;
-          const isAI = item.name === 'PRİZMA AI';
+          const active = tab === item.name || (tab === 'Kombin Oluştur' && item.name === 'Stil Stüdyosu');
+          const isAI = item.name === 'Stil Stüdyosu';
 
           return (
             <TouchableOpacity
@@ -916,14 +773,14 @@ export default function App() {
                 style={[
                   styles.tabIconWrap,
                   active && !isAI && styles.tabIconWrapActive,
-                  isAI && styles.aiTabIconWrap,
+                  isAI && active && styles.aiTabIconWrap,
                 ]}
               >
                 <Text
                   style={[
                     styles.tabIcon,
                     active && styles.tabIconActive,
-                    isAI && styles.aiTabIcon,
+                    isAI && active && styles.aiTabIcon,
                   ]}
                 >
                   {item.icon}
@@ -937,7 +794,7 @@ export default function App() {
                   active && styles.tabLabelActive,
                 ]}
               >
-                {item.name}
+                {item.name === 'Stil Stüdyosu' ? 'Stüdyo' : item.name}
               </Text>
             </TouchableOpacity>
           );
@@ -1100,7 +957,7 @@ const styles = StyleSheet.create({
 
   safe: {
     flex: 1,
-    backgroundColor: C.background,
+    backgroundColor: '#FDFBFE',
     paddingTop: Platform.OS === 'android' ? 4 : 0,
   },
 
@@ -1135,7 +992,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     borderBottomColor: C.border,
   },
 
@@ -1174,7 +1031,7 @@ const styles = StyleSheet.create({
 
   content: {
     paddingHorizontal: 23,
-    paddingTop: 29,
+    paddingTop: 14,
     paddingBottom: 45,
   },
 
@@ -1693,7 +1550,7 @@ const styles = StyleSheet.create({
   },
 
   aiTabIconWrap: {
-    backgroundColor: C.navy,
+    backgroundColor: '#6F2A88',
     borderRadius: 20,
   },
 
@@ -1707,8 +1564,8 @@ const styles = StyleSheet.create({
   },
 
   aiTabIcon: {
-    color: C.lilac,
-    fontSize: 25,
+    color: '#FFFFFF',
+    fontSize: 22,
   },
 
   tabLabel: {

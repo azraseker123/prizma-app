@@ -45,6 +45,7 @@ type WardrobeItemWithImage = WardrobeItem & {
 type Props = {
   userId: string;
   onSetupTryOnPhoto?: () => void;
+  initialTab?: 'clothes' | 'outfits' | 'ai';
 };
 
 type Outfit = {
@@ -76,7 +77,7 @@ const CATEGORIES = [
   'Diğer',
 ];
 
-export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
+export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab = 'clothes' }: Props) {
 
   const [notice, setNotice] = useState<{
     type: NoticeType;
@@ -129,7 +130,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
     useState<WardrobeItemWithImage | null>(null);
   const [tryOnItem, setTryOnItem] = useState<WardrobeItemWithImage | null>(null);
 
-  const [activeWardrobeTab, setActiveWardrobeTab] = useState<'clothes' | 'outfits' | 'ai'>('clothes');
+  const [activeWardrobeTab, setActiveWardrobeTab] = useState<'clothes' | 'outfits' | 'ai'>(initialTab);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [outfitName, setOutfitName] = useState('');
   const [editingOutfitId, setEditingOutfitId] =
@@ -965,13 +966,20 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
       />
 
       <View style={styles.wardrobeCompactHeading}>
-        <Text style={styles.wardrobeCompactIcon}>♧</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.wardrobeCompactTitle}>Gardırop</Text>
-          <Text style={styles.wardrobeCompactDescription}>
-            Kıyafetlerini yönet, kombin oluştur ve AI'dan stil önerileri al.
-          </Text>
+        <View style={{flex:1}}>
+          <Text style={styles.wardrobeCompactTitle}>Gardırobum</Text>
+          <Text style={styles.wardrobeCompactDescription}>Kıyafetlerini düzenle, stilini oluştur.</Text>
         </View>
+        <TouchableOpacity style={styles.wardrobeAddCircle} onPress={startAdding} accessibilityLabel="Gardıroba kıyafet ekle" accessibilityRole="button"><Text style={styles.wardrobeAddPlus}>+</Text></TouchableOpacity>
+      </View>
+      <View style={styles.wardrobeCategoryPreview}>
+        {(['Üst Giyim','Alt Giyim','Dış Giyim','Ayakkabı','Çanta','Aksesuar'] as const).map((categoryName,idx)=>(
+          <TouchableOpacity key={categoryName} style={styles.wardrobeCategoryTile} onPress={()=>{setActiveWardrobeTab('clothes');setActiveFilter(categoryName);}}>
+            <Text style={styles.wardrobeCategorySymbol}>{['♧','▥','▤','⌁','▢','○'][idx]}</Text>
+            <Text style={styles.wardrobeCategoryName} numberOfLines={1}>{categoryName}</Text>
+            <Text style={styles.wardrobeCategoryCount}>{items.filter(x=>x.category===categoryName).length}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* GARDIROP SEKME NAVIGASYONU */}
@@ -979,7 +987,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
         {([
           ['clothes', 'Kıyafetler'],
           ['outfits', 'Kombinler'],
-          ['ai', 'AI Öneri ✦'],
+          ['ai', 'AI Kombin'],
         ] as const).map(([key, label]) => (
           <TouchableOpacity
             key={key}
@@ -1029,7 +1037,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
           />
           <View style={styles.prizmaSheet}>
             <View style={styles.prizmaSheetHandle} />
-            <Text style={styles.prizmaSheetSparkle}>✦</Text>
+            <Text style={styles.prizmaSheetSparkle}>▢</Text>
             <Text style={styles.prizmaSheetTitle}>
               Bir parça ekleyelim
             </Text>
@@ -1396,7 +1404,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
                   style={[styles.outlineButton, { marginTop: 14, backgroundColor: '#EDE5F5', borderColor: '#DCC7EB' }]}
                   onPress={() => { const chosen = detailItem; setDetailItem(null); setTimeout(() => setTryOnItem(chosen), 360); }}
                 >
-                  <Text style={[styles.outlineText, { color: '#68419A', fontWeight: '800' }]}>✦ Üzerimde Dene</Text>
+                  <Text style={[styles.outlineText, { color: '#68419A', fontWeight: '800' }]}>Üzerimde Dene</Text>
                 </TouchableOpacity>
 
                 {/* İSİM VE FAVORİ */}
@@ -1882,7 +1890,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
                       onPress={() => setTryOnItem(item)}
                       style={[styles.outlineButton, { backgroundColor: '#F0EAF6', borderColor: '#DCC7EB' }]}
                     >
-                      <Text style={[styles.outlineText, { color: '#68419A', fontWeight: '800' }]}>✦ Üzerimde Dene</Text>
+                      <Text style={[styles.outlineText, { color: '#68419A', fontWeight: '800' }]}>Üzerimde Dene</Text>
                     </TouchableOpacity>
 
                     {/* FAVORİ BUTONU */}
@@ -1956,13 +1964,20 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto }: Props) {
 // ====================================================
 
 const styles = StyleSheet.create({
-  wardrobeCompactHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 },
+  wardrobeCompactHeading:{flexDirection:'row',alignItems:'center',marginBottom:18},
+  wardrobeAddCircle:{width:42,height:42,borderRadius:21,alignItems:'center',justifyContent:'center',backgroundColor:'#5A2275'},
+  wardrobeAddPlus:{color:'#FFFFFF',fontSize:27,lineHeight:32},
+  wardrobeCategoryPreview:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:7,marginBottom:17},
+  wardrobeCategoryTile:{width:'31.5%',minHeight:78,borderRadius:13,backgroundColor:'#F6F0F8',padding:8,alignItems:'center',justifyContent:'center'},
+  wardrobeCategorySymbol:{fontSize:20,color:'#623078'},
+  wardrobeCategoryName:{fontSize:10,fontWeight:'800',color:'#271E3C',marginTop:3},
+  wardrobeCategoryCount:{fontSize:10,color:'#85748A',marginTop:2},
   wardrobeCompactIcon: { color: '#6D47AD', fontSize: 29, lineHeight: 34 },
-  wardrobeCompactTitle: { color: '#221637', fontSize: 22, fontWeight: '800', marginBottom: 4 },
+  wardrobeCompactTitle: { color: '#221637', fontSize: 29, fontFamily: Platform.OS==='ios'?'Georgia':'serif', fontWeight: '600', marginBottom: 4 },
   wardrobeCompactDescription: { color: '#645777', fontSize: 12, lineHeight: 18 },
   compactWardrobeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 10 },
   compactCount: { color: '#59466D', fontSize: 13, fontWeight: '700' },
-  compactAdd: { backgroundColor: '#6D47AD', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
+  compactAdd: { backgroundColor: '#5A2275', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
   compactAddText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
   wardrobeTabRow: {
     flexDirection: 'row',
@@ -1981,8 +1996,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   wardrobeTabActive: {
-    backgroundColor: '#6D47AD',
-    borderColor: '#6D47AD',
+    backgroundColor: '#5A2275',
+    borderColor: '#5A2275',
   },
   wardrobeTabText: {
     color: '#31254C',
