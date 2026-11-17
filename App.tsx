@@ -776,15 +776,18 @@ export default function App() {
                   isAI && active && styles.aiTabIconWrap,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.tabIcon,
-                    active && styles.tabIconActive,
-                    isAI && active && styles.aiTabIcon,
-                  ]}
-                >
-                  {item.icon}
-                </Text>
+                {isAI ? (
+                  <View style={[styles.chatBubble, active && styles.chatBubbleActive]}>
+                    <View style={[styles.chatTail, active && styles.chatTailActive]} />
+                    <View style={styles.chatDots}>
+                      {[0,1,2].map(dot => (
+                        <View key={dot} style={[styles.chatDot, active && styles.chatDotActive]} />
+                      ))}
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={[styles.tabIcon, active && styles.tabIconActive]}>{item.icon}</Text>
+                )}
               </View>
 
               <Text
@@ -1550,9 +1553,31 @@ const styles = StyleSheet.create({
   },
 
   aiTabIconWrap: {
-    backgroundColor: '#6F2A88',
-    borderRadius: 20,
+    backgroundColor: '#62247D',
+    borderRadius: 26,
+    width: 44,
+    height: 44,
   },
+  chatBubble:{
+    width:26,height:20,
+    borderRadius:8,
+    borderWidth:2,
+    borderColor:'#673385',
+    backgroundColor:'#FFFFFF',
+    alignItems:'center',justifyContent:'center',
+  },
+  chatBubbleActive:{backgroundColor:'#FFFFFF',borderColor:'#FFFFFF'},
+  chatTail:{
+    position:'absolute',left:2,bottom:-5,
+    width:8,height:8,transform:[{rotate:'45deg'}],
+    borderLeftWidth:2,borderBottomWidth:2,borderColor:'#673385',
+    backgroundColor:'#FFFFFF',
+  },
+  chatTailActive:{borderColor:'#FFFFFF'},
+  chatDots:{flexDirection:'row',gap:3,alignItems:'center',justifyContent:'center'},
+  chatDot:{width:3,height:3,borderRadius:2,backgroundColor:'#673385'},
+  chatDotActive:{backgroundColor:'#673385'},
+
 
   tabIcon: {
     color: '#8A8DA4',
