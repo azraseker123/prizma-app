@@ -431,6 +431,7 @@ export default function App() {
     return (
       <SafeAreaView style={styles.loadingScreen}>
       <PrizmaNotice
+        bottomOffset={82}
         visible={Boolean(notice)}
         type={notice?.type || 'info'}
         title={notice?.title || ''}
