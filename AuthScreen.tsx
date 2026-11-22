@@ -39,7 +39,7 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [keyboardOpen,setKeyboardOpen]=useState(false);
-  const scrollRef=useRef<ScrollView>(null);
+  const scrollRef=useRef<any>(null);
   useEffect(()=>{const show=Keyboard.addListener('keyboardDidShow',()=>setKeyboardOpen(true));const hide=Keyboard.addListener('keyboardDidHide',()=>setKeyboardOpen(false));return ()=>{show.remove();hide.remove();};},[]);
   const keepVisible=()=>{setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),140);};
 
