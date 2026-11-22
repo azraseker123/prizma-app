@@ -28,6 +28,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Akşam');
   const [archiveQuery, setArchiveQuery] = useState('');
+  const [explanations, setExplanations] = useState<string[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
@@ -265,7 +266,10 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
                 <View key={String(index)} style={s.product}>
                   <Text style={s.brand}>{p.brand}</Text>
                   <Text style={s.productTitle}>{p.name}</Text>
-                  <Text style={s.productInfo}>{p.reason}</Text>
+                  <TouchableOpacity accessibilityRole="button" onPress={()=>setExplanations(old=>old.includes(m.id+':'+index)?old.filter(k=>k!==m.id+':'+index):[...old,m.id+':'+index])}>
+                    <Text style={s.explainAction}>Neden önerildi? {explanations.includes(m.id+':'+index)?'⌃':'⌄'}</Text>
+                  </TouchableOpacity>
+                  {explanations.includes(m.id+':'+index)&&<Text style={s.productInfo}>{p.reason}</Text>}
                   <Text style={s.caution}>Dikkat: {p.caution}</Text>
                   <TouchableOpacity style={s.save} disabled={!!busyAction || isCollected} onPress={() => saveProduct(m, p, index, 'collection')}>
                     <Text style={s.saveText}>{isCollected ? '✓ Koleksiyonda' : '+ Koleksiyona Ekle'}</Text>
@@ -351,6 +355,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 const s = StyleSheet.create({
   drawerOverlay:{position:'absolute',top:0,bottom:0,left:0,right:0,zIndex:500,flexDirection:'row',justifyContent:'flex-end'},
   drawerScrim:{position:'absolute',top:0,bottom:0,left:0,right:0,backgroundColor:'rgba(36,33,36,0.27)'},
+  explainAction:{fontSize:12,color:C.lavender,fontWeight:'700',marginTop:7,marginBottom:4},
   sidePanel:{height:'100%',width:'86%',maxWidth:370,backgroundColor:C.white,borderLeftWidth:1,borderColor:C.border,padding:13,elevation:10},
   archiveTitle:{fontSize:17,fontWeight:'700',color:C.ink,marginBottom:10},
   archiveInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.border,borderRadius:12,padding:10,minHeight:44,fontSize:13,color:C.ink,marginBottom:10},
