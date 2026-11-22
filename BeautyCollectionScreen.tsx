@@ -9,7 +9,7 @@ import { addRoutineItem, getRoutineItems, type RoutinePeriod } from './RoutineSt
 import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
 type Category = 'skin' | 'hair' | 'makeup';
-type Status = 'want' | 'considering';
+type Status = 'want' | 'considering' | 'owned';
 type Source = 'manual' | 'ai';
 
 type Product = {
@@ -23,6 +23,10 @@ type Product = {
   notes: string;
   created_at: string;
   image_path?: string | null;
+  image_source_url?: string | null;
+  image_license_name?: string | null;
+  image_license_url?: string | null;
+  image_license_verified_at?: string | null;
 };
 
 type Props = {
@@ -37,6 +41,7 @@ const categories: { key: Category; label: string }[] = [
 
 export default function BeautyCollectionScreen({ userId }: Props) {
   const [category, setCategory] = useState<Category>('skin');
+  const [shelf, setShelf] = useState<'owned' | 'wishlist'>('owned');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -93,7 +98,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     setName('');
     setBrand('');
     setNotes('');
-    setStatus('considering');
+    setStatus(shelf === 'owned' ? 'owned' : 'want');
     setSelectedPhoto(null);
     setRemovePhoto(false);
     setFormOpen(false);
@@ -106,6 +111,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     setBrand(product.brand);
     setNotes(product.notes);
     setStatus(product.status);
+    setShelf(product.status === 'owned' ? 'owned' : 'wishlist');
     setSelectedPhoto(null);
     setRemovePhoto(false);
     setFormOpen(true);
@@ -249,7 +255,8 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     } finally { setRoutineBusy(null); }
   };
 
-  const visible = products.filter(p => p.category === category);
+  const visible = products.filter(p => p.category === category && (shelf === 'owned' ? p.status === 'owned' : p.status !== 'owned'));
+  const shelfCount = (next: 'owned' | 'wishlist') => products.filter(p => next === 'owned' ? p.status === 'owned' : p.status !== 'owned').length;
 
   return (
     <ScrollView
@@ -260,10 +267,18 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       <Text style={styles.eyebrow}>PRİZMA BEAUTY </Text>
       <Text style={styles.title}>Bakım Koleksiyonum</Text>
       <Text style={styles.description}>
-        Almak istediğin, düşündüğün ve PRİZMA'nın önerdiği
-        güzellik ürünleri bir arada.
+        Sahip olduğun ve almak istediğin güzellik ürünlerini düzenle.
       </Text>
 
+      <View style={styles.shelfTabs}>
+        {([['owned','Sahip Olduklarım'],['wishlist','İstek Listem']] as const).map(([key,label])=>(
+          <TouchableOpacity key={key} accessibilityRole="tab" accessibilityState={{selected:shelf===key}}
+            style={[styles.shelfTab,shelf===key&&styles.shelfTabActive]}
+            onPress={()=>{if(formOpen)resetForm();setShelf(key);setStatus(key==='owned'?'owned':'want');}}>
+            <Text style={[styles.shelfLabel,shelf===key&&styles.shelfLabelActive]}>{label} ({shelfCount(key)})</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
       <View style={styles.tabs}>
         {categories.map(item => (
           <TouchableOpacity
@@ -358,8 +373,9 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           <Text style={styles.label}>Alışveriş durumun</Text>
           <View style={styles.statusRow}>
             {([
-              { key: 'want' as Status, label: 'Almak istiyorum' },
-              { key: 'considering' as Status, label: 'Almayı düşünüyorum' },
+              { key: 'owned' as Status, label: 'Sahibim' },
+              { key: 'want' as Status, label: 'İstek Listemde' },
+              { key: 'considering' as Status, label: 'Düşünüyorum' },
             ]).map(item => (
               <TouchableOpacity
                 key={item.key}
@@ -418,7 +434,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
               )}
               <Text style={styles.productName} numberOfLines={2}>{product.product_name}</Text>
               {!!product.brand && <Text style={styles.productBrand} numberOfLines={1}>{product.brand}</Text>}
-              <Text style={styles.tag}>{product.status === 'want' ? '♡ İstek Listemde' : 'Düşünüyorum'}</Text>
+              <Text style={styles.tag}>{product.status === 'owned' ? '✓ Sahip Olduklarım' : product.status === 'want' ? '♡ İstek Listemde' : 'Düşünüyorum'}</Text>
               <Text style={styles.source}>{product.source === 'ai' ? 'PRİZMA önerisi' : 'Kendim ekledim'}</Text>
               {!!product.notes && <Text style={styles.productNote} numberOfLines={2}>{product.notes}</Text>}
               <TouchableOpacity style={styles.routineAddButton} disabled={!!routineBusy || routineSaved.includes(product.id + ':' + routinePeriod)} onPress={() => void addCollectionToRoutine(product)}>
@@ -480,6 +496,11 @@ export default function BeautyCollectionScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
+  shelfTabs: { flexDirection:'row', gap:8, marginBottom:13 },
+  shelfTab: { flex:1,minHeight:48,backgroundColor:'#FFFFFF',borderRadius:13,borderWidth:1,borderColor:'#D8D6DC',alignItems:'center',justifyContent:'center' },
+  shelfTabActive: { backgroundColor:'#F3EAF8',borderColor:'#69318A' },
+  shelfLabel: { fontSize:12,fontWeight:'700',color:'#6E6872' },
+  shelfLabelActive: { color:'#69318A' },
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
   productCard: { width: '48%', minHeight: 265, borderWidth: 1, borderColor: '#D8D6DC', borderRadius: 15, padding: 10, backgroundColor: '#FFFFFF', marginBottom: 4 },
   productBrand: { color: '#6E6872', fontSize: 11, marginTop: 4 },
