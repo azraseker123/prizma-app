@@ -27,6 +27,10 @@ type Product = {
   image_license_name?: string | null;
   image_license_url?: string | null;
   image_license_verified_at?: string | null;
+  inci_ingredients?: string | null;
+  usage_instructions?: string | null;
+  product_benefits?: string | null;
+  product_cautions?: string | null;
 };
 
 type Props = {
@@ -53,6 +57,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
   const [status, setStatus] = useState<Status>('considering');
   const [message, setMessage] = useState('');
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<BeautyPhoto | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
@@ -430,13 +435,33 @@ export default function BeautyCollectionScreen({ userId }: Props) {
               {photoUrls[product.id] ? (
                 <Image source={{ uri: photoUrls[product.id] }} style={styles.productPhoto} resizeMode="contain" accessibilityLabel={product.product_name + ' için eklenen fotoğraf'} />
               ) : (
-                <LicensedProductImage alt={product.product_name} height={115} />
+                <LicensedProductImage
+                  alt={product.product_name}
+                  height={115}
+                  url={product.image_source_url}
+                  licenseStatus={product.image_source_url && product.image_license_verified_at && product.image_license_name && product.image_license_url ? 'approved' : 'unknown'}
+                />
               )}
               <Text style={styles.productName} numberOfLines={2}>{product.product_name}</Text>
               {!!product.brand && <Text style={styles.productBrand} numberOfLines={1}>{product.brand}</Text>}
               <Text style={styles.tag}>{product.status === 'owned' ? '✓ Sahip Olduklarım' : product.status === 'want' ? '♡ İstek Listemde' : 'Düşünüyorum'}</Text>
               <Text style={styles.source}>{product.source === 'ai' ? 'PRİZMA önerisi' : 'Kendim ekledim'}</Text>
               {!!product.notes && <Text style={styles.productNote} numberOfLines={2}>{product.notes}</Text>}
+              <TouchableOpacity style={styles.expandButton} accessibilityRole="button" accessibilityState={{expanded:expandedProductId===product.id}}
+                onPress={()=>setExpandedProductId(current=>current===product.id?null:product.id)}>
+                <Text style={styles.expandText}>{expandedProductId===product.id?'Detayları Gizle':'Ürün Detayları'} ⌄</Text>
+              </TouchableOpacity>
+              {expandedProductId===product.id && <View style={styles.detailsPanel}>
+                <Text style={styles.detailsTitle}>İçerik (INCI)</Text>
+                <Text style={styles.detailsText}>{product.inci_ingredients||'Doğrulanmış INCI listesi henüz bulunmuyor.'}</Text>
+                <Text style={styles.detailsTitle}>Faydalar</Text>
+                <Text style={styles.detailsText}>{product.product_benefits||'Ürün faydaları doğrulanmadı.'}</Text>
+                <Text style={styles.detailsTitle}>Nasıl Kullanılır?</Text>
+                <Text style={styles.detailsText}>{product.usage_instructions||'Ürün ambalajındaki talimatları kontrol et.'}</Text>
+                <Text style={styles.detailsTitle}>Dikkat Edilecekler</Text>
+                <Text style={styles.detailsText}>{product.product_cautions||'Yeni ürünleri kullanmadan önce içeriklerini ve cilt uyumluluğunu kontrol et.'}</Text>
+                {!!product.image_source_url&&!!product.image_license_name&&<Text style={styles.detailsText}>Görsel kaynağı: {product.image_license_name}</Text>}
+              </View>}
               <TouchableOpacity style={styles.routineAddButton} disabled={!!routineBusy || routineSaved.includes(product.id + ':' + routinePeriod)} onPress={() => void addCollectionToRoutine(product)}>
                 <Text style={styles.routineAddText} numberOfLines={2}>{routineSaved.includes(product.id + ':' + routinePeriod) ? '✓ Rutinime Eklendi' : routineBusy === product.id + ':' + routinePeriod ? 'Ekleniyor...' : '+ Rutinime Ekle'}</Text>
               </TouchableOpacity>
@@ -501,6 +526,11 @@ const styles = StyleSheet.create({
   shelfTabActive: { backgroundColor:'#F3EAF8',borderColor:'#69318A' },
   shelfLabel: { fontSize:12,fontWeight:'700',color:'#6E6872' },
   shelfLabelActive: { color:'#69318A' },
+  expandButton:{minHeight:42,justifyContent:'center',marginTop:6},
+  expandText:{color:'#69318A',fontSize:11,fontWeight:'700'},
+  detailsPanel:{marginTop:5,paddingTop:9,borderTopWidth:1,borderColor:'#D8D6DC'},
+  detailsTitle:{fontSize:11,color:'#242124',fontWeight:'700',marginTop:8},
+  detailsText:{fontSize:11,color:'#6E6872',lineHeight:16,marginTop:4},
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
   productCard: { width: '48%', minHeight: 265, borderWidth: 1, borderColor: '#D8D6DC', borderRadius: 15, padding: 10, backgroundColor: '#FFFFFF', marginBottom: 4 },
   productBrand: { color: '#6E6872', fontSize: 11, marginTop: 4 },
