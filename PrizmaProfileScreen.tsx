@@ -123,37 +123,27 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
             ><Text style={[s.signatureTabLabel, signatureTab === tab && s.signatureTabLabelActive]}>{tab}</Text></TouchableOpacity>
           ))}
         </ScrollView>
-        {signatureTab === 'Genel Bakış' && (
-          <>
-            <View style={s.signature}>
-              <Text style={s.signatureIcon}>◎</Text>
-              <Text style={s.signatureTitle}>PRİZMA İmzam</Text>
-              <Text style={s.signatureDesc}>Tercihlerini tek bir yerden keşfet ve düzenle.</Text>
-            </View>
-            <Text style={s.sectionTitle}>Profil Özeti</Text>
-            <View style={s.grid}>
-              {sections.map((item) => (
-                <View style={s.gridCard} key={item.key}>
-                  <Text style={s.gridIcon}>{item.icon}</Text>
-                  <Text style={s.gridTitle}>{item.title}</Text>
-                  <Text style={s.gridValue} numberOfLines={2}>{readable(answers[item.key])}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={s.infoBox}>
-              <Text style={s.sectionTitle}>PRİZMA AI Özeti</Text>
-              <Text style={s.paragraph}>İzin verdiğin bilgiler, kişiselleştirilmiş önerilerin temelini oluşturacak.</Text>
-            </View>
-            <View style={s.infoBox}>
-              <Text style={s.sectionTitle}>Hedeflerim</Text>
-              <Text style={s.paragraph}>Stil ve güzellik hedeflerini profil düzenleme alanından güncelleyebilirsin.</Text>
-            </View>
-            <TouchableOpacity accessibilityRole="button" style={s.infoBox} onPress={()=>{setPage('learned');void loadLearned();}}>
-              <Text style={s.sectionTitle}>Öğrenilen Tercihlerim</Text>
-              <Text style={s.paragraph}>Geçmiş kombin beğenilerini gör, tek tek kaldır ve yönet ›</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        {signatureTab === 'Genel Bakış' && (<>
+          <View style={s.signatureV2}><View style={s.signatureLogo}><Text style={s.fingerprint}>◎</Text></View>
+            <View style={{flex:1}}><Text style={s.signatureHeading}>PRİZMA İmzam</Text><Text style={s.paragraph}>Stil, güzellik ve tercihlerinle sana özel profilin.</Text></View>
+          </View>
+          <View style={s.signatureSectionHeading}><Text style={s.sectionTitle}>Profil Özeti</Text><TouchableOpacity onPress={onEdit}><Text style={s.signatureEdit}>Düzenle  ✎</Text></TouchableOpacity></View>
+          <View style={s.signatureGrid}>
+            <View style={s.signatureGridCard}><Text style={s.signatureGridIcon}>♧</Text><View style={{flex:1}}><Text style={s.gridTitle}>Stil</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.style)}</Text></View></View>
+            <View style={s.signatureGridCard}><Text style={s.signatureGridIcon}>◉</Text><View style={{flex:1}}><Text style={s.gridTitle}>Renk Paletim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.colors)}</Text></View></View>
+            <View style={s.signatureGridCard}><Text style={s.signatureGridIcon}>◯</Text><View style={{flex:1}}><Text style={s.gridTitle}>Cilt Profilim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.skin_type)}</Text></View></View>
+            <View style={s.signatureGridCard}><Text style={s.signatureGridIcon}>〰</Text><View style={{flex:1}}><Text style={s.gridTitle}>Saç Profilim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.hair_type)}</Text></View></View>
+          </View>
+          <TouchableOpacity style={s.signatureRow} onPress={()=>setSignatureTab('AI Tercihlerim')}>
+            <Text style={s.signatureRowIcon}>◎</Text><View style={{flex:1}}><Text style={s.rowTitle}>PRİZMA AI Özeti</Text><Text style={s.rowDetail}>{learnPreferences?'Onayladığın tercihlerin önerilerinde kullanılabilir.':'Öğrenme izni kapalı. Verilerin kontrolü sende.'}</Text></View><Text style={s.chevron}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.signatureRow} onPress={onEdit}>
+            <Text style={s.signatureRowIcon}>◎</Text><View style={{flex:1}}><Text style={s.rowTitle}>Hedeflerim</Text><Text style={s.rowDetail}>Stilimi geliştirmek ve bakım tercihlerimi düzenlemek</Text></View><Text style={s.chevron}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.signatureRow} onPress={()=>{setPage('learned');void loadLearned();}}>
+            <Text style={s.signatureRowIcon}>▱</Text><View style={{flex:1}}><Text style={s.rowTitle}>Öğrenilen Tercihlerim</Text><Text style={s.rowDetail}>Beğendiğin stil, renk, ürün ve kombinleri yönet</Text></View><Text style={s.chevron}>›</Text>
+          </TouchableOpacity>
+        </>)}
         {signatureTab === 'Stil' && (
           <View style={s.infoBox}>
             <Text style={s.sectionTitle}>Stil Kimliğim</Text>
@@ -270,6 +260,17 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
   );
 }
 const s = StyleSheet.create({
+ signatureV2:{flexDirection:'row',gap:13,alignItems:'center',borderWidth:1,borderColor:P.border,borderRadius:18,padding:17,backgroundColor:'#FFFFFF',marginVertical:13},
+ signatureLogo:{width:67,height:67,borderRadius:34,borderWidth:2,borderColor:P.purple,alignItems:'center',justifyContent:'center'},
+ fingerprint:{fontSize:41,color:P.purple},signatureHeading:{fontSize:20,color:P.ink,fontWeight:'800',marginBottom:7},
+ signatureSectionHeading:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:10},
+ signatureEdit:{fontSize:12,color:P.purple,fontWeight:'700'},
+ signatureGrid:{flexDirection:'row',flexWrap:'wrap',gap:9,marginBottom:8},
+ signatureGridCard:{width:'48%',minHeight:88,borderWidth:1,borderColor:P.border,borderRadius:15,padding:12,backgroundColor:'#FFFFFF',flexDirection:'row',gap:10,alignItems:'center'},
+ signatureGridIcon:{fontSize:24,color:P.purple},
+ signatureRow:{minHeight:75,borderWidth:1,borderColor:P.border,borderRadius:15,backgroundColor:'#FFFFFF',flexDirection:'row',gap:12,alignItems:'center',padding:13,marginBottom:3},
+ signatureRowIcon:{fontSize:28,color:P.purple,width:35,textAlign:'center'},
+
   learnedRow:{flexDirection:'row',alignItems:'center',gap:12,minHeight:68,padding:13,borderWidth:1,borderColor:'#D8D6DC',borderRadius:13},
   deleteAction:{color:'#B33F54',fontSize:12,fontWeight:'700'},
   permissionRow:{flexDirection:'row',alignItems:'center',paddingVertical:14,gap:12,borderBottomWidth:1,borderBottomColor:'#D8D6DC'},
@@ -281,14 +282,14 @@ const s = StyleSheet.create({
   feedback:{color:'#69318A',fontSize:12,marginTop:10},
   signatureTabs: { flexDirection: 'row', gap: 7, marginVertical: 8, paddingBottom: 4 },
   signatureTab: { minHeight: 40, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: P.border, alignItems: 'center', justifyContent: 'center', backgroundColor: P.white },
-  signatureTabActive: { backgroundColor: P.purpleLight, borderColor: P.purple },
+  signatureTabActive: { backgroundColor: P.purple, borderColor: P.purple },
   signatureTabLabel: { fontSize: 12, color: P.muted, fontWeight: '600' },
-  signatureTabLabelActive: { color: P.purple, fontWeight: '700' },
-  page: { paddingBottom: 36, gap: 10 },
+  signatureTabLabelActive: { color: '#FFFFFF', fontWeight: '700' },
+  page: { paddingBottom: 36, gap: 10, backgroundColor:'#FFFFFF' },
   heading: { fontSize: 24, fontWeight: '700', color: P.ink, marginBottom: 2 },
   subtitle: { color: P.muted, fontSize: 13, marginBottom: 8, lineHeight: 20 },
   identity: { backgroundColor: P.white, borderColor: P.border, borderWidth: 1, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 8 },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: P.purpleLight, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: P.purple, fontSize: 30 },
   name: { fontSize: 16, fontWeight: '700', color: P.ink },
   email: { color: P.muted, fontSize: 12, marginTop: 4 },
@@ -300,7 +301,7 @@ const s = StyleSheet.create({
   chevron: { color: P.purple, fontSize: 25, marginLeft: 10 },
   back: { minHeight: 48, justifyContent: 'center' },
   backText: { color: P.purple, fontSize: 14, fontWeight: '700' },
-  signature: { alignItems: 'center', padding: 18, backgroundColor: P.purpleLight, borderRadius: 18, borderWidth: 1, borderColor: P.border, marginBottom: 10 },
+  signature: { alignItems: 'center', padding: 18, backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 1, borderColor: P.border, marginBottom: 10 },
   signatureIcon: { fontSize: 30, color: P.purple },
   signatureTitle: { fontSize: 18, color: P.purpleDark, fontWeight: '700', marginTop: 6 },
   signatureDesc: { color: P.muted, fontSize: 12, marginTop: 5, textAlign: 'center' },
