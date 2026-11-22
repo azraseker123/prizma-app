@@ -4,7 +4,7 @@ import { PRIZMA_COLORS as C } from './theme';
 import PrizmaConfirm from './PrizmaConfirm';
 import OutfitAIScreen from './OutfitAIScreen';
 import TryOnPreviewModal from './TryOnPreviewModal';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   View,
@@ -142,6 +142,9 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
   const [showOutfitBuilder, setShowOutfitBuilder] = useState(false);
 
   const [removingBackground, setRemovingBackground] = useState(false);
+  const [analyzingGarment, setAnalyzingGarment] = useState(false);
+  const [analysisFeedback, setAnalysisFeedback] = useState('');
+  const analysisSequence = useRef(0);
 
   // --------------------------------------------------
   // GARDIROBU YÜKLE
@@ -230,6 +233,9 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
   // --------------------------------------------------
 
   const resetForm = () => {
+    analysisSequence.current += 1;
+    setAnalyzingGarment(false);
+    setAnalysisFeedback('');
     setShowForm(false);
     setEditingItem(null);
     setSelectedImage(null);
@@ -262,6 +268,33 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
   // FOTOĞRAF SEÇİMİ
   // --------------------------------------------------
 
+  const analyzeGarmentPhoto = async (asset: ImagePicker.ImagePickerAsset) => {
+    const requestId = ++analysisSequence.current;
+    setAnalyzingGarment(true);
+    setAnalysisFeedback('Fotoğraf AI ile analiz ediliyor...');
+    try {
+      // Resize to reduce network traffic and AI cost; preserve the original for saving.
+      const reduced = await ImageManipulator.manipulateAsync(asset.uri, [{resize:{width:1024}}], {
+        compress:0.65,format:ImageManipulator.SaveFormat.JPEG,base64:true,
+      });
+      if(!reduced.base64)throw new Error('Fotoğraf okunamadı.');
+      if(reduced.base64.length>4200000)throw new Error('Fotoğraf AI analizi için çok büyük.');
+      const {data,error} = await supabase.functions.invoke('analyze-garment',{
+        body:{image:reduced.base64,mimeType:'image/jpeg'},
+      });
+      if(error)throw new Error('AI kıyafet analizi şu anda kullanılamıyor.');
+      if(data?.error)throw new Error(data.error);
+      if(requestId!==analysisSequence.current)return;
+      if(typeof data?.name==='string'&&data.name.trim())setName(data.name.trim().slice(0,80));
+      if(typeof data?.category==='string'&&CATEGORIES.includes(data.category))setCategory(data.category);
+      if(typeof data?.color==='string')setColor(data.color.slice(0,40));
+      if(typeof data?.season==='string'&&SEASONS.includes(data.season))setSeason(data.season);
+      setAnalysisFeedback('AI alanları önerdi. Kaydetmeden önce bilgileri kontrol et ve düzenle.');
+    }catch(error){
+      if(requestId===analysisSequence.current)setAnalysisFeedback(error instanceof Error?error.message:'AI analiz edemedi. Bilgileri elle girebilirsin.');
+    }finally{if(requestId===analysisSequence.current)setAnalyzingGarment(false);}
+  };
+
   const openGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -278,6 +311,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 
       setSelectedImage(result.assets[0]);
       setShowForm(true);
+      void analyzeGarmentPhoto(result.assets[0]);
     } catch (error: any) {
       showNotice('error', 'Fotoğraf seçilemedi',
         error?.message || 'Lütfen tekrar dene.');
@@ -1206,6 +1240,14 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
                 </TouchableOpacity>
               )}
 
+              {!editingItem && <View style={styles.analysisInfo}>
+                {analyzingGarment && <ActivityIndicator color={C.lavender}/>}
+                <Text style={styles.analysisInfoText}>{analysisFeedback||'Fotoğraf seçildiğinde AI ad, kategori, renk ve mevsim önerir. Fotoğraf bu amaçla güvenli sunucuya gönderilir.'}</Text>
+              </View>}
+              {selectedImage && !analyzingGarment && <TouchableOpacity style={styles.aiRetry} onPress={()=>{void analyzeGarmentPhoto(selectedImage);}} accessibilityRole="button">
+                <Text style={styles.aiRetryText}>◎  AI ile Yeniden Analiz Et</Text>
+              </TouchableOpacity>}
+
               {/* KIYAFET ADI */}
 
               <Text style={styles.inputLabel}>
@@ -1988,6 +2030,11 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 // ====================================================
 
 const styles = StyleSheet.create({
+  analysisInfo:{flexDirection:'row',alignItems:'center',gap:9,padding:13,borderRadius:14,backgroundColor:'#F3EAF8',marginBottom:13},
+  analysisInfoText:{flex:1,fontSize:12,color:'#6E6872',lineHeight:18},
+  aiRetry:{borderColor:C.border,borderWidth:1,borderRadius:12,minHeight:44,alignItems:'center',justifyContent:'center',marginBottom:13},
+  aiRetryText:{color:C.lavender,fontWeight:'700',fontSize:12},
+
   studioAiButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: C.lavender, borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, minHeight: 48, marginBottom: 15 },
   studioAiButtonText: { color: C.lavender, fontWeight: '700', fontSize: 13 },
   aiBackButton: { minHeight: 44, justifyContent: 'center', marginBottom: 10 },
