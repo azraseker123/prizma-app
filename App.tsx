@@ -781,7 +781,7 @@ export default function App() {
                   isAI && styles.aiTabIconWrap,
                 ]}
               >
-                <PrizmaNavIcon name={item.name} color={active ? C.lavender : C.navy}/>
+                <PrizmaNavIcon name={item.name as 'Ana Sayfa'|'Gardırop'|'PRİZMA AI'|'Güzellik'|'Profil'} color={active ? C.lavender : C.navy}/>
               </View>
 
               <Text
