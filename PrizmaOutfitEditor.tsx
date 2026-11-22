@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PRIZMA } from './prizmaTheme';
 
 export type OutfitPosition = { x:number; y:number; scale:number; locked?:boolean };
 export type OutfitLayout = Record<string,OutfitPosition>;
 type Garment = { id:string;name:string;category:string;imageUrl?:string|null };
-type Props = { items:Garment[]; positions:OutfitLayout; onChange:(next:OutfitLayout)=>void; onAiComplete?:(focus?:string)=>void; aiBusy?:boolean };
+type Props = { items:Garment[]; availableItems?:Garment[]; onAddItem?:(id:string)=>void; onRemoveItem?:(id:string)=>void; positions:OutfitLayout; onChange:(next:OutfitLayout)=>void; onAiComplete?:(focus?:string)=>void; aiBusy?:boolean };
 const stageWidth=Math.max(195,Math.min(320,Dimensions.get('window').width-120));
 const stageHeight=380;
 const baseSize=Math.min(100,Math.floor((stageWidth-16)/3));
@@ -20,31 +20,49 @@ function DraggablePiece({item,position,onPositionChange,active,onActivate}:{
  const initialRef=useRef(position);
  const callbackRef=useRef(onPositionChange);
  const lockedRef=useRef(Boolean(position.locked));
+ const pinchStart=useRef<number|null>(null);
  callbackRef.current=onPositionChange;
  lockedRef.current=Boolean(position.locked);
  useEffect(()=>{setDraft(position);posRef.current=position;},[position.x,position.y,position.scale,position.locked]);
  const pan=useMemo(()=>PanResponder.create({
    onStartShouldSetPanResponder:()=>true,
    onMoveShouldSetPanResponder:()=>!lockedRef.current,
-   onPanResponderGrant:()=>{initialRef.current=posRef.current;onActivate();},
-   onPanResponderMove:(_,gesture)=>{
+   onPanResponderGrant:(evt)=>{initialRef.current=posRef.current;pinchStart.current=null;onActivate();if(evt.nativeEvent.touches.length>=2){const [a,b]=evt.nativeEvent.touches;pinchStart.current=Math.hypot(a.pageX-b.pageX,a.pageY-b.pageY);}},
+   onPanResponderMove:(evt,gesture)=>{
      if(lockedRef.current)return;
+     const touches=evt.nativeEvent.touches;
+     if(touches.length>=2){
+       const [a,b]=touches;
+       const distance=Math.hypot(a.pageX-b.pageX,a.pageY-b.pageY);
+       if(!pinchStart.current){pinchStart.current=distance;initialRef.current=posRef.current;}
+       const scale=clamp(initialRef.current.scale*distance/Math.max(1,pinchStart.current),.6,2.2);
+       const next={...posRef.current,scale,x:clamp(posRef.current.x,0,Math.max(0,stageWidth-baseSize*scale)),y:clamp(posRef.current.y,0,Math.max(0,stageHeight-116*scale))};
+       posRef.current=next;setDraft(next);return;
+     }
+     if(pinchStart.current!==null){pinchStart.current=null;initialRef.current=posRef.current;return;}
      const next={...initialRef.current,x:clamp(initialRef.current.x+gesture.dx,0,stageWidth-baseSize*initialRef.current.scale),
        y:clamp(initialRef.current.y+gesture.dy,0,stageHeight-116*initialRef.current.scale)};
      posRef.current=next;setDraft(next);
    },
-   onPanResponderRelease:()=>{callbackRef.current(posRef.current);},
+   onPanResponderRelease:()=>{pinchStart.current=null;callbackRef.current(posRef.current);},
  }),[]);
  const width=baseSize*draft.scale;
  return <View {...pan.panHandlers} style={[s.piece,{left:draft.x,top:draft.y,width:width,height:116*draft.scale},active&&s.pieceSelected]}>
   {item.imageUrl?<Image source={{uri:item.imageUrl}} style={s.image} resizeMode="contain"/>:<Text style={s.fallback}>♧</Text>}
-  <Text style={s.label} numberOfLines={1}>{item.name}</Text>
-  {draft.locked?<Text style={s.lock}>Kilitli</Text>:null}
+  {draft.locked?<Text style={s.lock}>⌁</Text>:null}
  </View>;
 }
-export default function PrizmaOutfitEditor({items,positions,onChange,onAiComplete,aiBusy=false}:Props){
+export default function PrizmaOutfitEditor({items,availableItems=[],onAddItem,onRemoveItem,positions,onChange,onAiComplete,aiBusy=false}:Props){
  const [mode,setMode]=useState<'Akıllı Eşleştirme'|'Stil Editörü'>('Stil Editörü');
  const [selectedCategory,setSelectedCategory]=useState('Üst');
+ const categoryOptions:{label:string;test:(v:string)=>boolean}[]=[
+ {label:'Üst',test:v=>v.includes('Üst')||v.includes('Gömlek')||v.includes('Kazak')},
+ {label:'Alt',test:v=>v.includes('Alt')||v.includes('Pantolon')||v.includes('Etek')},
+ {label:'Dış',test:v=>v.includes('Dış')||v.includes('Ceket')},
+ {label:'Ayakkabı',test:v=>v.includes('Ayakkabı')},
+ {label:'Çanta',test:v=>v.includes('Çanta')},
+ {label:'Aksesuar',test:v=>v.includes('Aksesuar')},];
+ const categoryItems=availableItems.filter(g=>categoryOptions.find(x=>x.label===selectedCategory)?.test(g.category));
  const [active,setActive]=useState<string|null>(null);
  const layout=useMemo(()=>Object.fromEntries(items.map((item,index)=>[item.id,positions[item.id]||initial(index)])) as OutfitLayout,[items,positions]);
  const selected=items.find(x=>x.id===active)||items[0];
@@ -71,17 +89,19 @@ export default function PrizmaOutfitEditor({items,positions,onChange,onAiComplet
       </View>
     </View>
   </View>
-  {selected&&current?<View style={s.controls}>
-    <View style={s.controlHeading}><Text style={s.currentName} numberOfLines={1}>{selected.name}</Text>
-      <TouchableOpacity onPress={()=>patch(selected.id,{locked:!current.locked})} style={s.lockButton}>
-        <Text style={s.lockLabel}>{current.locked?'▣ Sabitlenmiş':'▢ Sabitle'}</Text>
-      </TouchableOpacity></View>
-    <View style={s.controlRow}>
-      <TouchableOpacity disabled={current.locked} style={s.controlButton} onPress={()=>patch(selected.id,{scale:clamp(current.scale-.1,.6,1.6)})}><Text style={s.controlText}>− Küçült</Text></TouchableOpacity>
-      <TouchableOpacity disabled={current.locked} style={s.controlButton} onPress={()=>patch(selected.id,{scale:clamp(current.scale+.1,.6,1.6)})}><Text style={s.controlText}>+ Büyüt</Text></TouchableOpacity>
-      <TouchableOpacity style={s.controlButton} onPress={()=>patch(selected.id,{x:10,y:10})}><Text style={s.controlText}>Sıfırla</Text></TouchableOpacity>
-    </View>
-  </View>:null}
+  <View style={s.pickerSection}>
+    <Text style={s.pickerTitle}>{selectedCategory} · Gardırobumdaki Parçalar</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pickerList}>
+      {categoryItems.length===0?<Text style={s.pickerEmpty}>Bu kategoride henüz parça yok.</Text>:categoryItems.map(item=>{
+       const chosen=items.some(x=>x.id===item.id);
+       return <TouchableOpacity key={item.id} onPress={()=>chosen?onRemoveItem?.(item.id):onAddItem?.(item.id)} style={[s.pickerCard,chosen&&s.pickerChosen]} accessibilityRole="button" accessibilityLabel={item.name+(chosen?' çıkar':' ekle')}>
+        {item.imageUrl?<Image source={{uri:item.imageUrl}} resizeMode="contain" style={s.pickerImage}/>:<Text style={s.fallback}>▢</Text>}
+        <Text style={s.pickerBadge}>{chosen?'✓':'+'}</Text>
+       </TouchableOpacity>;
+      })}
+    </ScrollView>
+    <Text style={s.helperText}>Parçayı sürükle; iki parmağınla büyüt veya küçült. Sabitleme gerekirse parçaya uzun bas.</Text>
+  </View>
   <View style={s.featureRow}>
     {(['Renk Uyumu','Stil Filtresi','Alternatifler','Hava Durumu','Ortam Seç'] as const).map((label,index)=><TouchableOpacity key={label} style={s.featureButton} accessibilityRole="button" onPress={()=>{if(onAiComplete)onAiComplete(label);}}>
       <Text style={s.featureIcon}>{['◉','☷','▱','☁','▦'][index]}</Text><Text style={s.featureText}>{label}</Text>
@@ -90,10 +110,12 @@ export default function PrizmaOutfitEditor({items,positions,onChange,onAiComplet
   <TouchableOpacity disabled={aiBusy||!onAiComplete} onPress={()=>onAiComplete?.()} style={s.aiComplete}>
     <Text style={s.aiCompleteText}>{aiBusy?'Alternatifler hazırlanıyor...':'◎  PRİZMA AI ile Tamamla'}</Text>
   </TouchableOpacity>
-  <Text style={s.note}>Sabitlenen parçalar AI önerilerinde korunur. Kaydettiğinde yerleşim de hesabına aktarılır.</Text>
+  <Text style={s.note}>AI eşleştirmesi yalnızca seçtiğin gardırop parçalarından öneri oluşturur.</Text>
  </View>;
 }
 const s=StyleSheet.create({
+ pickerSection:{marginTop:13,marginBottom:12},pickerTitle:{fontSize:13,fontWeight:'700',color:PRIZMA.ink,marginBottom:9},pickerList:{gap:8,paddingBottom:4},pickerCard:{width:72,height:92,borderWidth:1,borderColor:PRIZMA.border,borderRadius:12,padding:5,backgroundColor:'#FFFFFF',alignItems:'center'},pickerChosen:{borderColor:PRIZMA.purple,borderWidth:2},pickerImage:{width:61,height:66},pickerBadge:{fontSize:15,color:PRIZMA.purple,fontWeight:'700'},pickerEmpty:{fontSize:12,color:PRIZMA.muted,padding:10},helperText:{fontSize:10,color:PRIZMA.muted,marginTop:8},
+
  headerTitle:{fontSize:24,fontWeight:'700',color:PRIZMA.ink,marginBottom:6},
  headerSubtitle:{fontSize:12,color:PRIZMA.muted,lineHeight:18,marginBottom:16},
  modeTabs:{flexDirection:'row',borderWidth:1,borderColor:PRIZMA.border,borderRadius:20,overflow:'hidden',marginBottom:17},
