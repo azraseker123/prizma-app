@@ -1,3 +1,4 @@
+import LicensedProductImage from './LicensedProductImage';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Image, Modal, ScrollView, StyleSheet,
@@ -256,7 +257,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.eyebrow}>PRİZMA BEAUTY ✦</Text>
+      <Text style={styles.eyebrow}>PRİZMA BEAUTY </Text>
       <Text style={styles.title}>Bakım Koleksiyonum</Text>
       <Text style={styles.description}>
         Almak istediğin, düşündüğün ve PRİZMA'nın önerdiği
@@ -309,7 +310,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       {formOpen && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            {editing ? 'Ürünü Düzenle' : 'Yeni Ürün ✦'}
+            {editing ? 'Ürünü Düzenle' : 'Yeni Ürün '}
           </Text>
 
           <Text style={styles.label}>Ürün adı *</Text>
@@ -346,7 +347,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           {(selectedPhoto || (editing && editing.image_path && !removePhoto)) && (
             <View style={styles.photoActionRow}>
               <TouchableOpacity style={styles.backgroundButton} disabled={photoBusy || saving} onPress={() => void applyBackgroundRemoval()}>
-                <Text style={styles.backgroundButtonText}>✦ Arka Planı Kaldır</Text>
+                <Text style={styles.backgroundButtonText}> Arka Planı Kaldır</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.removePhotoButton} disabled={photoBusy || saving} onPress={() => { setSelectedPhoto(null); setRemovePhoto(true); }}>
                 <Text style={styles.removePhotoText}>Fotoğrafı Kaldır</Text>
@@ -389,7 +390,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           >
             {saving
               ? <ActivityIndicator color="#FFFFFF" />
-              : <Text style={styles.addButtonText}>Kaydet ✦</Text>}
+              : <Text style={styles.addButtonText}>Kaydet </Text>}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={resetForm}>
@@ -399,56 +400,37 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       )}
 
       {loading ? (
-        <ActivityIndicator color="#9673C2" size="large" />
+        <ActivityIndicator color="#69318A" size="large" />
       ) : visible.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.emptyIcon}>♡</Text>
-          <Text style={styles.cardTitle}>Henüz ürün eklemedin</Text>
-          <Text style={styles.description}>
-            Beğendiğin ürünleri burada biriktirebilirsin.
-          </Text>
+          <Text style={styles.emptyIcon}>▢</Text>
+          <Text style={styles.cardTitle}>Koleksiyonun henüz boş</Text>
+          <Text style={styles.description}>Beğendiğin ürünleri burada biriktirebilirsin.</Text>
         </View>
       ) : (
-        visible.map(product => (
-          <View key={product.id} style={styles.card}>
-            {photoUrls[product.id] && <Image source={{ uri: photoUrls[product.id] }} style={styles.productPhoto} resizeMode="contain" />}
-            <Text style={styles.productName}>
-              {product.product_name}
-            </Text>
-
-            {!!product.brand && (
-              <Text style={styles.description}>{product.brand}</Text>
-            )}
-
-            <Text style={styles.tag}>
-              {product.status === 'want'
-                ? '♡ Almak istiyorum'
-                : '✧ Almayı düşünüyorum'}
-            </Text>
-
-            <Text style={styles.source}>
-              {product.source === 'ai'
-                ? '✦ PRİZMA önerisi'
-                : 'Kendim ekledim'}
-            </Text>
-
-            {!!product.notes && (
-              <Text style={styles.description}>{product.notes}</Text>
-            )}
-
-            <TouchableOpacity style={styles.routineAddButton} disabled={!!routineBusy || routineSaved.includes(product.id + ':' + routinePeriod)} onPress={() => void addCollectionToRoutine(product)}>
-              <Text style={styles.routineAddText}>{routineSaved.includes(product.id + ':' + routinePeriod) ? '✓ Rutinime Eklendi' : routineBusy === product.id + ':' + routinePeriod ? 'Ekleniyor...' : '+ ' + routinePeriod + ' Rutinime Ekle'}</Text>
-            </TouchableOpacity>
-            <View style={styles.actions}>
-              <TouchableOpacity onPress={() => startEdit(product)}>
-                <Text style={styles.actionText}>Düzenle</Text>
+        <View style={styles.productGrid}>
+          {visible.map(product => (
+            <View key={product.id} style={styles.productCard}>
+              {photoUrls[product.id] ? (
+                <Image source={{ uri: photoUrls[product.id] }} style={styles.productPhoto} resizeMode="contain" accessibilityLabel={product.product_name + ' için eklenen fotoğraf'} />
+              ) : (
+                <LicensedProductImage alt={product.product_name} height={115} />
+              )}
+              <Text style={styles.productName} numberOfLines={2}>{product.product_name}</Text>
+              {!!product.brand && <Text style={styles.productBrand} numberOfLines={1}>{product.brand}</Text>}
+              <Text style={styles.tag}>{product.status === 'want' ? '♡ İstek Listemde' : 'Düşünüyorum'}</Text>
+              <Text style={styles.source}>{product.source === 'ai' ? 'PRİZMA önerisi' : 'Kendim ekledim'}</Text>
+              {!!product.notes && <Text style={styles.productNote} numberOfLines={2}>{product.notes}</Text>}
+              <TouchableOpacity style={styles.routineAddButton} disabled={!!routineBusy || routineSaved.includes(product.id + ':' + routinePeriod)} onPress={() => void addCollectionToRoutine(product)}>
+                <Text style={styles.routineAddText} numberOfLines={2}>{routineSaved.includes(product.id + ':' + routinePeriod) ? '✓ Rutinime Eklendi' : routineBusy === product.id + ':' + routinePeriod ? 'Ekleniyor...' : '+ Rutinime Ekle'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteProduct(product)}>
-                <Text style={styles.deleteText}>Sil</Text>
-              </TouchableOpacity>
+              <View style={styles.productActions}>
+                <TouchableOpacity accessibilityRole="button" style={styles.productAction} onPress={() => startEdit(product)}><Text style={styles.actionText}>Düzenle</Text></TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" style={styles.productAction} onPress={() => deleteProduct(product)}><Text style={styles.deleteText}>Sil</Text></TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ))
+          ))}
+        </View>
       )}
 
       {!!message && <Text style={styles.description}>{message}</Text>}
@@ -463,7 +445,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalSymbol}>✦</Text>
+            <Text style={styles.modalSymbol}></Text>
             <Text style={styles.modalTitle}>
               Ürünü koleksiyonundan kaldır?
             </Text>
@@ -498,24 +480,31 @@ export default function BeautyCollectionScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
-  productPhoto: { width: '100%', height: 160, borderRadius: 12, backgroundColor: '#F6F0F9', marginBottom: 13 },
-  photoPreview: { width: '100%', height: 180, backgroundColor: '#F6F0F9', borderRadius: 14, marginBottom: 10 },
-  photoPlaceholder: { backgroundColor: '#F6F0F9', height: 88, justifyContent: 'center', alignItems: 'center', borderRadius: 14, marginBottom: 9 },
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
+  productCard: { width: '48%', minHeight: 265, borderWidth: 1, borderColor: '#D8D6DC', borderRadius: 15, padding: 10, backgroundColor: '#FFFFFF', marginBottom: 4 },
+  productBrand: { color: '#6E6872', fontSize: 11, marginTop: 4 },
+  productNote: { color: '#6E6872', fontSize: 11, marginTop: 6 },
+  productActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  productAction: { minHeight: 44, justifyContent: 'center' },
+
+  productPhoto: { width: '100%', height: 115, borderRadius: 12, backgroundColor: '#F3EAF8', marginBottom: 13 },
+  photoPreview: { width: '100%', height: 180, backgroundColor: '#F3EAF8', borderRadius: 14, marginBottom: 10 },
+  photoPlaceholder: { backgroundColor: '#F3EAF8', height: 88, justifyContent: 'center', alignItems: 'center', borderRadius: 14, marginBottom: 9 },
   photoPlaceholderText: { color: '#857A91', fontSize: 12 },
-  photoButton: { backgroundColor: '#EFE2F5', padding: 12, borderRadius: 13, alignItems: 'center', marginBottom: 9 },
+  photoButton: { backgroundColor: '#F3EAF8', padding: 12, borderRadius: 13, alignItems: 'center', marginBottom: 9 },
   photoButtonText: { color: '#5C3C78', fontWeight: '800', fontSize: 12 },
   photoActionRow: { flexDirection: 'row', gap: 7, flexWrap: 'wrap', marginBottom: 6 },
-  backgroundButton: { backgroundColor: '#79569A', borderRadius: 11, padding: 10 },
+  backgroundButton: { backgroundColor: '#69318A', borderRadius: 11, padding: 10 },
   backgroundButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
   removePhotoButton: { borderRadius: 11, padding: 10, borderWidth: 1, borderColor: '#DDCFEB' },
   removePhotoText: { color: '#624D74', fontSize: 11, fontWeight: '800' },
   photoTip: { color: '#857A91', fontSize: 10, lineHeight: 15, marginBottom: 13 },
   routinePeriodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 13 },
   routinePeriodChip: { paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#F0E8F7', borderRadius: 14 },
-  routinePeriodActive: { backgroundColor: '#79569A' },
+  routinePeriodActive: { backgroundColor: '#69318A' },
   routinePeriodLabel: { color: '#554365', fontSize: 12, fontWeight: '700' },
   routinePeriodLabelActive: { color: '#FFFFFF' },
-  routineAddButton: { backgroundColor: '#79569A', paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12, marginTop: 12 },
+  routineAddButton: { backgroundColor: '#69318A', paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12, marginTop: 12 },
   routineAddText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '800', fontSize: 12 },
   modalOverlay: {
     flex: 1,
@@ -530,19 +519,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalSymbol: {
-    color: '#9673C2',
+    color: '#69318A',
     fontSize: 35,
     marginBottom: 12,
   },
   modalTitle: {
-    color: '#39235F',
+    color: '#242124',
     fontSize: 21,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 12,
   },
   modalDescription: {
-    color: '#806B9B',
+    color: '#6E6872',
     fontSize: 14,
     lineHeight: 22,
     textAlign: 'center',
@@ -557,79 +546,79 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 15,
     borderRadius: 14,
-    backgroundColor: '#F2EDFA',
+    backgroundColor: '#F3EAF8',
     alignItems: 'center',
   },
   modalCancelText: {
-    color: '#563D7C',
+    color: '#69318A',
     fontWeight: '800',
   },
   modalDelete: {
     flex: 1,
     padding: 15,
     borderRadius: 14,
-    backgroundColor: '#8060AD',
+    backgroundColor: '#69318A',
     alignItems: 'center',
   },
   modalDeleteText: {
     color: '#FFFFFF',
     fontWeight: '800',
   },
-  container: { flex: 1, backgroundColor: '#FAF8FF' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { padding: 20, paddingBottom: 45, gap: 15 },
   eyebrow: {
     color: '#9A78C5', fontSize: 11,
     fontWeight: '800', letterSpacing: 2,
   },
-  title: { color: '#39235F', fontSize: 27, fontWeight: '800' },
-  description: { color: '#806B9B', fontSize: 13, lineHeight: 21 },
+  title: { color: '#242124', fontSize: 27, fontWeight: '800' },
+  description: { color: '#6E6872', fontSize: 13, lineHeight: 21 },
   tabs: { flexDirection: 'row', gap: 7 },
   tab: {
     flex: 1, backgroundColor: '#FFFFFF',
     paddingVertical: 14, borderRadius: 14,
     alignItems: 'center',
   },
-  activeTab: { backgroundColor: '#DDD0FA' },
-  tabText: { color: '#806B9B', fontWeight: '700' },
-  activeTabText: { color: '#563D7C' },
+  activeTab: { backgroundColor: '#F3EAF8' },
+  tabText: { color: '#6E6872', fontWeight: '700' },
+  activeTabText: { color: '#69318A' },
   card: {
     backgroundColor: '#FFFFFF', borderRadius: 20,
     padding: 18, gap: 10,
   },
-  cardTitle: { color: '#39235F', fontSize: 17, fontWeight: '800' },
+  cardTitle: { color: '#242124', fontSize: 17, fontWeight: '800' },
   addButton: {
-    backgroundColor: '#8060AD', padding: 16,
+    backgroundColor: '#69318A', padding: 16,
     borderRadius: 16, alignItems: 'center',
   },
   addButtonText: { color: '#FFFFFF', fontWeight: '800' },
-  label: { color: '#563D7C', fontWeight: '700', fontSize: 13 },
+  label: { color: '#69318A', fontWeight: '700', fontSize: 13 },
   input: {
-    backgroundColor: '#F6F0FF', borderRadius: 12,
-    padding: 13, color: '#39235F',
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    padding: 13, color: '#242124',
   },
   notesInput: { minHeight: 85, textAlignVertical: 'top' },
   statusRow: { flexDirection: 'row', gap: 8 },
   statusOption: {
     flex: 1, padding: 12, borderRadius: 12,
-    backgroundColor: '#F6F0FF', alignItems: 'center',
+    backgroundColor: '#FFFFFF', alignItems: 'center',
   },
-  selectedStatus: { backgroundColor: '#DDD0FA' },
+  selectedStatus: { backgroundColor: '#F3EAF8' },
   statusText: {
-    color: '#563D7C', fontSize: 12,
+    color: '#69318A', fontSize: 12,
     fontWeight: '700', textAlign: 'center',
   },
   cancelText: {
-    textAlign: 'center', color: '#806B9B',
+    textAlign: 'center', color: '#6E6872',
     padding: 10, fontWeight: '700',
   },
-  emptyIcon: { fontSize: 36, color: '#9673C2' },
-  productName: { color: '#39235F', fontSize: 17, fontWeight: '800' },
-  tag: { color: '#6941A5', fontSize: 12, fontWeight: '700' },
+  emptyIcon: { fontSize: 36, color: '#69318A' },
+  productName: { color: '#242124', fontSize: 17, fontWeight: '800' },
+  tag: { color: '#69318A', fontSize: 12, fontWeight: '700' },
   source: { color: '#9A78C5', fontSize: 12 },
   actions: {
     flexDirection: 'row', justifyContent: 'flex-end',
     gap: 25, marginTop: 8,
   },
-  actionText: { color: '#6941A5', fontWeight: '800' },
+  actionText: { color: '#69318A', fontWeight: '800' },
   deleteText: { color: '#C05B73', fontWeight: '800' },
 });
