@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabase';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { addRoutineItem, getRoutineItems, removeRoutineItem, moveRoutineItem, renameRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
@@ -22,6 +23,9 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
   const [editingSteps, setEditingSteps] = useState(false);
   const [renameStepId, setRenameStepId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewAdding, setReviewAdding] = useState<string | null>(null);
+  const [review, setReview] = useState<{summary:string;suggestions:{title:string;reason:string}[]} | null>(null);
   const date = new Date();
   const todayKey = [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-');
   const progressKey = 'prizma-routine-progress:' + userId + ':' + todayKey;
@@ -116,6 +120,39 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
     finally { setBusy(false); }
   };
 
+  const reviewRoutine = async () => {
+    if(reviewBusy||busy)return;
+    setReviewBusy(true);setFeedback('');setReview(null);
+    try{
+      const {data,error}=await supabase.functions.invoke('review-routine',{
+        body:{category,period,steps:visibleItems.map(x=>x.title)},
+      });
+      if(error)throw new Error('AI rutin değerlendirmesi alınamadı.');
+      if(data?.error)throw new Error(data.error);
+      const suggestions=(Array.isArray(data?.suggestions)?data.suggestions:[])
+        .filter((x:any)=>x&&typeof x.title==='string'&&typeof x.reason==='string')
+        .slice(0,3).map((x:{title:string;reason:string})=>({title:x.title.slice(0,100),reason:x.reason.slice(0,250)}));
+      setReview({summary:typeof data?.summary==='string'?data.summary:'Rutinin değerlendirildi.',suggestions});
+    }catch(error){
+      setFeedback(error instanceof Error?error.message:'Değerlendirme yapılamadı.');
+    }finally{setReviewBusy(false);}
+  };
+  const approveReviewStep = async (suggestion:{title:string;reason:string}) => {
+    if(busy||reviewAdding)return;
+    setReviewAdding(suggestion.title);
+    try{
+      if(items.some(x=>x.title===suggestion.title&&x.period===period&&(x.category||'skin')===category)){
+        setFeedback('Bu adım zaten rutininde var.');
+      }else{
+        await addRoutineItem(userId,{title:suggestion.title,period,category,source:'ai-suggestion',note:suggestion.reason});
+        await refresh();
+        setFeedback('Öneri onayınla rutinine eklendi.');
+      }
+      setReview(old=>old?{...old,suggestions:old.suggestions.filter(x=>x!==suggestion)}:null);
+    }catch{setFeedback('Adım eklenemedi.');}
+    finally{setReviewAdding(null);}
+  };
+
   const shiftStep = async(id:string,direction:-1|1) => {
     if(busy)return;
     setBusy(true);
@@ -194,6 +231,24 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
         <Text style={s.aiText}>Cilt, saç ve makyaj için ürün önerisi al, incele ve onaylayarak rutinine ekle.</Text>
         <Text style={s.aiLink}>Önerileri keşfet →</Text>
       </TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" style={s.reviewButton}
+        disabled={reviewBusy||busy} onPress={()=>{void reviewRoutine();}}>
+        {reviewBusy?<ActivityIndicator color="#69318A"/>:<Text style={s.reviewButtonText}>◎  Rutinimi AI ile Değerlendir</Text>}
+      </TouchableOpacity>
+      {review&&<View style={s.reviewCard}>
+        <Text style={s.reviewTitle}>PRİZMA AI Rutin Değerlendirmesi</Text>
+        <Text style={s.reviewCopy}>{review.summary}</Text>
+        {review.suggestions.length===0&&<Text style={s.reviewCopy}>Bu rutin için ek adım önerilmiyor.</Text>}
+        {review.suggestions.map((suggestion,index)=><View key={index} style={s.suggestionCard}>
+          <Text style={s.reviewTitle}>{suggestion.title}</Text>
+          <Text style={s.reviewCopy}>{suggestion.reason}</Text>
+          <TouchableOpacity accessibilityRole="button" style={s.approveButton}
+            disabled={!!reviewAdding||busy} onPress={()=>{void approveReviewStep(suggestion);}}>
+            <Text style={s.approveText}>{reviewAdding===suggestion.title?'Ekleniyor...':'+ Onayla ve Rutinime Ekle'}</Text>
+          </TouchableOpacity>
+        </View>)}
+        <Text style={s.reviewFootnote}>AI hiçbir adımı onayın olmadan değiştirmez. Öneriler tıbbi değerlendirme değildir.</Text>
+      </View>}
       <View style={s.info}><Text style={s.infoText}>ⓘ AI hata yapabilir. Ürün talimatları ve içeriklerini doğrula; yeni aktifleri kullanmadan önce uyumluluğunu kontrol et.</Text></View>
       {!!feedback && <Text accessibilityRole="alert" style={s.feedback}>{feedback}</Text>}
       <View style={s.listSection}>
@@ -251,6 +306,16 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
 }
 
 const s = StyleSheet.create({
+  reviewButton:{minHeight:48,borderRadius:14,borderWidth:1,borderColor:'#69318A',alignItems:'center',justifyContent:'center',marginBottom:13,backgroundColor:'#FFFFFF'},
+  reviewButtonText:{fontSize:13,color:'#69318A',fontWeight:'700'},
+  reviewCard:{backgroundColor:'#FFFFFF',borderColor:'#D8D6DC',borderWidth:1,borderRadius:16,padding:14,marginBottom:15,gap:8},
+  reviewTitle:{color:'#242124',fontSize:14,fontWeight:'700'},
+  reviewCopy:{color:'#6E6872',fontSize:12,lineHeight:18},
+  suggestionCard:{padding:12,borderRadius:13,backgroundColor:'#F3EAF8',gap:7},
+  approveButton:{minHeight:44,paddingHorizontal:9,borderRadius:11,alignItems:'center',justifyContent:'center',backgroundColor:'#69318A'},
+  approveText:{color:'#FFFFFF',fontWeight:'700',fontSize:12},
+  reviewFootnote:{fontSize:11,color:'#6E6872',lineHeight:16},
+
   reorderColumn:{gap:4,alignItems:'center'},
   reorderText:{color:'#69318A',fontSize:21,fontWeight:'700'},
   editStepActions:{gap:5},
