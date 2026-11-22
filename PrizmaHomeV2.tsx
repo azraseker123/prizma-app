@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 import { getRoutineItems, type RoutineItem } from './RoutineStore';
 import { PRIZMA } from './prizmaTheme';
 
-type Page = 'Gardırop' | 'PRİZMA AI' | 'Güzellik' | 'Bakım Rutini' | 'Cilt Danışmanı' | 'Stil Stüdyosu';
+type Page = 'Gardırop' | 'PRİZMA AI' | 'Güzellik' | 'Bakım Rutini' | 'Cilt Danışmanı' | 'Stil Stüdyosu' | 'Sanal Deneme';
 type Props = { userId: string; displayName?: string; onOpen: (page: Page) => void };
 type Outfit = { name: string; description: string; item_ids: string[] };
 type Garment = { id: string; name: string; image_path: string | null; imageUrl: string | null };
@@ -28,6 +28,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   const [agendaDraft, setAgendaDraft] = useState('');
   const [agendaEdit, setAgendaEdit] = useState(false);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
+  const [outfitIndex,setOutfitIndex] = useState(0);
   const [garments, setGarments] = useState<Garment[]>([]);
   const [outfitBusy, setOutfitBusy] = useState(false);
   const [outfitError, setOutfitError] = useState('');
@@ -152,42 +153,90 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   };
   const daily=useMemo(()=>routine.filter(x=>x.category===undefined||x.category==='skin'),[routine]);
   const filterPeriod=(period:'Sabah'|'Akşam')=>daily.filter(x=>x.period===period);
+  const focus = outfits.length ? outfits[outfitIndex % outfits.length] : null;
+  const currentSteps = routine.filter(x => x.period === 'Sabah' || x.period === 'Akşam');
+  const doneCount = currentSteps.filter(x => completed.includes(x.id)).length;
+  const currentPlan = agenda[selectedDay] || 'Günlük Planım';
+  const photoPieces = focus?.item_ids.map(id=>garments.find(g=>g.id===id)).filter((x):x is Garment=>Boolean(x)) || [];
   return <View style={s.page}>
     <Text style={s.greeting}>{greeting}{displayName?', '+displayName:''}!</Text>
-    <Text style={s.sub}>Bugün stilin için neler planlıyoruz?</Text>
-    <View style={s.topCards}>
-      <View style={s.miniCard}>
-        <Text style={s.cardHeading}>☁  Hava Durumu</Text>
-        {weatherBusy?<ActivityIndicator color={PRIZMA.purple}/>:weather?<><Text style={s.weatherTemp}>{weather.temp}°</Text><Text style={s.muted}>{weatherLabel(weather.code)} · {weather.name}</Text></>:<Text style={s.muted}>{weatherError||'Şehrini ekleyerek hava durumunu gör.'}</Text>}
-        {cityEdit?<><TextInput value={cityDraft} onChangeText={setCityDraft} placeholder="Şehir adı" style={s.input} autoCapitalize="words"/><TouchableOpacity onPress={()=>{void saveCity();}} style={s.smallAction}><Text style={s.smallActionText}>Kaydet</Text></TouchableOpacity></>:
-        <TouchableOpacity accessibilityRole="button" onPress={()=>setCityEdit(true)}><Text style={s.action}>{city?'Şehri değiştir':'Şehir ekle'} ›</Text></TouchableOpacity>}
-      </View>
-      <View style={s.miniCard}>
-        <Text style={s.cardHeading}>▦  Günlük Planım</Text>
-        <Text style={s.muted}>{new Date(selectedDay+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long'})}</Text>
-        <Text style={s.planText} numberOfLines={3}>{agenda[selectedDay]||'Henüz etkinlik eklenmedi.'}</Text>
-        <TouchableOpacity accessibilityRole="button" onPress={()=>setAgendaEdit(true)}><Text style={s.action}>{agenda[selectedDay]?'Düzenle':'Plan ekle'} ›</Text></TouchableOpacity>
-      </View>
+    <Text style={s.sub}>Stilini ve güzelliğini birlikte planlayalım.</Text>
+    <View style={s.briefBar}>
+      <TouchableOpacity style={s.briefSection} accessibilityRole="button" onPress={()=>setAgendaEdit(!agendaEdit)}>
+        <Text style={s.briefSymbol}>▦</Text>
+        <Text style={s.briefText} numberOfLines={1}>{currentPlan}</Text>
+        <Text style={s.briefChevron}>⌄</Text>
+      </TouchableOpacity>
+      <View style={s.briefDivider}/>
+      <TouchableOpacity style={s.briefSection} accessibilityRole="button" onPress={()=>setCityEdit(!cityEdit)}>
+        {weatherBusy?<ActivityIndicator size="small" color={PRIZMA.purple}/>:<Text style={s.briefSymbol}>☁</Text>}
+        <Text style={s.briefText} numberOfLines={1}>{weather?weather.name+' '+weather.temp+'°C':city?city:'Hava durumu'}</Text>
+      </TouchableOpacity>
     </View>
-    {agendaEdit?<View style={s.editPanel}><Text style={s.cardHeading}>Günlük planını düzenle</Text><TextInput multiline value={agendaDraft} onChangeText={setAgendaDraft} placeholder="Örn. Öğleden sonra arkadaşlarımla kahve" style={[s.input,{minHeight:64}]} maxLength={180}/><View style={s.inlineActions}><TouchableOpacity onPress={()=>setAgendaEdit(false)} style={s.secondaryButton}><Text style={s.action}>Vazgeç</Text></TouchableOpacity><TouchableOpacity onPress={()=>{void saveAgenda();}} style={s.primaryButton}><Text style={s.primaryButtonText}>Kaydet</Text></TouchableOpacity></View></View>:null}
-    <View style={s.sectionRow}><Text style={s.sectionTitle}>Bugünün Kombinleri</Text><TouchableOpacity accessibilityRole="button" disabled={outfitBusy} onPress={()=>{void generateOutfits(true);}}><Text style={s.action}>{outfitBusy?'Hazırlanıyor...':'Yenile ↻'}</Text></TouchableOpacity></View>
-    {outfitBusy?<View style={s.loading}><ActivityIndicator color={PRIZMA.purple}/><Text style={s.muted}>Gardırobundan kombinler hazırlanıyor...</Text></View>:null}
-    {!outfitBusy&&outfits.length===0?<TouchableOpacity style={s.empty} onPress={()=>onOpen('Gardırop')}><Text style={s.emptyText}>{outfitError||'Kişisel kombinlerin burada görünecek.'}</Text><Text style={s.action}>Gardıroba Git ›</Text></TouchableOpacity>:null}
-    {outfits.length>0?<View style={s.outfitRow}>{outfits.map((o,i)=><TouchableOpacity key={o.name+i} style={s.outfitCard} accessibilityRole="button" onPress={()=>{void saveOutfit(o);}}>
-      <View style={s.lookImage}>{o.item_ids.slice(0,3).map(id=>{const item=garments.find(g=>g.id===id);return item?.imageUrl?<Image key={id} source={{uri:item.imageUrl}} resizeMode="contain" style={s.lookItem}/>:<Text key={id} style={s.lookFallback}>♧</Text>;})}</View>
-      <Text style={s.lookTitle} numberOfLines={2}>{o.name}</Text><Text style={s.lookDesc} numberOfLines={2}>{o.description}</Text><Text style={s.action}>Kombini Kaydet ›</Text>
-    </TouchableOpacity>)}</View>:null}
-    {!!outfits.length&&!!outfitError?<Text style={s.muted}>{outfitError}</Text>:null}
-    <View style={s.sectionRow}><Text style={s.sectionTitle}>Haftalık Stil Takvimim</Text></View>
-    <View style={s.weekCard}>{week.map(d=>{const key=dayISO(d);const selected=key===selectedDay;return <TouchableOpacity key={key} accessibilityRole="button" accessibilityState={{selected}} onPress={()=>setSelectedDay(key)} style={[s.day,selected&&s.selectedDay]}><Text style={[s.dayName,selected&&s.selectedDayText]}>{d.toLocaleDateString('tr-TR',{weekday:'short'})}</Text><Text style={[s.dayNumber,selected&&s.selectedDayText]}>{d.getDate()}</Text>{agenda[key]?<View style={s.dayDot}/>:null}</TouchableOpacity>;})}</View>
-    <View style={s.sectionRow}><Text style={s.sectionTitle}>Güzellik Notum</Text></View>
-    <TouchableOpacity style={s.tipCard} onPress={()=>onOpen('Cilt Danışmanı')}><Text style={s.tipTitle}>PRİZMA AI Güzellik Danışmanı</Text><Text style={s.muted}>Cilt, saç ve makyaj tercihlerine göre ürün ve bakım önerileri keşfet.</Text><Text style={s.action}>Öneri al ›</Text></TouchableOpacity>
-    <View style={s.sectionRow}><Text style={s.sectionTitle}>Günlük Bakım Rutinim</Text><TouchableOpacity onPress={()=>onOpen('Bakım Rutini')}><Text style={s.action}>Tümünü gör ›</Text></TouchableOpacity></View>
-    <View style={s.routineBox}>{(['Sabah','Akşam'] as const).map(period=><View key={period} style={s.routineGroup}><Text style={s.periodTitle}>{period==='Sabah'?'☀':'☾'}  {period}</Text>{filterPeriod(period).length===0?<Text style={s.muted}>Henüz bakım adımı yok.</Text>:filterPeriod(period).slice(0,4).map(item=><TouchableOpacity key={item.id} accessibilityRole="checkbox" accessibilityState={{checked:completed.includes(item.id)}} onPress={()=>{void toggleStep(item.id);}} style={s.routineItem}><View style={[s.check,completed.includes(item.id)&&s.checked]}><Text style={s.checkGlyph}>{completed.includes(item.id)?'✓':''}</Text></View><Text style={[s.routineText,completed.includes(item.id)&&s.doneText]} numberOfLines={2}>{item.title}</Text></TouchableOpacity>)}</View>)}</View>
+    {cityEdit&&<View style={s.inlineEditor}>
+       <TextInput style={s.inlineInput} placeholder="Şehir (ör. İstanbul)" value={cityDraft} onChangeText={setCityDraft}/>
+       <TouchableOpacity style={s.inlineSave} onPress={()=>{void saveCity();}}><Text style={s.inlineSaveText}>Kaydet</Text></TouchableOpacity>
+    </View>}
+    {agendaEdit&&<View style={s.inlineEditor}>
+       <TextInput style={s.inlineInput} placeholder="Bugünkü planım" value={agendaDraft} onChangeText={setAgendaDraft}/>
+       <TouchableOpacity style={s.inlineSave} onPress={()=>{void saveAgenda();}}><Text style={s.inlineSaveText}>Kaydet</Text></TouchableOpacity>
+    </View>}
+    <View style={s.hero}>
+      <View style={s.heroHeading}>
+        <Text style={s.heroTitle}>Günün Kombini</Text>
+        <View style={s.heroControls}>
+          <Text style={s.heroCount}>{focus?(outfitIndex+1)+'/'+outfits.length:'0/0'}</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={()=>focus?void saveOutfit(focus):onOpen('Gardırop')}>
+            <Text style={s.heroHeart}>♡</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <Text style={s.heroCaption}>Günlük planına uygun, senin için seçilen kombin.</Text>
+      {outfitBusy&&!outfits.length?<View style={s.heroPending}><ActivityIndicator color={PRIZMA.purple}/><Text style={s.muted}>Kombinlerin hazırlanıyor...</Text></View>:
+        focus?<View style={s.heroLook}>
+          {photoPieces.slice(0,6).map((item,i)=><View key={item.id}
+              style={[s.collageItem,{left:((i%3)*31)+4+'%',top:(Math.floor(i/3)*50)+4+'%',width:'30%',height:'45%'}]}>
+            {item.imageUrl?<Image source={{uri:item.imageUrl}} resizeMode="contain" style={s.collageImage}/>:
+            <View style={s.collagePlaceholder}><Text style={s.collagePlaceholderText}>{item.name}</Text></View>}
+          </View>)}
+        </View>:<TouchableOpacity style={s.heroPending} onPress={()=>onOpen('Gardırop')}><Text style={s.muted}>{outfitError||'Kombinlerini görmek için gardırobuna parça ekle.'}</Text><Text style={s.heroLink}>Gardırobuma git ›</Text></TouchableOpacity>}
+      {focus&&<><View style={s.dots}>{outfits.map((o,i)=><TouchableOpacity key={o.name+i} accessibilityLabel={(i+1)+'. kombini göster'} onPress={()=>setOutfitIndex(i)} style={[s.dot,outfitIndex===i&&s.dotOn]}/>)}</View>
+        <Text style={s.focusLabel} numberOfLines={1}>{focus.name} · {focus.description}</Text>
+        <View style={s.carouselArrows}>
+          <TouchableOpacity accessibilityRole="button" style={s.navArrow} onPress={()=>setOutfitIndex((outfitIndex+outfits.length-1)%outfits.length)}><Text style={s.navArrowText}>‹ Önceki</Text></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" style={s.navArrow} onPress={()=>setOutfitIndex((outfitIndex+1)%outfits.length)}><Text style={s.navArrowText}>Sonraki ›</Text></TouchableOpacity>
+        </View></>}
+      <TouchableOpacity style={s.tryOnButton} accessibilityRole="button" onPress={()=>onOpen('Sanal Deneme')}>
+        <Text style={s.tryOnText}>▢   Üzerimde Dene</Text>
+      </TouchableOpacity>
+    </View>
+    <View style={s.quickRow}>
+      <TouchableOpacity style={s.quickCard} accessibilityRole="button" onPress={()=>onOpen('Bakım Rutini')}>
+        <Text style={s.quickIcon}>▤</Text><Text style={s.quickTitle}>Bugünkü Rutinim  ›</Text>
+        <Text style={s.quickInfo}>{doneCount}/{currentSteps.length} adım tamamlandı</Text>
+        <View style={s.quickTrack}><View style={[s.quickFill,{width:(currentSteps.length?doneCount/currentSteps.length*100:0)+'%'}]}/></View>
+      </TouchableOpacity>
+      <TouchableOpacity style={s.quickCard} accessibilityRole="button" onPress={()=>onOpen('Güzellik')}>
+        <Text style={s.quickIcon}>▱</Text><Text style={s.quickTitle}>Güzellik Danışmanı  ›</Text>
+        <Text style={s.quickInfo}>Bugün neye ihtiyacın var?</Text>
+        <View style={s.categoryRow}><Text style={s.categoryChip}>Cilt</Text><Text style={s.categoryChip}>Saç</Text><Text style={s.categoryChip}>Makyaj</Text></View>
+      </TouchableOpacity>
+    </View>
+    <View style={s.dayFooter}><TouchableOpacity onPress={()=>{void generateOutfits(true);}}><Text style={s.footerLink}>↻  Kombinleri Yenile</Text></TouchableOpacity>
+    <TouchableOpacity onPress={()=>onOpen('Stil Stüdyosu')}><Text style={s.footerLink}>Stil Editörü  ›</Text></TouchableOpacity></View>
+    <View style={s.weekSummary}><Text style={s.sectionTitle}>Haftalık Planım</Text><View style={s.weekCard}>{week.map(d=>{const key=dayISO(d);const selected=key===selectedDay;return <TouchableOpacity key={key} onPress={()=>setSelectedDay(key)} style={[s.day,selected&&s.selectedDay]}><Text style={[s.dayName,selected&&s.selectedDayText]}>{d.toLocaleDateString('tr-TR',{weekday:'short'})}</Text><Text style={[s.dayNumber,selected&&s.selectedDayText]}>{d.getDate()}</Text></TouchableOpacity>;})}</View></View>
   </View>;
 }
 const s=StyleSheet.create({
- page:{paddingBottom:38}, greeting:{fontSize:24,fontWeight:'700',color:PRIZMA.ink,marginTop:4},sub:{color:PRIZMA.muted,fontSize:13,marginTop:5,marginBottom:18},
+ briefBar:{flexDirection:'row',alignItems:'center',minHeight:55,borderColor:PRIZMA.border,borderWidth:1,borderRadius:20,backgroundColor:'#FFFFFF',paddingHorizontal:10,marginBottom:19},
+ briefSection:{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,minHeight:46},briefDivider:{height:27,width:1,backgroundColor:PRIZMA.border},briefSymbol:{fontSize:21,color:PRIZMA.purple},briefText:{fontSize:12,color:PRIZMA.ink,fontWeight:'600',flexShrink:1},briefChevron:{fontSize:19,color:PRIZMA.purple},
+ inlineEditor:{flexDirection:'row',gap:8,marginBottom:12},inlineInput:{flex:1,minHeight:44,borderWidth:1,borderColor:PRIZMA.border,borderRadius:12,paddingHorizontal:10,color:PRIZMA.ink},inlineSave:{minHeight:44,borderRadius:12,backgroundColor:PRIZMA.purple,justifyContent:'center',paddingHorizontal:12},inlineSaveText:{color:'#FFFFFF',fontWeight:'700'},
+ hero:{borderWidth:1,borderColor:PRIZMA.border,borderRadius:21,backgroundColor:'#FFFFFF',padding:14},heroHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},heroTitle:{fontSize:21,color:PRIZMA.ink,fontWeight:'800'},heroControls:{flexDirection:'row',alignItems:'center',gap:14},heroCount:{color:PRIZMA.purple,fontWeight:'700',fontSize:14},heroHeart:{fontSize:30,color:PRIZMA.purple},heroCaption:{fontSize:12,color:PRIZMA.muted,marginTop:3},heroLook:{height:245,marginTop:9,position:'relative',backgroundColor:'#FFFFFF'},
+ collageItem:{position:'absolute',alignItems:'center',justifyContent:'center'},collageImage:{width:'100%',height:'100%'},collagePlaceholder:{borderWidth:1,borderColor:PRIZMA.border,borderRadius:9,padding:5,justifyContent:'center',height:'100%'},collagePlaceholderText:{fontSize:10,color:PRIZMA.muted,textAlign:'center'},heroPending:{minHeight:235,alignItems:'center',justifyContent:'center',gap:12,padding:16},heroLink:{color:PRIZMA.purple,fontWeight:'700'},
+ dots:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9,marginTop:2},dot:{height:8,width:8,backgroundColor:'#D8D6DC',borderRadius:4},dotOn:{backgroundColor:PRIZMA.purple},focusLabel:{fontSize:11,color:PRIZMA.muted,textAlign:'center',marginTop:7},carouselArrows:{flexDirection:'row',justifyContent:'space-between',marginTop:5},navArrow:{minHeight:35,justifyContent:'center'},navArrowText:{fontSize:11,color:PRIZMA.purple},tryOnButton:{backgroundColor:PRIZMA.purple,borderRadius:14,minHeight:49,alignItems:'center',justifyContent:'center',marginTop:8},tryOnText:{fontSize:15,color:'#FFFFFF',fontWeight:'700'},
+ quickRow:{flexDirection:'row',gap:9,marginTop:14},quickCard:{flex:1,borderWidth:1,borderColor:PRIZMA.border,borderRadius:18,padding:12,backgroundColor:'#FFFFFF',minHeight:155},quickIcon:{fontSize:25,color:PRIZMA.purple},quickTitle:{fontSize:15,fontWeight:'700',color:PRIZMA.ink,marginTop:9},quickInfo:{fontSize:11,color:PRIZMA.muted,marginTop:8},quickTrack:{height:7,borderRadius:5,backgroundColor:'#E7E7E7',marginTop:13,overflow:'hidden'},quickFill:{height:'100%',borderRadius:5,backgroundColor:PRIZMA.purple},categoryRow:{flexDirection:'row',gap:3,marginTop:12},categoryChip:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:PRIZMA.border,borderRadius:20,paddingHorizontal:5,paddingVertical:5,fontSize:10,color:PRIZMA.purple},dayFooter:{flexDirection:'row',justifyContent:'space-between',marginTop:13},footerLink:{fontSize:12,fontWeight:'700',color:PRIZMA.purple},weekSummary:{marginTop:24},
+
+ page:{paddingBottom:38,backgroundColor:'#FFFFFF'}, greeting:{fontSize:24,fontWeight:'700',color:PRIZMA.ink,marginTop:4},sub:{color:PRIZMA.muted,fontSize:13,marginTop:5,marginBottom:18},
  topCards:{flexDirection:'row',gap:10},miniCard:{flex:1,minHeight:158,padding:13,borderRadius:16,borderWidth:1,borderColor:PRIZMA.border,backgroundColor:PRIZMA.white},
  cardHeading:{fontSize:13,fontWeight:'700',color:PRIZMA.ink,marginBottom:9},muted:{fontSize:11,color:PRIZMA.muted,lineHeight:17},weatherTemp:{fontSize:25,fontWeight:'700',color:PRIZMA.purple,marginBottom:3},planText:{fontSize:12,color:PRIZMA.ink,lineHeight:18,marginTop:7,flex:1},action:{fontSize:11,color:PRIZMA.purple,fontWeight:'700',marginTop:10},
  input:{backgroundColor:PRIZMA.white,borderWidth:1,borderColor:PRIZMA.border,borderRadius:10,paddingHorizontal:9,paddingVertical:8,fontSize:12,color:PRIZMA.ink,marginTop:8},
