@@ -1,3 +1,4 @@
+import PrizmaLineIcon from './PrizmaLineIcon';
 import React,{useCallback,useEffect,useState} from 'react';
 import {ActivityIndicator,Image,ScrollView,StyleSheet,Text,TouchableOpacity,View} from 'react-native';
 import {supabase} from './supabase';
@@ -12,6 +13,8 @@ export default function PrizmaBeautyV2({userId,onOpen,onBeautyCategory}:Props){
  const [products,setProducts]=useState<Product[]>([]);
  const [photos,setPhotos]=useState<Record<string,string>>({});
  const [profile,setProfile]=useState<Record<string,string>>({});
+ const [showBeautyProfile,setShowBeautyProfile]=useState(false);
+ const readable=(value:unknown):string=>{if(Array.isArray(value))return value.map(readable).join(' · ');if(typeof value!=='string'||!value.trim())return 'Belirtilmedi';try{const decoded=JSON.parse(value);if(Array.isArray(decoded))return decoded.map(readable).join(' · ');}catch{}return value.replace(/[\[\]"]/g,'').replace(/\s*,\s*/g,' · ').trim();};
  const [loading,setLoading]=useState(true);
  const [activeProduct,setActiveProduct]=useState(0);
  const reload=useCallback(async()=>{
@@ -34,6 +37,15 @@ export default function PrizmaBeautyV2({userId,onOpen,onBeautyCategory}:Props){
  useEffect(()=>{void reload();},[reload]);
  const choose=(category:Category)=>{onBeautyCategory(category);onOpen('Cilt Danışmanı');};
  const preview=products.slice(0,6);
+ if(showBeautyProfile)return <View style={s.page}>
+   <TouchableOpacity accessibilityRole="button" style={s.profileBack} onPress={()=>setShowBeautyProfile(false)}><Text style={s.profileBackText}>‹ Güzellik</Text></TouchableOpacity>
+   <Text style={s.heading}>Güzellik Profilim</Text>
+   <Text style={s.sub}>Cilt, saç ve makyaj tercihlerinin özeti</Text>
+   <View style={s.profileDetailRow}><PrizmaLineIcon name="profile" size={30}/><View style={{flex:1}}><Text style={s.profileTitle}>Cilt Profilim</Text><Text style={s.profileText}>{readable(profile.skin_type)}</Text></View></View>
+   <View style={s.profileDetailRow}><PrizmaLineIcon name="brush" size={30}/><View style={{flex:1}}><Text style={s.profileTitle}>Saç Profilim</Text><Text style={s.profileText}>{readable(profile.hair_type)} · {readable(profile.hair_color)}</Text></View></View>
+   <View style={s.profileDetailRow}><PrizmaLineIcon name="lipstick" size={30}/><View style={{flex:1}}><Text style={s.profileTitle}>Makyaj Tercihlerim</Text><Text style={s.profileText}>{readable(profile.makeup_style||profile.makeup_preferences)}</Text></View></View>
+   <TouchableOpacity style={s.cta} onPress={()=>onOpen('Profil')}><Text style={s.ctaText}>Profilimi Düzenle ›</Text></TouchableOpacity>
+   </View>;
  return <View style={s.page}>
    <Text style={s.heading}>Güzellik Danışmanı</Text>
    <Text style={s.sub}>Cilt, saç ve makyajda kişisel asistanın.</Text>
@@ -43,10 +55,10 @@ export default function PrizmaBeautyV2({userId,onOpen,onBeautyCategory}:Props){
           <Text style={s.categoryIcon}>{icon}</Text><Text style={s.categoryLabel}>{label}</Text>
         </TouchableOpacity>)}
    </View>
-   <TouchableOpacity style={s.profileCard} onPress={()=>onOpen('Profil')} accessibilityRole="button">
-     <View style={s.profileAvatar}><Text style={s.profileAvatarText}>◯</Text></View>
+   <TouchableOpacity style={s.profileCard} onPress={()=>setShowBeautyProfile(true)} accessibilityRole="button">
+     <View style={s.profileAvatar}><PrizmaLineIcon name="profile" size={29}/></View>
      <View style={{flex:1}}><Text style={s.profileTitle}>Güzellik Profilin</Text>
-       <Text style={s.profileText} numberOfLines={2}>{profile.skin_type||'Cilt tipi eklenmedi'} · {profile.hair_type||'Saç tipi eklenmedi'}</Text></View>
+       <Text style={s.profileText} numberOfLines={2}>{readable(profile.skin_type)} Cilt · {readable(profile.hair_type)} Saç</Text></View>
      <Text style={s.arrow}>›</Text>
    </TouchableOpacity>
    <View style={s.sectionHeading}><Text style={s.sectionTitle}>Bugün Sana Öneriler</Text><TouchableOpacity onPress={()=>onOpen('Bakım Koleksiyonum')}><Text style={s.sectionLink}>Tümünü Gör ›</Text></TouchableOpacity></View>
@@ -66,16 +78,19 @@ export default function PrizmaBeautyV2({userId,onOpen,onBeautyCategory}:Props){
      <Text style={s.sectionLink}>Ürün Önerilerine Git ›</Text>
    </TouchableOpacity>}
    <TouchableOpacity style={s.actionRow} onPress={()=>onOpen('Bakım Rutini')}>
-     <Text style={s.rowIcon}>▦</Text><View style={{flex:1}}><Text style={s.rowTitle}>Rutinim</Text><Text style={s.rowSubtitle}>Sabah & Akşam bakım adımların</Text></View><Text style={s.arrow}>›</Text>
+     <PrizmaLineIcon name="calendar" size={28}/><View style={{flex:1}}><Text style={s.rowTitle}>Rutinim</Text><Text style={s.rowSubtitle}>Sabah & Akşam bakım adımların</Text></View><Text style={s.arrow}>›</Text>
    </TouchableOpacity>
    <TouchableOpacity style={s.actionRow} onPress={()=>onOpen('Bakım Koleksiyonum')}>
-     <Text style={s.rowIcon}>▢</Text><View style={{flex:1}}><Text style={s.rowTitle}>Ürün Koleksiyonum</Text><Text style={s.rowSubtitle}>Kaydettiğin ve favorilediğin ürünler</Text></View><Text style={s.arrow}>›</Text>
+     <PrizmaLineIcon name="bag" size={28}/><View style={{flex:1}}><Text style={s.rowTitle}>Ürün Koleksiyonum</Text><Text style={s.rowSubtitle}>Kaydettiğin ve favorilediğin ürünler</Text></View><Text style={s.arrow}>›</Text>
    </TouchableOpacity>
-   <TouchableOpacity style={s.cta} onPress={()=>choose('skin')}><Text style={s.ctaText}>◎  PRİZMA AI ile Danış</Text></TouchableOpacity>
+   <TouchableOpacity style={s.cta} onPress={()=>choose('skin')}><Text style={s.ctaText}>PRİZMA AI ile Danış</Text></TouchableOpacity>
    <Text style={s.disclaimer}>ⓘ AI hata yapabilir. Ürün içeriklerini ve kullanım talimatlarını kontrol et.</Text>
  </View>;
 }
 const s=StyleSheet.create({
+ profileBack:{minHeight:45,justifyContent:'center'},profileBackText:{fontSize:14,color:PRIZMA.purple,fontWeight:'700'},
+ profileDetailRow:{flexDirection:'row',alignItems:'center',gap:16,minHeight:92,borderWidth:1,borderColor:PRIZMA.border,borderRadius:16,padding:15,marginBottom:11},
+
  page:{paddingBottom:40,backgroundColor:'#FFFFFF'},heading:{fontSize:23,fontWeight:'800',color:PRIZMA.ink,textAlign:'center',marginTop:10},sub:{textAlign:'center',fontSize:12,color:PRIZMA.muted,marginTop:6,marginBottom:21},
  categories:{flexDirection:'row',gap:9},categoryCard:{flex:1,minHeight:109,borderWidth:1,borderColor:PRIZMA.border,borderRadius:17,justifyContent:'center',alignItems:'center',backgroundColor:'#FFFFFF',gap:9},
  categoryIcon:{fontSize:31,color:PRIZMA.purple},categoryLabel:{fontSize:12,color:PRIZMA.ink,textAlign:'center',fontWeight:'600'},
