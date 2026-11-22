@@ -140,6 +140,8 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
     useState<string | null>(null);
   const [outfitSelected, setOutfitSelected] = useState<string[]>([]);
   const [outfitLayout, setOutfitLayout] = useState<OutfitLayout>({});
+  const [aiMatchingBusy,setAiMatchingBusy]=useState(false);
+  const [aiAlternativeLooks,setAiAlternativeLooks]=useState<{name:string;description:string;item_ids:string[]}[]>([]);
   const [showOutfitBuilder, setShowOutfitBuilder] = useState(false);
 
   const [removingBackground, setRemovingBackground] = useState(false);
@@ -629,6 +631,44 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
   // --------------------------------------------------
   // KOMBİNLER
   // --------------------------------------------------
+
+  const completeOutfitWithAI = async(focus='Stil Editörü') => {
+    if(aiMatchingBusy)return;
+    if(items.length<2){showNotice('info','Gardırop','AI eşleştirmesi için en az iki parçan olmalı.');return;}
+    setAiMatchingBusy(true);
+    setAiAlternativeLooks([]);
+    try{
+      const lockedIds=outfitSelected.filter(id=>outfitLayout[id]?.locked);
+      const {data,error}=await supabase.functions.invoke('generate-outfits',{
+        body:{
+          occasion:'Kullanıcının seçtiği parçalarla, eksik parçaları tamamlayan bir kombin',
+          style:focus+'; sabitlenmiş parçaları mutlaka koru.',
+          locked_item_ids:lockedIds,
+        },
+      });
+      if(error)throw new Error('AI kombin servisine ulaşılamadı.');
+      if(data?.error)throw new Error(String(data.error));
+      const validIds=new Set(items.map(x=>x.id));
+      const looks=(Array.isArray(data?.outfits)?data.outfits:[])
+        .filter((x:any)=>x&&typeof x.name==='string'&&typeof x.description==='string'&&Array.isArray(x.item_ids)
+          &&x.item_ids.length>=2&&x.item_ids.every((id:any)=>typeof id==='string'&&validIds.has(id))
+          &&lockedIds.every(id=>x.item_ids.includes(id)))
+        .slice(0,3) as {name:string;description:string;item_ids:string[]}[];
+      if(!looks.length)throw new Error('Bu parçalarla uygun alternatif üretilemedi.');
+      setAiAlternativeLooks(looks);
+    }catch(error){
+      showNotice('error','AI eşleştirmesi',error instanceof Error?error.message:'Öneriler alınamadı.');
+    }finally{setAiMatchingBusy(false);}
+  };
+  const useAlternativeLook = (look:{name:string;description:string;item_ids:string[]})=>{
+    const lockedIds=outfitSelected.filter(id=>outfitLayout[id]?.locked);
+    const all=[...new Set([...lockedIds,...look.item_ids])];
+    setOutfitSelected(all);
+    setOutfitName(look.name.slice(0,100));
+    setOutfitLayout(current=>Object.fromEntries(Object.entries(current).filter(([id])=>all.includes(id))));
+    setAiAlternativeLooks([]);
+    showNotice('success','Kombin hazır','Parçalar editöre aktarıldı; yerlerini değiştirip kaydedebilirsin.');
+  };
 
   const saveOutfit = async () => {
     const chosen = [...new Set(outfitSelected)].filter(
@@ -1687,7 +1727,22 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
               items={outfitSelected.map(id => items.find(item => item.id === id)).filter((item): item is WardrobeItemWithImage => Boolean(item))}
               positions={outfitLayout}
               onChange={setOutfitLayout}
+              onAiComplete={(focus)=>{void completeOutfitWithAI(focus);}}
+              aiBusy={aiMatchingBusy}
             />}
+
+            {aiAlternativeLooks.length>0&&<View style={styles.aiAlternatives}>
+              <Text style={styles.aiAlternativesTitle}>PRİZMA AI ile Tamamla</Text>
+              <Text style={styles.aiAlternativesSubtitle}>Sabitlenen parçaların korunarak önerilen alternatifler</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:9}}>
+                {aiAlternativeLooks.map((look,index)=><TouchableOpacity key={index} style={styles.aiAlternativeCard}
+                    onPress={()=>useAlternativeLook(look)}>
+                  <Text style={styles.aiAlternativeName} numberOfLines={2}>{look.name}</Text>
+                  <Text style={styles.aiAlternativeDescription} numberOfLines={3}>{look.description}</Text>
+                  <Text style={styles.aiAlternativeButton}>Bu Kombini Kullan ›</Text>
+                </TouchableOpacity>)}
+              </ScrollView>
+            </View>}
 
             <TouchableOpacity
               style={styles.saveButton}
@@ -1846,6 +1901,14 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 // ====================================================
 
 const styles = StyleSheet.create({
+  aiAlternatives:{marginTop:15,gap:8},
+  aiAlternativesTitle:{fontSize:17,color:C.navy,fontWeight:'700'},
+  aiAlternativesSubtitle:{fontSize:12,color:C.muted},
+  aiAlternativeCard:{width:192,minHeight:136,padding:14,borderWidth:1,borderColor:C.border,borderRadius:15,backgroundColor:'#FFFFFF'},
+  aiAlternativeName:{fontSize:13,fontWeight:'700',color:C.navy},
+  aiAlternativeDescription:{fontSize:11,color:C.muted,marginTop:7,lineHeight:16},
+  aiAlternativeButton:{fontSize:12,color:C.lavender,fontWeight:'700',marginTop:9},
+
   catalogHeading:{alignItems:'center',paddingTop:6,paddingBottom:12},
   catalogTitle:{fontFamily:Platform.OS==='ios'?'Georgia':'serif',fontSize:30,fontWeight:'600',color:C.navy},
   catalogSubtitle:{fontSize:12,color:C.muted,textAlign:'center',marginTop:5},
