@@ -29,6 +29,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   const [agendaEdit, setAgendaEdit] = useState(false);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [outfitIndex,setOutfitIndex] = useState(0);
+  const [previewReady,setPreviewReady] = useState(false);
   const [garments, setGarments] = useState<Garment[]>([]);
   const [outfitBusy, setOutfitBusy] = useState(false);
   const [outfitError, setOutfitError] = useState('');
@@ -114,6 +115,12 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   };
   const generateOutfits=useCallback(async(force=false)=>{
     setOutfitBusy(true);setOutfitError('');
+    // Show cached looks immediately: never reserve a giant blank canvas for a network request.
+    if (!force) {
+      try {const prior=await AsyncStorage.getItem(getKey(userId,'outfits:last-success'));
+        if(prior){const list=JSON.parse(prior);if(Array.isArray(list)&&list.length)setOutfits(list);}
+      } catch {} 
+    }
     try {
       const {data,error}=await supabase.from('wardrobe_items').select('id,name,image_path').eq('user_id',userId);
       if(error)throw error;
@@ -124,6 +131,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
         return {...g,imageUrl:image?.signedUrl||null};
       }));
       setGarments(urls);
+      setPreviewReady(true);
       if(rows.length<2){setOutfits([]);setOutfitError('Öneri için gardırobunda en az iki parça olmalı.');return;}
       const cacheKey=getKey(userId,'outfits:'+today());
       if(!force){
@@ -142,7 +150,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
       const safe=(Array.isArray(result?.outfits)?result.outfits:[]).filter((x:any)=>typeof x?.name==='string'&&typeof x?.description==='string'&&Array.isArray(x?.item_ids)&&x.item_ids.length>=2&&x.item_ids.every((id:any)=>typeof id==='string'&&validIds.has(id))).slice(0,3) as Outfit[];
       if(!safe.length)throw new Error('Gardırobundaki parçalarla henüz kombin oluşturulamadı.');
       setOutfits(safe);
-      await AsyncStorage.setItem(cacheKey,JSON.stringify(safe));
+      await Promise.all([AsyncStorage.setItem(cacheKey,JSON.stringify(safe)),AsyncStorage.setItem(getKey(userId,'outfits:last-success'),JSON.stringify(safe))]);
     } catch(e){setOutfitError(e instanceof Error?e.message:'Öneriler yüklenemedi.');}
     finally{setOutfitBusy(false);}
   },[userId,agenda,weather]);
@@ -200,6 +208,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
             <View style={s.collagePlaceholder}><Text style={s.collagePlaceholderText}>{item.name}</Text></View>}
           </View>)}
         </View>:<TouchableOpacity style={s.heroPending} onPress={()=>onOpen('Gardırop')}><Text style={s.muted}>{outfitError||'Kombinlerini görmek için gardırobuna parça ekle.'}</Text><Text style={s.heroLink}>Gardırobuma git ›</Text></TouchableOpacity>}
+      {focus && photoPieces.length===0 && <Text style={s.photoLoadHint}>Kombin görselleri yükleniyor veya fotoğraflara erişilemiyor.</Text>}
       {focus&&<><View style={s.dots}>{outfits.map((o,i)=><TouchableOpacity key={o.name+i} accessibilityLabel={(i+1)+'. kombini göster'} onPress={()=>setOutfitIndex(i)} style={[s.dot,outfitIndex===i&&s.dotOn]}/>)}</View>
         <Text style={s.focusLabel} numberOfLines={1}>{focus.name} · {focus.description}</Text>
         <View style={s.carouselArrows}>
@@ -207,17 +216,17 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
           <TouchableOpacity accessibilityRole="button" style={s.navArrow} onPress={()=>setOutfitIndex((outfitIndex+1)%outfits.length)}><Text style={s.navArrowText}>Sonraki ›</Text></TouchableOpacity>
         </View></>}
       <TouchableOpacity style={s.tryOnButton} accessibilityRole="button" onPress={()=>onOpen('Sanal Deneme')}>
-        <Text style={s.tryOnText}>▢   Üzerimde Dene</Text>
+        <Text style={s.tryOnText}>⌗   Üzerimde Dene</Text>
       </TouchableOpacity>
     </View>
     <View style={s.quickRow}>
       <TouchableOpacity style={s.quickCard} accessibilityRole="button" onPress={()=>onOpen('Bakım Rutini')}>
-        <Text style={s.quickIcon}>▤</Text><Text style={s.quickTitle}>Bugünkü Rutinim  ›</Text>
+        <Text style={s.quickIcon}>☼</Text><Text style={s.quickTitle}>Bugünkü Rutinim  ›</Text>
         <Text style={s.quickInfo}>{doneCount}/{currentSteps.length} adım tamamlandı</Text>
         <View style={s.quickTrack}><View style={[s.quickFill,{width:(currentSteps.length?doneCount/currentSteps.length*100:0)+'%'}]}/></View>
       </TouchableOpacity>
       <TouchableOpacity style={s.quickCard} accessibilityRole="button" onPress={()=>onOpen('Güzellik')}>
-        <Text style={s.quickIcon}>▱</Text><Text style={s.quickTitle}>Güzellik Danışmanı  ›</Text>
+        <Text style={s.quickIcon}>♧</Text><Text style={s.quickTitle}>Güzellik Danışmanı  ›</Text>
         <Text style={s.quickInfo}>Bugün neye ihtiyacın var?</Text>
         <View style={s.categoryRow}><Text style={s.categoryChip}>Cilt</Text><Text style={s.categoryChip}>Saç</Text><Text style={s.categoryChip}>Makyaj</Text></View>
       </TouchableOpacity>
@@ -228,6 +237,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   </View>;
 }
 const s=StyleSheet.create({
+ photoLoadHint:{color:PRIZMA.muted,textAlign:'center',fontSize:11,marginBottom:8},
  briefBar:{flexDirection:'row',alignItems:'center',minHeight:55,borderColor:PRIZMA.border,borderWidth:1,borderRadius:20,backgroundColor:'#FFFFFF',paddingHorizontal:10,marginBottom:19},
  briefSection:{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,minHeight:46},briefDivider:{height:27,width:1,backgroundColor:PRIZMA.border},briefSymbol:{fontSize:21,color:PRIZMA.purple},briefText:{fontSize:12,color:PRIZMA.ink,fontWeight:'600',flexShrink:1},briefChevron:{fontSize:19,color:PRIZMA.purple},
  inlineEditor:{flexDirection:'row',gap:8,marginBottom:12},inlineInput:{flex:1,minHeight:44,borderWidth:1,borderColor:PRIZMA.border,borderRadius:12,paddingHorizontal:10,color:PRIZMA.ink},inlineSave:{minHeight:44,borderRadius:12,backgroundColor:PRIZMA.purple,justifyContent:'center',paddingHorizontal:12},inlineSaveText:{color:'#FFFFFF',fontWeight:'700'},
