@@ -185,15 +185,28 @@ Deno.serve(async (req) => {
       personalColors.join(", ") || "Belirtilmedi";
 
 
-    // Learn only from explicit, account-owned outfit ratings.
-    // Keep the prompt small and reference only items still in the wardrobe.
-    const { data: ratings, error: ratingsError } = await sb
-      .from("outfit_feedback")
-      .select("item_ids,sentiment,updated_at")
+    // Only read historical outfit ratings when the user opted in.
+    // Missing preference rows default to false; do not silently personalize.
+    const { data: aiPermissions, error: permissionsError } = await sb
+      .from("prizma_ai_preferences")
+      .select("learn_preferences")
       .eq("user_id", authData.user.id)
-      .order("updated_at", { ascending: false })
-      .limit(40);
-    if (ratingsError) console.warn("Outfit preferences not loaded:", ratingsError.message);
+      .maybeSingle();
+    if (permissionsError) {
+      console.warn("AI permission lookup failed:", permissionsError.message);
+    }
+    const allowedToLearn = !permissionsError && aiPermissions?.learn_preferences === true;
+    let ratings: { item_ids: string[]; sentiment: string }[] = [];
+    if (allowedToLearn) {
+      const { data: feedbackRows, error: ratingsError } = await sb
+        .from("outfit_feedback")
+        .select("item_ids,sentiment,updated_at")
+        .eq("user_id", authData.user.id)
+        .order("updated_at", { ascending: false })
+        .limit(40);
+      if (ratingsError) console.warn("Outfit preferences not loaded:", ratingsError.message);
+      else ratings = (feedbackRows || []) as { item_ids: string[]; sentiment: string }[];
+    }
     const itemIds = new Set(items.map(item => item.id));
     const preferenceExamples = (ratings || [])
       .filter((row: any) => row && (row.sentiment === "liked" || row.sentiment === "disliked") && Array.isArray(row.item_ids))
