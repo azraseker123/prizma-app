@@ -41,7 +41,7 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
     setCompletedIds(next);
     void AsyncStorage.setItem(progressKey, JSON.stringify(next)).catch(() => setFeedback('İlerleme kaydedilemedi.'));
   };
-  const visibleItems = items.filter(x => x.period === period && (x.category || 'skin') === category);
+  const visibleItems = items.filter(x => x.period === period);
   const completedCount = visibleItems.filter(x => completedIds.includes(x.id)).length;
   const completionPercent = visibleItems.length ? Math.round(completedCount / visibleItems.length * 100) : 0;
 
@@ -125,7 +125,7 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
     setReviewBusy(true);setFeedback('');setReview(null);
     try{
       const {data,error}=await supabase.functions.invoke('review-routine',{
-        body:{category,period,steps:visibleItems.map(x=>x.title)},
+        body:{category,period,steps:visibleItems.filter(x=>(x.category||'skin')===category).map(x=>x.title)},
       });
       if(error)throw new Error('AI rutin değerlendirmesi alınamadı.');
       if(data?.error)throw new Error(data.error);
@@ -168,141 +168,66 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
     finally{setBusy(false);}
   };
 
-  return (
-    <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
-      <Text style={s.eyebrow}>PRİZMA BEAUTY STUDIO</Text>
-      <Text style={s.title}>Bakım Rutinim </Text>
-      <Text style={s.desc}>Cilt, saç ve makyaj ürünlerini sabah ve akşam rutinlerine ekle.</Text>
-      <View style={s.periodTabs} accessibilityRole="tablist">
-        {(['Sabah', 'Akşam'] as const).map(p => (
-          <TouchableOpacity key={p} accessibilityRole="tab" accessibilityState={{selected:period===p}}
-            onPress={() => setPeriod(p)}
-            style={[s.periodTab, period===p && s.periodTabActive]}>
-            <Text style={[s.periodTabText,period===p&&s.periodTabTextActive]}>{p === 'Sabah' ? '☀ ' : '☾ '}{p}</Text>
-          </TouchableOpacity>
-        ))}
+  const preview = (item:RoutineItem)=>photoUrls[item.id]?
+    <Image source={{uri:photoUrls[item.id]}} resizeMode="contain" style={s2.itemPhoto}/>:
+    <View style={s2.photoPlaceholder}><Text style={s2.photoGlyph}>▢</Text></View>;
+  return <ScrollView style={{flex:1,backgroundColor:'#FFFFFF'}} contentContainerStyle={s2.page} keyboardShouldPersistTaps="handled">
+    <Text style={s2.title}>{editingSteps?'Rutini Düzenle':'Bakım Rutinim'}</Text>
+    <View style={s2.periodBar}>
+      {(['Sabah','Akşam'] as const).map(p=><TouchableOpacity key={p} onPress={()=>{setPeriod(p);setReview(null);}} accessibilityRole="tab" accessibilityState={{selected:period===p}} style={[s2.periodButton,period===p&&s2.periodSelected]}>
+        <Text style={[s2.periodLabel,period===p&&s2.periodLabelSelected]}>{p} {p==='Sabah'?'☼':'☾'}</Text>
+      </TouchableOpacity>)}
+    </View>
+    {!editingSteps?<>
+      <View style={s2.progressCard}>
+        <View style={s2.progressLine}><Text style={s2.progressTitle}>{period} Rutinim</Text><Text style={s2.progressCount}>{completedCount} / {visibleItems.length} tamamlandı</Text></View>
+        <View style={s2.progressTrack}><View style={[s2.progressFill,{width:`${completionPercent}%` as `${number}%`}]}/></View>
       </View>
-      <View style={s.progressPanel}>
-        <View style={s.progressHeading}>
-          <Text style={s.progressLabel}>Günlük ilerleme</Text>
-          <Text style={s.progressAmount}>{completedCount} / {visibleItems.length} adım</Text>
-        </View>
-        <View style={s.progressTrack}>
-          <View style={[s.progressFill,{width: `${completionPercent}%` as `${number}%`}]}/>
-        </View>
+      <View style={s2.stepList}>
+        {visibleItems.length===0&&<View style={s2.empty}><Text style={s2.emptyTitle}>Henüz bir bakım adımı eklenmedi.</Text><Text style={s2.muted}>Rutini Düzenle'den ilk ürününü ekle.</Text></View>}
+        {visibleItems.map(item=><TouchableOpacity key={item.id} style={s2.stepRow} accessibilityRole="checkbox" accessibilityState={{checked:completedIds.includes(item.id)}} onPress={()=>toggleCompleted(item.id)}>
+          <View style={[s2.check,completedIds.includes(item.id)&&s2.checked]}><Text style={s2.checkMark}>{completedIds.includes(item.id)?'✓':''}</Text></View>
+          {preview(item)}
+          <View style={{flex:1}}><Text style={s2.stepName} numberOfLines={1}>{item.title}</Text><Text style={s2.stepDetail} numberOfLines={2}>{item.note|| (item.source==='ai-suggestion'?'PRİZMA AI önerisi':'Bakım adımı')}</Text></View>
+          <Text style={s2.stepMenu}>···</Text>
+        </TouchableOpacity>)}
       </View>
-      <View style={s.row}>
-        {categories.map(c => (
-          <TouchableOpacity key={c.key} accessibilityRole="button" onPress={() => setCategory(c.key)} style={[s.chip, category === c.key && s.chipSelected]}>
-            <Text style={[s.chipText, category === c.key && s.chipTextSelected]}>{c.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <View style={s.panel}>
-        <Text style={s.panelTitle}>{categories.find(c => c.key === category)?.label} Rutinine Ürün Ekle</Text>
-        <TextInput value={title} onChangeText={setTitle} maxLength={100} style={s.input} placeholder="Örn. Saç kremi, maskara veya nemlendirici" placeholderTextColor="#90849B" />
-        <Text style={s.photoLabel}>Ürün fotoğrafı (isteğe bağlı)</Text>
-        {photo && <Image source={{ uri: photo.uri }} style={s.photoPreview} resizeMode="contain" />}
-        <View style={s.photoButtonRow}>
-          <TouchableOpacity onPress={() => void choosePhoto('gallery')} disabled={busy || photoBusy} style={s.photoButton}>
-            <Text style={s.photoButtonText}>▧ Galeriden Seç</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => void choosePhoto('camera')} disabled={busy || photoBusy} style={s.photoButton}>
-            <Text style={s.photoButtonText}>📷 Fotoğraf Çek</Text>
-          </TouchableOpacity>
-        </View>
-        {!!photo && (
-          <View style={s.photoButtonRow}>
-            <TouchableOpacity onPress={() => void makeTransparent()} disabled={busy || photoBusy} style={s.backgroundButton}>
-              <Text style={s.backgroundButtonText}> Arka Planı Kaldır</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={clearPhoto} disabled={busy || photoBusy} style={s.photoButton}>
-              <Text style={s.photoButtonText}>Fotoğrafı Kaldır</Text>
-            </TouchableOpacity>
+      <TouchableOpacity onPress={()=>setEditingSteps(true)} style={s2.primary}><Text style={s2.primaryLabel}>✎  Rutini Düzenle</Text></TouchableOpacity>
+      <Text style={s2.disclaimer}>ⓘ PRİZMA AI tarafından oluşturulan rutinlerde hata olabilir. Ürün talimatlarını kontrol et.</Text>
+    </>:<>
+      <Text style={s2.editDescription}>Adımları düzenle, sırala veya yeni ürün ekle.</Text>
+      <View style={s2.stepList}>
+        {visibleItems.map((item,index)=><View key={item.id} style={s2.editRow}>
+          <View style={s2.sortButtons}>
+            <TouchableOpacity disabled={index===0||busy} onPress={()=>{void shiftStep(item.id,-1);}} accessibilityLabel="Yukarı taşı"><Text style={s2.sortArrow}>↑</Text></TouchableOpacity>
+            <TouchableOpacity disabled={index===visibleItems.length-1||busy} onPress={()=>{void shiftStep(item.id,1);}} accessibilityLabel="Aşağı taşı"><Text style={s2.sortArrow}>↓</Text></TouchableOpacity>
           </View>
-        )}
-        {photoBusy && <ActivityIndicator color={PURPLE} />}
-        <TouchableOpacity style={[s.button, (!title.trim() || busy || photoBusy) && s.disabled]} onPress={() => void add()} disabled={!title.trim() || busy || photoBusy}>
-          {busy ? <ActivityIndicator color="white"/> : <Text style={s.buttonText}>+ Rutinime Ekle</Text>}
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity onPress={onAIRequest} style={s.aiCard}>
-        <Text style={s.aiTitle}> AI ile Ürün Önerisi Al</Text>
-        <Text style={s.aiText}>Cilt, saç ve makyaj için ürün önerisi al, incele ve onaylayarak rutinine ekle.</Text>
-        <Text style={s.aiLink}>Önerileri keşfet →</Text>
-      </TouchableOpacity>
-      <TouchableOpacity accessibilityRole="button" style={s.reviewButton}
-        disabled={reviewBusy||busy} onPress={()=>{void reviewRoutine();}}>
-        {reviewBusy?<ActivityIndicator color="#69318A"/>:<Text style={s.reviewButtonText}>◎  Rutinimi AI ile Değerlendir</Text>}
-      </TouchableOpacity>
-      {review&&<View style={s.reviewCard}>
-        <Text style={s.reviewTitle}>PRİZMA AI Rutin Değerlendirmesi</Text>
-        <Text style={s.reviewCopy}>{review.summary}</Text>
-        {review.suggestions.length===0&&<Text style={s.reviewCopy}>Bu rutin için ek adım önerilmiyor.</Text>}
-        {review.suggestions.map((suggestion,index)=><View key={index} style={s.suggestionCard}>
-          <Text style={s.reviewTitle}>{suggestion.title}</Text>
-          <Text style={s.reviewCopy}>{suggestion.reason}</Text>
-          <TouchableOpacity accessibilityRole="button" style={s.approveButton}
-            disabled={!!reviewAdding||busy} onPress={()=>{void approveReviewStep(suggestion);}}>
-            <Text style={s.approveText}>{reviewAdding===suggestion.title?'Ekleniyor...':'+ Onayla ve Rutinime Ekle'}</Text>
-          </TouchableOpacity>
+          {preview(item)}
+          <TouchableOpacity style={{flex:1}} onPress={()=>{setRenameStepId(item.id);setRenameDraft(item.title);}}><Text style={s2.stepName} numberOfLines={2}>{item.title}</Text><Text style={s2.stepDetail}>Adını düzenle ›</Text></TouchableOpacity>
+          <TouchableOpacity onPress={()=>{void remove(item.id);}} accessibilityLabel="Ürünü kaldır"><Text style={s2.removeIcon}>×</Text></TouchableOpacity>
         </View>)}
-        <Text style={s.reviewFootnote}>AI hiçbir adımı onayın olmadan değiştirmez. Öneriler tıbbi değerlendirme değildir.</Text>
-      </View>}
-      <View style={s.info}><Text style={s.infoText}>ⓘ AI hata yapabilir. Ürün talimatları ve içeriklerini doğrula; yeni aktifleri kullanmadan önce uyumluluğunu kontrol et.</Text></View>
-      {!!feedback && <Text accessibilityRole="alert" style={s.feedback}>{feedback}</Text>}
-      <View style={s.listSection}>
-        <View style={s.listHeadingRow}>
-          <Text style={s.sectionTitle}>{period === 'Sabah' ? '☀' : '☾'}  {period} Rutinim</Text>
-          <TouchableOpacity onPress={()=>setEditingSteps(!editingSteps)} accessibilityRole="button">
-            <Text style={s.editAction}>{editingSteps?'Bitti':'Düzenle'}</Text>
-          </TouchableOpacity>
-        </View>
-        {visibleItems.length === 0 && <Text style={s.empty}>Bu kategoride henüz bir adım eklenmedi.</Text>}
-        {visibleItems.map((item,index)=>(
-          <View key={item.id} style={s.item}>
-            {photoUrls[item.id] && <Image source={{uri:photoUrls[item.id]}} resizeMode="contain" style={s.itemPhoto} accessibilityLabel={item.title+' ürün fotoğrafı'}/>}
-            <View style={s.itemDetails}>
-              <TouchableOpacity
-                onPress={()=>toggleCompleted(item.id)}
-                style={[s.checkBox,completedIds.includes(item.id)&&s.checkBoxDone]}
-                accessibilityRole="checkbox"
-                accessibilityState={{checked:completedIds.includes(item.id)}}
-                accessibilityLabel={item.title+' tamamlandı'}
-              >
-                <Text style={[s.checkText,completedIds.includes(item.id)&&s.checkTextDone]}>{completedIds.includes(item.id)?'✓':''}</Text>
-              </TouchableOpacity>
-              <View style={s.itemInfo}>
-                <Text style={[s.itemTitle,completedIds.includes(item.id)&&s.itemCompleted]}>{item.title}</Text>
-                <Text style={s.itemCaption}>{item.source === 'manual'?'Sen ekledin':'AI önerisi • senin onayınla eklendi'}</Text>
-              </View>
-              {editingSteps && <View style={s.reorderColumn}>
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.title+' yukarı taşı'}
-                  disabled={index===0||busy} onPress={()=>{void shiftStep(item.id,-1);}}><Text style={s.reorderText}>↑</Text></TouchableOpacity>
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.title+' aşağı taşı'}
-                  disabled={index===visibleItems.length-1||busy} onPress={()=>{void shiftStep(item.id,1);}}><Text style={s.reorderText}>↓</Text></TouchableOpacity>
-              </View>}
-              {editingSteps && (
-                <View style={s.editStepActions}>
-                  <TouchableOpacity accessibilityRole="button" onPress={()=>{setRenameStepId(item.id);setRenameDraft(item.title);}}><Text style={s.editAction}>Adlandır</Text></TouchableOpacity>
-                  <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.title+' adımını kaldır'} onPress={()=>{void remove(item.id);}}>
-                    <Text style={s.remove}>Kaldır</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </View>
-        ))}
       </View>
-      {renameStepId && <View style={s.renamePanel}>
-        <Text style={s.panelTitle}>Rutin adımını düzenle</Text>
-        <TextInput style={s.input} value={renameDraft} onChangeText={setRenameDraft} maxLength={100}/>
-        <TouchableOpacity style={s.button} disabled={busy} onPress={()=>{void saveStepTitle();}}><Text style={s.buttonText}>Kaydet</Text></TouchableOpacity>
-        <TouchableOpacity style={s.renameCancel} onPress={()=>setRenameStepId(null)}><Text style={s.editAction}>Vazgeç</Text></TouchableOpacity>
-      </View>}
-      <Text style={s.footnote}>Bu sürümde rutinler bu cihazda hesabına özel saklanır; başka cihaza otomatik aktarılmaz. Uygulamayı silersen bu kayıtlar kaybolabilir.</Text>
-    </ScrollView>
-  );
+      {renameStepId&&<View style={s2.editorBox}><Text style={s2.boxTitle}>Adımın Adı</Text><TextInput style={s2.input} value={renameDraft} onChangeText={setRenameDraft} maxLength={100}/><TouchableOpacity style={s2.outline} onPress={()=>{void saveStepTitle();}}><Text style={s2.outlineText}>Adı Kaydet</Text></TouchableOpacity><TouchableOpacity onPress={()=>setRenameStepId(null)} style={s2.cancel}><Text style={s2.muted}>Vazgeç</Text></TouchableOpacity></View>}
+      <View style={s2.editorBox}>
+        <Text style={s2.boxTitle}>+ Ürün Ekle</Text>
+        <TextInput value={title} onChangeText={setTitle} maxLength={100} style={s2.input} placeholder="Örn. Temizleyici veya nemlendirici" placeholderTextColor="#888"/>
+        <View style={s2.categoryRow}>{categories.map(c=><TouchableOpacity onPress={()=>setCategory(c.key)} style={[s2.categoryChip,category===c.key&&s2.categorySelected]} key={c.key}><Text style={[s2.categoryText,category===c.key&&s2.categoryActiveText]}>{c.label}</Text></TouchableOpacity>)}</View>
+        {photo&&<Image source={{uri:photo.uri}} resizeMode="contain" style={s2.newPhoto}/>}
+        <View style={s2.photoActions}>
+          <TouchableOpacity onPress={()=>{void choosePhoto('gallery');}} style={s2.photoAction}><Text style={s2.actionLabel}>▧ Galeri</Text></TouchableOpacity>
+          <TouchableOpacity onPress={()=>{void choosePhoto('camera');}} style={s2.photoAction}><Text style={s2.actionLabel}>◉ Kamera</Text></TouchableOpacity>
+          {!!photo&&<TouchableOpacity onPress={()=>{void makeTransparent();}} style={s2.photoAction}><Text style={s2.actionLabel}>Arka Plan</Text></TouchableOpacity>}
+        </View>
+        <TouchableOpacity style={s2.secondary} disabled={!title.trim()||busy||photoBusy} onPress={()=>{void add();}}><Text style={s2.secondaryLabel}>{busy?'Ekleniyor...':'+ Ürünü Rutinime Ekle'}</Text></TouchableOpacity>
+      </View>
+      <TouchableOpacity style={s2.outline} onPress={onAIRequest}><Text style={s2.outlineText}>◎  PRİZMA AI Ürün Önerileri</Text></TouchableOpacity>
+      <TouchableOpacity style={s2.outline} disabled={reviewBusy} onPress={()=>{void reviewRoutine();}}><Text style={s2.outlineText}>◎  Rutinimi AI ile Değerlendir</Text></TouchableOpacity>
+      {review&&<View style={s2.editorBox}><Text style={s2.boxTitle}>PRİZMA AI Önerisi</Text><Text style={s2.muted}>{review.summary}</Text>{review.suggestions.map((step,i)=><View key={i} style={s2.aiSuggestion}><Text style={s2.stepName}>{step.title}</Text><Text style={s2.muted}>{step.reason}</Text><TouchableOpacity style={s2.secondary} onPress={()=>{void approveReviewStep(step);}}><Text style={s2.secondaryLabel}>+ Onayla ve Ekle</Text></TouchableOpacity></View>)}</View>}
+      <TouchableOpacity style={s2.primary} onPress={()=>{setEditingSteps(false);setReview(null);}}><Text style={s2.primaryLabel}>Kaydet ve Rutine Dön</Text></TouchableOpacity>
+    </>}
+    {!!feedback&&<Text accessibilityRole="alert" style={s2.feedback}>{feedback}</Text>}
+    <Text style={s2.storageNote}>Rutinler bu cihazda saklanır; uygulamayı silersen kayıtlar kaybolabilir.</Text>
+  </ScrollView>;
 }
 
 const s = StyleSheet.create({
@@ -365,4 +290,31 @@ const s = StyleSheet.create({
   number:{width:27,height:27,borderRadius:14,alignItems:'center',justifyContent:'center',backgroundColor:'#E6D5EF'},numberText:{color:PURPLE,fontWeight:'800'},
   itemTitle:{fontWeight:'700',color:'#30203F',fontSize:13},itemCaption:{fontSize:10,color:'#8A7D92',marginTop:3},remove:{color:'#805DA0',fontWeight:'700',fontSize:11},
   footnote:{fontSize:11,color:'#7B7083',lineHeight:17,marginTop:18},
+});
+
+const s2=StyleSheet.create({
+ page:{backgroundColor:'#FFFFFF',padding:14,paddingBottom:42,gap:13},title:{fontSize:23,fontWeight:'800',color:'#242124',textAlign:'center',marginVertical:12},
+ periodBar:{flexDirection:'row',borderWidth:1,borderColor:'#D8D6DC',borderRadius:17,overflow:'hidden',marginBottom:5},
+ periodButton:{flex:1,alignItems:'center',justifyContent:'center',minHeight:49,backgroundColor:'#FFFFFF'},
+ periodSelected:{backgroundColor:'#69318A'},periodLabel:{color:'#242124',fontWeight:'700',fontSize:14},periodLabelSelected:{color:'#FFFFFF'},
+ progressCard:{borderWidth:1,borderColor:'#D8D6DC',borderRadius:17,padding:15,backgroundColor:'#FFFFFF'},
+ progressLine:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:13},progressTitle:{color:'#242124',fontWeight:'700',fontSize:15},progressCount:{color:'#6E6872',fontSize:12},
+ progressTrack:{height:9,backgroundColor:'#E7E7E7',borderRadius:5},progressFill:{height:9,borderRadius:5,backgroundColor:'#69318A'},
+ stepList:{borderWidth:1,borderColor:'#D8D6DC',borderRadius:17,overflow:'hidden'},stepRow:{minHeight:83,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:11,paddingVertical:9,borderBottomWidth:1,borderColor:'#D8D6DC',backgroundColor:'#FFFFFF'},
+ check:{height:27,width:27,borderWidth:2,borderColor:'#9C92A5',borderRadius:14,alignItems:'center',justifyContent:'center'},checked:{borderColor:'#69318A',backgroundColor:'#69318A'},checkMark:{color:'#FFFFFF',fontSize:16,fontWeight:'700'},
+ itemPhoto:{height:55,width:55},photoPlaceholder:{width:55,height:55,borderRadius:9,borderWidth:1,borderColor:'#D8D6DC',alignItems:'center',justifyContent:'center'},photoGlyph:{fontSize:24,color:'#69318A'},
+ stepName:{fontWeight:'700',fontSize:14,color:'#242124'},stepDetail:{fontSize:11,color:'#6E6872',marginTop:5,lineHeight:16},stepMenu:{fontWeight:'800',fontSize:22,color:'#242124'},
+ empty:{minHeight:112,alignItems:'center',justifyContent:'center',gap:9,padding:15},emptyTitle:{color:'#242124',fontSize:14,fontWeight:'700'},muted:{fontSize:12,color:'#6E6872',lineHeight:18},primary:{minHeight:50,backgroundColor:'#69318A',borderRadius:14,alignItems:'center',justifyContent:'center'},primaryLabel:{fontSize:14,fontWeight:'700',color:'#FFFFFF'},
+ disclaimer:{fontSize:11,color:'#6E6872',lineHeight:17,paddingVertical:5},
+ editDescription:{textAlign:'center',fontSize:12,color:'#6E6872',marginBottom:10},
+ editRow:{minHeight:82,flexDirection:'row',alignItems:'center',gap:9,padding:10,borderBottomWidth:1,borderColor:'#D8D6DC'},
+ sortButtons:{gap:3},sortArrow:{fontSize:18,color:'#69318A',fontWeight:'700',minWidth:26,textAlign:'center'},removeIcon:{fontSize:28,color:'#B33F54',paddingHorizontal:7},
+ editorBox:{borderWidth:1,borderColor:'#D8D6DC',borderRadius:15,padding:14,gap:10},
+ boxTitle:{fontSize:15,fontWeight:'700',color:'#242124'},input:{minHeight:45,borderWidth:1,borderColor:'#D8D6DC',borderRadius:11,paddingHorizontal:12,color:'#242124',fontSize:13},
+ categoryRow:{flexDirection:'row',gap:8},categoryChip:{flex:1,minHeight:40,borderWidth:1,borderColor:'#D8D6DC',borderRadius:13,alignItems:'center',justifyContent:'center'},categorySelected:{borderColor:'#69318A'},categoryText:{fontSize:12,color:'#6E6872'},categoryActiveText:{color:'#69318A',fontWeight:'700'},
+ photoActions:{flexDirection:'row',gap:7,flexWrap:'wrap'},photoAction:{borderWidth:1,borderColor:'#D8D6DC',borderRadius:11,minHeight:44,paddingHorizontal:12,justifyContent:'center'},actionLabel:{fontSize:12,color:'#69318A',fontWeight:'700'},newPhoto:{height:88,width:'100%'},
+ secondary:{minHeight:45,backgroundColor:'#69318A',borderRadius:12,alignItems:'center',justifyContent:'center'},secondaryLabel:{fontSize:12,fontWeight:'700',color:'#FFFFFF'},
+ outline:{minHeight:47,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#69318A',borderRadius:12,alignItems:'center',justifyContent:'center'},outlineText:{fontSize:12,color:'#69318A',fontWeight:'700'},
+ cancel:{minHeight:40,justifyContent:'center',alignItems:'center'},aiSuggestion:{paddingVertical:10,borderTopWidth:1,borderColor:'#D8D6DC',gap:6},
+ feedback:{fontSize:12,color:'#69318A'},storageNote:{fontSize:10,color:'#6E6872',textAlign:'center'}
 });
