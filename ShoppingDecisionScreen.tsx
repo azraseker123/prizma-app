@@ -47,10 +47,10 @@ type Analysis = {
 };
 
 const C = {
-  navy: '#0B1436',
-  purple: '#8050B5',
-  lilac: '#F0E7FC',
-  bg: '#FAF9FC',
+  navy: '#242124',
+  purple: '#69318A',
+  lilac: '#F3EAF8',
+  bg: '#FFFFFF',
   muted: '#77728A',
 };
 
@@ -330,7 +330,7 @@ export default function ShoppingDecisionScreen({
         </TouchableOpacity>
       )}
 
-      <Text style={styles.eyebrow}>PRİZMA ✦ SMART SHOPPING</Text>
+      <Text style={styles.eyebrow}>PRİZMA  SMART SHOPPING</Text>
       <Text style={styles.title}>Almaya değer mi?</Text>
       <Text style={styles.subtitle}>
         Beğendiğin ürünü yükle. PRİZMA, fotoğrafı,
@@ -399,7 +399,7 @@ export default function ShoppingDecisionScreen({
       />
 
       <View style={styles.info}>
-        <Text style={styles.infoTitle}>✦ Gardırop bağlantısı</Text>
+        <Text style={styles.infoTitle}> Gardırop bağlantısı</Text>
         <Text style={styles.infoText}>
           PRİZMA, kayıtlı kıyafetlerinin ad, kategori,
           renk ve mevsim bilgilerini karşılaştırmaya
@@ -416,7 +416,7 @@ export default function ShoppingDecisionScreen({
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>✦ PRİZMA AI İLE ANALİZ ET</Text>
+          <Text style={styles.buttonText}> PRİZMA AI İLE ANALİZ ET</Text>
         )}
       </TouchableOpacity>
 
@@ -430,10 +430,10 @@ export default function ShoppingDecisionScreen({
           {result.sections && (
             <View style={styles.analysisSections}>
               <Text style={styles.resultHeading}>
-                ✦ Detaylı Ürün Değerlendirmesi
+                 Detaylı Ürün Değerlendirmesi
               </Text>
               {([
-                ['✦', 'PRİZMA İmzan ile Uyumu', result.sections.signatureFit],
+                ['', 'PRİZMA İmzan ile Uyumu', result.sections.signatureFit],
                 ['◈', 'Dolap Uyumu', result.sections.wardrobeFit],
                 ['◇', 'Benzer Ürün Kontrolü', result.sections.similarItems],
                 ['◎', 'İhtiyaç Analizi', result.sections.needAnalysis],
@@ -455,7 +455,7 @@ export default function ShoppingDecisionScreen({
 
           <Text style={styles.resultHeading}>Neden?</Text>
           {result.reasons.map((r, i) => (
-            <Text key={i} style={styles.detail}>✦ {r}</Text>
+            <Text key={i} style={styles.detail}> {r}</Text>
           ))}
 
           <Text style={styles.resultHeading}>Kombin fikirleri</Text>
@@ -492,7 +492,7 @@ export default function ShoppingDecisionScreen({
             </Text>
           )}
 
-          <Text style={styles.resultHeading}>PRİZMA'ya sor ✦</Text>
+          <Text style={styles.resultHeading}>PRİZMA'ya sor </Text>
           <Text style={styles.chatHint}>
             Kombinleri değiştirebilir, farklı seçenekler
             sorabilir veya kararı tartışabilirsin.
@@ -509,7 +509,7 @@ export default function ShoppingDecisionScreen({
               ]}
             >
               <Text style={styles.chatRole}>
-                {m.role === 'user' ? 'SEN' : 'PRİZMA ✦'}
+                {m.role === 'user' ? 'SEN' : 'PRİZMA '}
               </Text>
               <Text style={styles.chatText}>{m.text}</Text>
             </View>
@@ -539,13 +539,13 @@ export default function ShoppingDecisionScreen({
             disabled={!message.trim() || chatLoading}
             onPress={sendMessage}
           >
-            <Text style={styles.buttonText}>PRİZMA'YA GÖNDER ✦</Text>
+            <Text style={styles.buttonText}>PRİZMA'YA GÖNDER </Text>
           </TouchableOpacity>
         </View>
       )}
 
       <Text style={styles.footer}>
-        PRİZMA ✦ Daha bilinçli alışveriş
+        PRİZMA  Daha bilinçli alışveriş
       </Text>
     </ScrollView>
     </>
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
   eyebrow: { color: C.purple, fontSize: 11, fontWeight: '800', letterSpacing: 2 },
   title: { color: C.navy, fontSize: 32, fontWeight: '800', marginTop: 12 },
   subtitle: { color: C.muted, fontSize: 14, lineHeight: 23, marginTop: 12, marginBottom: 25 },
-  upload: { height: 245, borderRadius: 24, borderWidth: 1.5, borderColor: '#C7B2E8', borderStyle: 'dashed', overflow: 'hidden', backgroundColor: '#F1EBFA' },
+  upload: { height: 245, borderRadius: 24, borderWidth: 1.5, borderColor: '#C7B2E8', borderStyle: 'dashed', overflow: 'hidden', backgroundColor: '#F3EAF8' },
   photo: { width: '100%', height: '100%' },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   uploadIcon: { color: C.purple, fontSize: 48 },
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#E8DDF5',
+    borderColor: '#F3EAF8',
   },
   analysisCardTitle: {
     color: C.purple,
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   userBubble: {
-    backgroundColor: '#DED0F4',
+    backgroundColor: '#F3EAF8',
     marginLeft: 24,
   },
   aiBubble: {
