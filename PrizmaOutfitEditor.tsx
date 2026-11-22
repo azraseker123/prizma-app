@@ -87,7 +87,7 @@ export default function PrizmaOutfitEditor({items,positions,onChange,onAiComplet
       <Text style={s.featureIcon}>{['◉','☷','▱','☁','▦'][index]}</Text><Text style={s.featureText}>{label}</Text>
     </TouchableOpacity>)}
   </View>
-  <TouchableOpacity disabled={aiBusy||!onAiComplete} onPress={onAiComplete} style={s.aiComplete}>
+  <TouchableOpacity disabled={aiBusy||!onAiComplete} onPress={()=>onAiComplete?.()} style={s.aiComplete}>
     <Text style={s.aiCompleteText}>{aiBusy?'Alternatifler hazırlanıyor...':'◎  PRİZMA AI ile Tamamla'}</Text>
   </TouchableOpacity>
   <Text style={s.note}>Sabitlenen parçalar AI önerilerinde korunur. Kaydettiğinde yerleşim de hesabına aktarılır.</Text>
