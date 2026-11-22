@@ -325,7 +325,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
       <Image style={s.lookThumb} source={{uri:item.url}} resizeMode="cover"/>
       <Text style={s.lookDate}>{new Date(item.createdAt).toLocaleDateString('tr-TR')}</Text>
      </TouchableOpacity>)}</View>}
-   </View>
+   </View>}
   </ScrollView>
  </View>;
 }
