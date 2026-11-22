@@ -1,3 +1,4 @@
+import LicensedProductImage from './LicensedProductImage';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Modal, ScrollView, StyleSheet,
@@ -19,6 +20,8 @@ type Product = {
   source: Source;
   notes: string;
   created_at: string;
+  image_url?: string | null;
+  image_license_status?: 'approved' | 'unknown' | 'rejected' | null;
 };
 
 type Props = {
@@ -283,52 +286,40 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       )}
 
       {loading ? (
-        <ActivityIndicator color="#9673C2" size="large" />
+        <ActivityIndicator color="#69318A" size="large" />
       ) : visible.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.emptyIcon}>♡</Text>
-          <Text style={styles.cardTitle}>Henüz ürün eklemedin</Text>
-          <Text style={styles.description}>
-            Beğendiğin ürünleri burada biriktirebilirsin.
-          </Text>
+          <Text style={styles.emptyIcon}>▢</Text>
+          <Text style={styles.cardTitle}>Koleksiyonun henüz boş</Text>
+          <Text style={styles.description}>Beğendiğin güzellik ürünlerini burada biriktirebilirsin.</Text>
         </View>
       ) : (
-        visible.map(product => (
-          <View key={product.id} style={styles.card}>
-            <Text style={styles.productName}>
-              {product.product_name}
-            </Text>
-
-            {!!product.brand && (
-              <Text style={styles.description}>{product.brand}</Text>
-            )}
-
-            <Text style={styles.tag}>
-              {product.status === 'want'
-                ? '♡ Almak istiyorum'
-                : ' Almayı düşünüyorum'}
-            </Text>
-
-            <Text style={styles.source}>
-              {product.source === 'ai'
-                ? ' PRİZMA önerisi'
-                : 'Kendim ekledim'}
-            </Text>
-
-            {!!product.notes && (
-              <Text style={styles.description}>{product.notes}</Text>
-            )}
-
-            <View style={styles.actions}>
-              <TouchableOpacity onPress={() => startEdit(product)}>
-                <Text style={styles.actionText}>Düzenle</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteProduct(product)}>
-                <Text style={styles.deleteText}>Sil</Text>
-              </TouchableOpacity>
+        <View style={styles.productGrid}>
+          {visible.map(product => (
+            <View key={product.id} style={styles.productCard}>
+              <LicensedProductImage
+                url={product.image_url}
+                licenseStatus={product.image_license_status}
+                alt={product.product_name}
+              />
+              <Text style={styles.productName} numberOfLines={2}>{product.product_name}</Text>
+              {!!product.brand && <Text style={styles.productBrand} numberOfLines={1}>{product.brand}</Text>}
+              <Text style={styles.tag}>
+                {product.status === 'want' ? '♡ İstek Listemde' : 'Düşünüyorum'}
+              </Text>
+              <Text style={styles.source}>{product.source === 'ai' ? 'PRİZMA önerisi' : 'Kendim ekledim'}</Text>
+              {!!product.notes && <Text style={styles.productNote} numberOfLines={2}>{product.notes}</Text>}
+              <View style={styles.productActions}>
+                <TouchableOpacity accessibilityRole="button" onPress={() => startEdit(product)} style={styles.productAction}>
+                  <Text style={styles.actionText}>Düzenle</Text>
+                </TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" onPress={() => deleteProduct(product)} style={styles.productAction}>
+                  <Text style={styles.deleteText}>Sil</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ))
+          ))}
+        </View>
       )}
 
       {!!message && <Text style={styles.description}>{message}</Text>}
@@ -378,6 +369,13 @@ export default function BeautyCollectionScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
+  productCard: { width: '48%', minHeight: 254, padding: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D8D6DC', borderRadius: 15, marginBottom: 3 },
+  productBrand: { fontSize: 11, color: '#6E6872', marginTop: 4 },
+  productNote: { fontSize: 11, color: '#6E6872', marginTop: 6 },
+  productActions: { flexDirection: 'row', gap: 4, marginTop: 10, justifyContent: 'space-between' },
+  productAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 2 },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(23, 16, 40, 0.55)',
