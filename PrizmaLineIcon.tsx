@@ -10,7 +10,7 @@ export default function PrizmaLineIcon({name,size=28,color='#69318A',stroke=2}:P
  const line=(left:number,top:number,width:number,height=stroke)=>({...box(left,top,width,height),backgroundColor:color,borderRadius:3*k});
  const rounded=(left:number,top:number,width:number,height:number,radius:number)=>({...box(left,top,width,height),...border(),borderRadius:radius*k});
  const c=(left:number,top:number,r:number)=>({...box(left,top,r*2,r*2),...border(),borderRadius:r*k});
- const angled=(left:number,top:number,width:number,degrees:number)=>({...line(left,top,width),transform:[{rotate:degrees+'deg'}]});
+ const angled=(left:number,top:number,width:number,degrees:number)=>({...line(left,top,width),transform:[{rotate:(degrees+'deg') as `${number}deg`}]});
  let parts:React.ReactNode=null;
  switch(name){
   case 'scan':parts=<>
