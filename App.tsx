@@ -1,3 +1,4 @@
+import { PRIZMA } from './prizmaTheme';
 import RoutineScreen from './RoutineScreen';
 import PrizmaConfirm from './PrizmaConfirm';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
@@ -37,21 +38,21 @@ type Tab =
   | 'Profil' | 'Alışveriş' | 'Cilt Analizi' | 'Bakım Koleksiyonum' | 'Cilt Danışmanı' | 'Bakım Rutini';
 
 const C = {
-  navy: '#0B1436',
-  lavender: '#9372B5',
-  lilac: '#E7D9F0',
-  background: '#FAF8FC',
-  white: '#FFFFFF',
-  ink: '#172044',
-  muted: '#777B94',
-  border: '#E9E0EF',
-  pale: '#F4EDF9',
+  navy: PRIZMA.ink,
+  lavender: PRIZMA.purple,
+  lilac: PRIZMA.purpleLight,
+  background: PRIZMA.background,
+  white: PRIZMA.white,
+  ink: PRIZMA.ink,
+  muted: PRIZMA.muted,
+  border: PRIZMA.border,
+  pale: PRIZMA.purpleLight,
 };
 
 const tabs: { name: Tab; icon: string }[] = [
   { name: 'Ana Sayfa', icon: '⌂' },
   { name: 'Gardırop', icon: '◇' },
-  { name: 'PRİZMA AI', icon: '✦' },
+  { name: 'PRİZMA AI', icon: '◎' },
   { name: 'Güzellik', icon: '♡' },
   { name: 'Profil', icon: '○' },
 ];
@@ -369,7 +370,7 @@ export default function App() {
       const { error: signOutError } =
         await supabase.auth.signOut();
 
-      showNotice('success', 'Şifren yenilendi ✦',
+      showNotice('success', 'Şifren yenilendi ',
         signOutError
           ? 'Şifren değiştirildi. Çıkış yapıp yeni şifrenle giriş yap.'
           : 'Yeni şifrenle giriş yapabilirsin.');
@@ -386,7 +387,7 @@ export default function App() {
   };
 
   const comingSoon = () => {
-    showNotice('info', 'PRİZMA hazırlanıyor ✦',
+    showNotice('info', 'PRİZMA hazırlanıyor ',
       'Bu özelliği sonraki geliştirme adımlarında aktif edeceğiz.');
   };
 
@@ -438,7 +439,7 @@ export default function App() {
 
         <ActivityIndicator size="large" color={C.lavender} />
         <Text style={styles.loadingText}>
-          PRİZMA hazırlanıyor ✦
+          PRİZMA hazırlanıyor 
         </Text>
       </SafeAreaView>
     );
@@ -459,7 +460,7 @@ export default function App() {
           contentContainerStyle={styles.resetContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.resetBrand}>PRİZMA ✦</Text>
+          <Text style={styles.resetBrand}>PRİZMA </Text>
 
           <Text style={styles.pageTitle}>
             Yeni şifreni oluştur
@@ -516,7 +517,7 @@ export default function App() {
       <SafeAreaView style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={C.lavender} />
         <Text style={styles.loadingText}>
-          PRİZMA profilin hazırlanıyor ✦
+          PRİZMA profilin hazırlanıyor 
         </Text>
       </SafeAreaView>
     );
@@ -536,7 +537,7 @@ export default function App() {
           onPress={() => setProfileRetry(value => value + 1)}
         >
           <Text style={styles.primaryButtonText}>
-            Tekrar Dene ✦
+            Tekrar Dene 
           </Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -618,15 +619,9 @@ export default function App() {
           onPress={() => open('Ana Sayfa')}
         >
           <Text style={styles.brandText}>PRİZMA</Text>
-          <Text style={styles.brandStar}>✦</Text>
+          
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.profileCircle}
-          onPress={() => open('Profil')}
-        >
-          <Text style={styles.profileCircleText}>♡</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -637,12 +632,12 @@ export default function App() {
       >
         {tab === 'Ana Sayfa' && (
           <View style={styles.compactHome}>
-            <Text style={styles.compactHomeWelcome}>Merhaba ✦</Text>
+            <Text style={styles.compactHomeWelcome}>Merhaba </Text>
             <Text style={styles.compactHomeSub}>Bugün ne yapmak istersin?</Text>
             <View style={styles.quickHomeRow}>
               {([
                 ['♧', 'Gardırop', 'Gardırop'],
-                ['✧', 'Güzellik', 'Güzellik'],
+                ['', 'Güzellik', 'Güzellik'],
                 ['▢', 'Alışveriş', 'Alışveriş'],
                 ['♡', 'Koleksiyon', 'Bakım Koleksiyonum'],
               ] as const).map(([icon, title, target]) => (
@@ -654,14 +649,14 @@ export default function App() {
             </View>
             <TouchableOpacity style={styles.compactAIHero} onPress={() => open('PRİZMA AI')}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.compactAIName}>PRİZMA AI ✦</Text>
+                <Text style={styles.compactAIName}>PRİZMA AI </Text>
                 <Text style={styles.compactAIDesc}>Kişisel asistanın her an yanında.</Text>
               </View>
               <Text style={styles.compactAIArrow}>➜</Text>
             </TouchableOpacity>
             {([
               ['♧', 'Gardırop', 'Kıyafetlerin, kombinlerin ve AI stil önerileri', 'Gardırop'],
-              ['✧', 'Güzellik', 'Cilt, saç ve makyaj rutinlerin', 'Güzellik'],
+              ['', 'Güzellik', 'Cilt, saç ve makyaj rutinlerin', 'Güzellik'],
               ['▢', 'Alışveriş Analizi', 'Almadan önce birlikte değerlendirelim', 'Alışveriş'],
               ['♡', 'Koleksiyonum', 'Kaydettiğin tüm ürünler', 'Bakım Koleksiyonum'],
             ] as const).map(([icon, title, description, target]) => (
@@ -739,7 +734,7 @@ export default function App() {
             <View style={styles.beautyToolsGrid}>
               {([
                 ['▦', 'Manuel Rutin Ekle', 'Sabah / akşam', 'Bakım Rutini'],
-                ['✧', 'AI ile Ürün Önerisi', 'Rutinine ekle', 'Cilt Danışmanı'],
+                ['', 'AI ile Ürün Önerisi', 'Rutinine ekle', 'Cilt Danışmanı'],
                 ['♡', 'Bakım Koleksiyonum', 'Kaydettiğin ürünler', 'Bakım Koleksiyonum'],
                 ['♢', 'İçerik Analizi', 'Ürünleri değerlendir', 'Alışveriş'],
               ] as const).map(([icon, title, desc, target]) => (
@@ -773,7 +768,7 @@ export default function App() {
             <View style={styles.profileCard}>
               <View style={styles.profileAvatar}>
                 <Text style={styles.profileAvatarText}>
-                  ✦
+                  
                 </Text>
               </View>
 
@@ -793,7 +788,7 @@ export default function App() {
               activeOpacity={0.8}
             >
               <Text style={styles.profileInfoTitle}>
-                ✦ PRİZMA İmzan
+                 PRİZMA İmzan
               </Text>
 
               <Text style={styles.profileInfoDescription}>
@@ -873,16 +868,16 @@ const styles = StyleSheet.create({
   compactHomeSub: { fontSize: 13, color: '#574766', marginBottom: 20 },
   quickHomeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 7 },
   quickHomeItem: { flex: 1, alignItems: 'center' },
-  quickHomeIconBox: { width: '100%', height: 54, borderRadius: 16, borderWidth: 1, borderColor: '#E1D2EB', backgroundColor: '#EDE2F5', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  quickHomeIcon: { fontSize: 27, color: '#785597' },
+  quickHomeIconBox: { width: '100%', height: 54, borderRadius: 16, borderWidth: 1, borderColor: '#E1D2EB', backgroundColor: '#F3EAF8', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  quickHomeIcon: { fontSize: 27, color: '#69318A' },
   quickHomeLabel: { fontSize: 10, color: '#281B3D', fontWeight: '700', textAlign: 'center' },
   compactAIHero: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#D8C0E8', borderRadius: 20, padding: 19, minHeight: 105, marginBottom: 14 },
   compactAIName: { fontSize: 16, color: '#39254D', fontWeight: '800', marginBottom: 5 },
   compactAIDesc: { fontSize: 12, color: '#57426D' },
-  compactAIArrow: { fontSize: 26, color: '#78539C' },
-  compactHomeListCard: { flexDirection: 'row', alignItems: 'center', minHeight: 76, borderWidth: 1, borderColor: '#E5D8EA', borderRadius: 18, backgroundColor: '#FFFCFF', padding: 8, marginBottom: 9, gap: 12 },
+  compactAIArrow: { fontSize: 26, color: '#69318A' },
+  compactHomeListCard: { flexDirection: 'row', alignItems: 'center', minHeight: 76, borderWidth: 1, borderColor: '#E5D8EA', borderRadius: 18, backgroundColor: '#FFFFFF', padding: 8, marginBottom: 9, gap: 12 },
   compactListIcon: { width: 63, height: 61, borderRadius: 13, backgroundColor: '#E7D5E9', alignItems: 'center', justifyContent: 'center' },
-  compactListIconText: { fontSize: 29, color: '#785393' },
+  compactListIconText: { fontSize: 29, color: '#69318A' },
   compactListTitle: { fontSize: 15, fontWeight: '800', color: '#261838', marginBottom: 4 },
   compactListDesc: { fontSize: 11, color: '#524766', lineHeight: 15 },
   compactListArrow: { fontSize: 26, color: '#715094' },
@@ -890,12 +885,12 @@ const styles = StyleSheet.create({
   compactBeautyTitle: { fontSize: 23, fontWeight: '800', color: '#25183C', marginBottom: 5 },
   compactBeautySub: { color: '#5E526C', fontSize: 12, marginBottom: 18 },
   beautyCategoryRow: { flexDirection: 'row', gap: 8, marginBottom: 25 },
-  beautyCategory: { flex: 1, minHeight: 78, borderWidth: 1, borderColor: '#E3D6E9', borderRadius: 16, backgroundColor: '#EEE3F5', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  beautyCategoryIcon: { color: '#795798', fontSize: 27, marginBottom: 7 },
+  beautyCategory: { flex: 1, minHeight: 78, borderWidth: 1, borderColor: '#E3D6E9', borderRadius: 16, backgroundColor: '#F3EAF8', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  beautyCategoryIcon: { color: '#69318A', fontSize: 27, marginBottom: 7 },
   beautyCategoryLabel: { color: '#22163B', fontSize: 11, fontWeight: '800' },
   compactBeautySection: { fontSize: 16, fontWeight: '800', color: '#25183C', marginBottom: 11 },
   beautyToolsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, marginBottom: 22 },
-  beautyTool: { width: '48%', minHeight: 126, borderWidth: 1, borderColor: '#E6D4EF', borderRadius: 17, backgroundColor: '#FFFCFF', alignItems: 'center', justifyContent: 'center', padding: 9 },
+  beautyTool: { width: '48%', minHeight: 126, borderWidth: 1, borderColor: '#E6D4EF', borderRadius: 17, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 9 },
   beautyToolIcon: { fontSize: 27, color: '#785398', marginBottom: 10 },
   beautyToolTitle: { fontSize: 12, color: '#281838', fontWeight: '800', textAlign: 'center' },
   beautyToolDesc: { fontSize: 10, color: '#655273', textAlign: 'center', marginTop: 4 },
@@ -1046,7 +1041,7 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
@@ -1054,13 +1049,16 @@ const styles = StyleSheet.create({
   headerBrand: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    minHeight: 44,
   },
 
   brandText: {
     color: C.navy,
-    fontSize: 25,
+    fontSize: 22,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    letterSpacing: 4,
+    letterSpacing: 3,
     fontWeight: '600',
   },
 
@@ -1601,12 +1599,20 @@ const styles = StyleSheet.create({
   },
 
   tabIconWrapActive: {
-    backgroundColor: C.lilac,
+    backgroundColor: PRIZMA.purpleLight,
   },
 
   aiTabIconWrap: {
-    backgroundColor: C.navy,
-    borderRadius: 20,
+    backgroundColor: PRIZMA.white,
+    borderColor: PRIZMA.aiRing,
+    borderWidth: 3,
+    borderRadius: 24,
+    width: 45,
+    height: 45,
+    shadowColor: PRIZMA.purple,
+    shadowOpacity: 0.33,
+    shadowRadius: 7,
+    elevation: 7,
   },
 
   tabIcon: {
@@ -1615,12 +1621,13 @@ const styles = StyleSheet.create({
   },
 
   tabIconActive: {
-    color: C.navy,
+    color: PRIZMA.purple,
   },
 
   aiTabIcon: {
-    color: C.lilac,
-    fontSize: 25,
+    color: PRIZMA.purple,
+    fontSize: 28,
+    fontWeight: '700',
   },
 
   tabLabel: {
@@ -1630,7 +1637,7 @@ const styles = StyleSheet.create({
   },
 
   tabLabelActive: {
-    color: C.navy,
+    color: PRIZMA.purple,
     fontWeight: '700',
   },
 
