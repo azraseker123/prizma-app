@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { ScrollViewInstance } from 'react-native';
 import { supabase } from './supabase';
 import { addRoutineItem, removeRoutineItem, type RoutinePeriod } from './RoutineStore';
@@ -29,6 +29,12 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
   const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod | 'Her İkisi'>('Akşam');
   const [archiveQuery, setArchiveQuery] = useState('');
   const [explanations, setExplanations] = useState<string[]>([]);
+  const [lookIdeas, setLookIdeas] = useState<{name:string;description:string;item_ids:string[]}[]>([]);
+  const [lookItems, setLookItems] = useState<Record<string,{name:string;url:string|null}>>({});
+  const [lookDraftNames, setLookDraftNames] = useState<Record<number,string>>({});
+  const [savedLookIndices, setSavedLookIndices] = useState<number[]>([]);
+  const [lookBusy, setLookBusy] = useState(false);
+
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
@@ -170,6 +176,52 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
     finally { setLoading(false); }
   };
 
+  const suggestChatLooks = async () => {
+    if(lookBusy||loading||busyAction)return;
+    setLookBusy(true);setFeedback('');
+    try{
+      const occasion=(draft.trim()||messages.filter(x=>x.role==='user').slice(-1)[0]?.text||'Günlük kullanım').slice(0,300);
+      const {data,error}=await supabase.functions.invoke('generate-outfits',{
+        body:{occasion,style:'Gardıroptan birbiriyle uyumlu farklı stil önerileri'},
+      });
+      if(error)throw new Error('Kombin AI servisine ulaşılamadı.');
+      if(data?.error)throw new Error(data.error);
+      const valid=(Array.isArray(data?.outfits)?data.outfits:[]).filter((x:any)=>x&&typeof x.name==='string'&&Array.isArray(x.item_ids)&&x.item_ids.length>=2&&typeof x.description==='string').slice(0,3);
+      if(!valid.length)throw new Error('Kombin oluşturulamadı. Gardırobuna daha fazla parça ekle.');
+      const allIds=[...new Set(valid.flatMap((x:any)=>x.item_ids))].filter((x):x is string=>typeof x==='string');
+      const {data:wardrobe,error:wardrobeError}=await supabase.from('wardrobe_items')
+        .select('id,name,image_path').eq('user_id',userId).in('id',allIds);
+      if(wardrobeError)throw wardrobeError;
+      const ownedIds=new Set((wardrobe||[]).map(x=>x.id));
+      const secure=valid.filter((x:any)=>x.item_ids.every((id:string)=>ownedIds.has(id)));
+      if(!secure.length)throw new Error('Kombin parçaları doğrulanamadı.');
+      const images=await Promise.all((wardrobe||[]).map(async x=>{
+        const {data:photo}=x.image_path?await supabase.storage.from('wardrobe').createSignedUrl(x.image_path,1800):{data:null};
+        return [x.id,{name:x.name,url:photo?.signedUrl||null}] as const;
+      }));
+      setLookItems(Object.fromEntries(images));
+      setLookDraftNames({});
+      setSavedLookIndices([]);
+      setLookIdeas(secure);
+    }catch(error){
+      setFeedback(error instanceof Error?error.message:'Kombin üretilemedi.');
+    }finally{setLookBusy(false);}
+  };
+  const saveChatLook = async(index:number) => {
+    const idea=lookIdeas[index];
+    if(!idea||savedLookIndices.includes(index)||busyAction)return;
+    setBusyAction('lookSave');
+    try{
+      const name=(lookDraftNames[index]||idea.name).trim().slice(0,100);
+      if(!name)throw new Error('Kombine bir isim ver.');
+      const {error}=await supabase.from('wardrobe_outfits').insert({user_id:userId,name,item_ids:idea.item_ids});
+      if(error)throw error;
+      setSavedLookIndices(old=>[...old,index]);
+      setFeedback('Kombin gardırobuna kaydedildi.');
+    }catch(e){setFeedback(e instanceof Error?e.message:'Kombin kaydedilemedi.');}
+    finally{setBusyAction(null);}
+  };
+
   const saveProduct = async (message: Message, product: Product, index: number, action: 'collection' | 'routine') => {
     const selectedPeriod = routinePeriod;
     const targetPeriods:RoutinePeriod[] = selectedPeriod === 'Her İkisi' ? ['Sabah','Akşam'] : [selectedPeriod];
@@ -244,8 +296,8 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
               <Text style={[s.chipText, category === key && s.chipTextActive]}>{labels[key]}</Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={s.outfitChip} onPress={onOutfit}>
-            <Text style={s.outfitChipText}> Kombin AI</Text>
+          <TouchableOpacity style={s.outfitChip} disabled={lookBusy} onPress={()=>{void suggestChatLooks();}}>
+            <Text style={s.outfitChipText}>{lookBusy?'Kombinler hazırlanıyor...':'◎ Kombin Öner'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -311,6 +363,34 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         </TouchableOpacity>
       </View>
 
+      <Modal visible={lookIdeas.length>0} transparent animationType="slide" onRequestClose={()=>setLookIdeas([])}>
+        <View style={s.lookOverlay}>
+          <View style={s.lookSheet}>
+            <View style={s.lookSheetHeader}>
+              <Text style={s.lookSheetTitle}>PRİZMA AI Kombin Önerileri</Text>
+              <TouchableOpacity onPress={()=>setLookIdeas([])} accessibilityRole="button"><Text style={s.lookClose}>×</Text></TouchableOpacity>
+            </View>
+            <Text style={s.lookSheetDesc}>Gardırobundaki gerçek parçalardan oluşturuldu. Dilersen adını düzenleyerek kaydet.</Text>
+            <ScrollView contentContainerStyle={s.lookCards} keyboardShouldPersistTaps="handled">
+              {lookIdeas.map((idea,index)=><View key={index} style={s.lookCard}>
+                <View style={s.lookGarmentRow}>{idea.item_ids.slice(0,4).map(id=>(
+                  <View key={id} style={s.lookGarment}>
+                    {lookItems[id]?.url?<Image source={{uri:lookItems[id].url!}} resizeMode="contain" style={s.lookPhoto}/>:<Text style={s.lookFallback}>♧</Text>}
+                    <Text style={s.lookItemLabel} numberOfLines={1}>{lookItems[id]?.name||'Parça'}</Text>
+                  </View>
+                ))}</View>
+                <TextInput style={s.lookNameInput} maxLength={100} value={lookDraftNames[index]??idea.name} onChangeText={value=>setLookDraftNames(old=>({...old,[index]:value}))}/>
+                <Text style={s.lookDescription} numberOfLines={3}>{idea.description}</Text>
+                <TouchableOpacity disabled={!!busyAction||savedLookIndices.includes(index)}
+                  style={s.lookSaveButton} onPress={()=>{void saveChatLook(index);}}>
+                  <Text style={s.lookSaveText}>{savedLookIndices.includes(index)?'✓ Kaydedildi':'Kombini Kaydet'}</Text>
+                </TouchableOpacity>
+              </View>)}
+            </ScrollView>
+            <TouchableOpacity onPress={()=>{setLookIdeas([]);onOutfit();}} style={s.lookStudioButton}><Text style={s.lookStudioText}>Kombin Editörüne Git ›</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       {showChats && (
         <View style={s.drawerOverlay}>
           <TouchableOpacity style={s.drawerScrim} onPress={()=>setShowChats(false)} accessibilityRole="button" accessibilityLabel="Sohbet arşivini kapat"/>
@@ -364,6 +444,24 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 }
 
 const s = StyleSheet.create({
+  lookOverlay:{flex:1,justifyContent:'flex-end',backgroundColor:'rgba(36,33,36,0.33)'},
+  lookSheet:{maxHeight:'83%',padding:17,paddingBottom:24,borderTopLeftRadius:24,borderTopRightRadius:24,backgroundColor:C.white},
+  lookSheetHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  lookSheetTitle:{fontSize:17,color:C.ink,fontWeight:'700'},
+  lookClose:{color:C.muted,fontSize:28},
+  lookSheetDesc:{fontSize:12,color:C.muted,lineHeight:18,marginTop:7,marginBottom:12},
+  lookCards:{gap:10,paddingBottom:10},
+  lookCard:{padding:12,borderColor:C.border,borderWidth:1,borderRadius:15,backgroundColor:C.white},
+  lookGarmentRow:{flexDirection:'row',gap:7,marginBottom:9},
+  lookGarment:{flex:1,alignItems:'center',backgroundColor:C.pale,borderRadius:9,padding:4,minHeight:75},
+  lookPhoto:{height:54,width:'100%'},lookFallback:{fontSize:25,color:C.lavender},lookItemLabel:{fontSize:9,color:C.muted},
+  lookNameInput:{borderColor:C.border,borderWidth:1,borderRadius:9,padding:8,fontSize:13,color:C.ink,fontWeight:'700'},
+  lookDescription:{fontSize:11,color:C.muted,lineHeight:16,marginTop:7},
+  lookSaveButton:{minHeight:44,backgroundColor:C.lavender,borderRadius:11,alignItems:'center',justifyContent:'center',marginTop:10},
+  lookSaveText:{fontSize:12,color:C.white,fontWeight:'700'},
+  lookStudioButton:{minHeight:48,alignItems:'center',justifyContent:'center'},
+  lookStudioText:{color:C.lavender,fontWeight:'700',fontSize:13},
+
   drawerOverlay:{position:'absolute',top:0,bottom:0,left:0,right:0,zIndex:500,flexDirection:'row',justifyContent:'flex-end'},
   drawerScrim:{position:'absolute',top:0,bottom:0,left:0,right:0,backgroundColor:'rgba(36,33,36,0.27)'},
   explainAction:{fontSize:12,color:C.lavender,fontWeight:'700',marginTop:7,marginBottom:4},
