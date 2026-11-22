@@ -40,7 +40,7 @@ const item = (
 const questions: Question[] = [
   {
     id: 'style',
-    title: 'Tarzını Seç ✦',
+    title: 'Tarzını Seç ',
     subtitle: 'Sana en yakın stiller hangileri?',
     multi: true,
     options: [
@@ -54,7 +54,7 @@ const questions: Question[] = [
   },
   {
     id: 'colors',
-    title: 'Renk Paletini Seç ✦',
+    title: 'Renk Paletini Seç ',
     subtitle: 'Kullanmayı sevdiğin renk gruplarını seç.',
     multi: true,
     options: [
@@ -68,31 +68,31 @@ const questions: Question[] = [
   },
   {
     id: 'clothing',
-    title: 'Giyimde Önceliğin ✦',
+    title: 'Giyimde Önceliğin ',
     subtitle: 'Kombinlerinde en çok neye önem verirsin?',
     multi: false,
     options: [
       item('Rahatlık', 'Konfor öncelikli', '☁️', ['#E7DFD5', '#BFB4A9']),
-      item('Şıklık', 'Özenli kombinler', '✦', ['#D4C5D9', '#9376A5']),
+      item('Şıklık', 'Özenli kombinler', '', ['#D4C5D9', '#9376A5']),
       item('İkisi de', 'Dengeli seçimler', '⚖️', ['#E3D5E8', '#C7B7A8']),
-      item('Duruma göre', 'Esnek tercihler', '✨', ['#D5D5E6', '#B9C9CE']),
+      item('Duruma göre', 'Esnek tercihler', '', ['#D5D5E6', '#B9C9CE']),
     ],
   },
   {
     id: 'skin_type',
-    title: 'Cilt Tipini Seç ✦',
+    title: 'Cilt Tipini Seç ',
     subtitle: 'Cildinin genel yapısına en yakın olanı seç.',
     multi: false,
     options: [
       item('Kuru', 'Gerginlik ve kuruluk', '💧', ['#F1D8C9', '#E5BCA9']),
-      item('Yağlı', 'Parlama eğilimi', '✨', ['#E7C5AE', '#D9A68E']),
+      item('Yağlı', 'Parlama eğilimi', '', ['#E7C5AE', '#D9A68E']),
       item('Karma', 'Bölgelere göre değişir', '◐', ['#E6C7BA', '#CDA6A0']),
       item('Normal', 'Dengeli görünüm', '🌿', ['#EAD4C6', '#D6B8A8']),
     ],
   },
   {
     id: 'skin_undertone',
-    title: 'Cilt Alt Tonun ✦',
+    title: 'Cilt Alt Tonun ',
     subtitle: 'Ten renginden bağımsız olarak alt tonunu seç. Emin değilsen atlayabilirsin.',
     multi: false,
     options: [
@@ -105,7 +105,7 @@ const questions: Question[] = [
   },
   {
     id: 'hair_color',
-    title: 'Saç Rengin ✦',
+    title: 'Saç Rengin ',
     subtitle: 'Şu anki saç rengini seç. Sonradan değiştirebilirsin.',
     multi: false,
     options: [
@@ -120,7 +120,7 @@ const questions: Question[] = [
   },
   {
     id: 'eye_color',
-    title: 'Göz Rengin ✦',
+    title: 'Göz Rengin ',
     subtitle: 'Makyaj renk önerilerini kişiselleştirmemize yardımcı olur.',
     multi: false,
     options: [
@@ -130,12 +130,12 @@ const questions: Question[] = [
       item('Yeşil', 'Yeşil gözler', '🍃', ['#5A7352', '#90A47C']),
       item('Mavi', 'Mavi gözler', '🫧', ['#648EB4', '#B2D3E6']),
       item('Gri', 'Gri gözler', '🌫️', ['#848A96', '#C2C5CC']),
-      item('Diğer', 'Farklı veya birden fazla renk', '✦', ['#B6A5C4', '#DAD0E4']),
+      item('Diğer', 'Farklı veya birden fazla renk', '', ['#B6A5C4', '#DAD0E4']),
     ],
   },
   {
     id: 'hair_type',
-    title: 'Saç Tipini Seç ✦',
+    title: 'Saç Tipini Seç ',
     subtitle: 'Saçının doğal yapısını tanımlayanları seç.',
     multi: true,
     options: [
@@ -149,11 +149,11 @@ const questions: Question[] = [
   },
   {
     id: 'hair_condition',
-    title: 'Saçının Durumu ✦',
+    title: 'Saçının Durumu ',
     subtitle: 'Saçının mevcut durumunu tanımlayanları seç.',
     multi: true,
     options: [
-      item('Sağlıklı', 'Belirgin bir sorun yaşamıyorum', '✦', ['#E7D8CA', '#C7B3A0']),
+      item('Sağlıklı', 'Belirgin bir sorun yaşamıyorum', '', ['#E7D8CA', '#C7B3A0']),
       item('Kuru', 'Nemini çabuk kaybediyor', '☁️', ['#E6D3C5', '#CBAE9C']),
       item('Yıpranmış', 'Sertleşme veya kırılma var', '🌾', ['#D6B7A0', '#A98370']),
       item('Kırılmaya yatkın', 'Uçları kolayca kırılıyor', '🪶', ['#E5CCB6', '#BDA18A']),
@@ -163,12 +163,12 @@ const questions: Question[] = [
   },
   {
     id: 'makeup',
-    title: 'Makyaj Tarzını Seç ✦',
+    title: 'Makyaj Tarzını Seç ',
     subtitle: 'Sana hitap eden makyaj stillerini seç.',
     multi: true,
     options: [
       item('Doğal', 'Hafif ve fresh', '🌸', ['#EBC9BE', '#D7A9A3']),
-      item('Soft Glam', 'Yumuşak ve ışıltılı', '✨', ['#E6B8B6', '#BB898D']),
+      item('Soft Glam', 'Yumuşak ve ışıltılı', '', ['#E6B8B6', '#BB898D']),
       item('Glam', 'Belirgin ve iddialı', '💄', ['#C88C96', '#823B57']),
       item('Yaratıcı', 'Renkli ve özgün', '🎨', ['#C6A5E6', '#E9A6CD']),
       item('K-Beauty', 'Aydınlık ve soft', '🫧', ['#F2D2DC', '#E7A8BF']),
@@ -177,7 +177,7 @@ const questions: Question[] = [
   },
   {
     id: 'goal',
-    title: 'PRİZMA Sana Nasıl Yardımcı Olsun? ✦',
+    title: 'PRİZMA Sana Nasıl Yardımcı Olsun? ',
     subtitle: 'En çok ilgilendiğin alanları seç.',
     multi: true,
     options: [
@@ -185,7 +185,7 @@ const questions: Question[] = [
       item('Cilt bakımı', 'Bakım rutini', '🧴', ['#E8D3CD', '#D5AFA9']),
       item('Makyaj', 'Görünüm fikirleri', '💄', ['#EECEDB', '#D8A1B8']),
       item('Saç bakımı', 'Saç önerileri', '🪮', ['#DCC9B8', '#BCA08A']),
-      item('Hepsinde', 'Her alanda', '✦', ['#D7C4ED', '#A78ACB']),
+      item('Hepsinde', 'Her alanda', '', ['#D7C4ED', '#A78ACB']),
     ],
   },
 ];
@@ -328,7 +328,7 @@ export default function OnboardingScreen({
           style={styles.topAction}
         >
           <Text style={styles.topActionText}>
-            {step > 0 ? '‹' : '✦'}
+            {step > 0 ? '‹' : ''}
           </Text>
         </TouchableOpacity>
 
@@ -565,8 +565,8 @@ export default function OnboardingScreen({
             {step === questions.length - 1
               ? editing
                 ? 'Değişiklikleri Kaydet ✓'
-                : 'PRİZMA’ya Başla ✦'
-              : 'Devam Et ✦'}
+                : 'PRİZMA’ya Başla '
+              : 'Devam Et '}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -585,7 +585,7 @@ export default function OnboardingScreen({
             >
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Alt Tonumu Nasıl Öğrenirim? ✦</Text>
+            <Text style={styles.title}>Alt Tonumu Nasıl Öğrenirim? </Text>
             <Text style={styles.subtitle}>
               Doğal gün ışığında, makyajsızken yüzüne yakın sıcak (şeftali, altın)
               ve soğuk (pembe, mavi) renkli kumaşları sırayla tutup karşılaştır.
@@ -605,7 +605,7 @@ export default function OnboardingScreen({
               style={styles.next}
               onPress={() => setUndertoneGuideOpen(false)}
             >
-              <Text style={styles.nextText}>Anladım ✦</Text>
+              <Text style={styles.nextText}>Anladım </Text>
             </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
@@ -632,7 +632,7 @@ export default function OnboardingScreen({
               style={styles.next}
               onPress={() => setGuideOpen(false)}
             >
-              <Text style={styles.nextText}>Anladım ✦</Text>
+              <Text style={styles.nextText}>Anladım </Text>
             </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
@@ -648,12 +648,12 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#A78BFA',
-    backgroundColor: '#F3EDFA',
+    borderColor: '#69318A',
+    backgroundColor: '#F3EAF8',
     alignItems: 'center',
   },
   editSaveText: {
-    color: '#684A91',
+    color: '#69318A',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     padding: 17,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#EADFED',
+    borderColor: '#D8D6DC',
   },
   sensitivityTitle: {
     fontSize: 17,
@@ -687,9 +687,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 11,
     borderRadius: 18,
-    backgroundColor: '#F7F1F8',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8DDED',
+    borderColor: '#D8D6DC',
   },
   sensitivityChoiceActive: {
     backgroundColor: '#EAD9F1',
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
 
-  safe: { flex: 1, backgroundColor: '#FAF6FC' },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   top: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
@@ -727,13 +727,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fill: {
-    height: '100%', borderRadius: 10, backgroundColor: '#9A6CB5',
+    height: '100%', borderRadius: 10, backgroundColor: '#69318A',
   },
   scroll: { flex: 1 },
   content: { paddingHorizontal: 18, paddingTop: 22, paddingBottom: 55 },
   brand: {
     textAlign: 'center', fontSize: 11,
-    letterSpacing: 4, fontWeight: '800', color: '#9A6CB5',
+    letterSpacing: 4, fontWeight: '800', color: '#69318A',
   },
   title: {
     marginTop: 12, fontSize: 29, fontWeight: '800',
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardSelected: {
-    borderColor: '#9A6CB5', backgroundColor: '#F8EFFB',
+    borderColor: '#69318A', backgroundColor: '#F8EFFB',
   },
   visual: {
     height: 126, margin: 6, borderRadius: 14,
@@ -823,7 +823,7 @@ const styles = StyleSheet.create({
     marginTop: 12, textAlign: 'center',
     color: '#87758E', fontSize: 12, lineHeight: 19,
   },
-  guideScreen: { flex: 1, backgroundColor: '#FAF6FC' },
+  guideScreen: { flex: 1, backgroundColor: '#FFFFFF' },
   guideContent: { padding: 22, paddingBottom: 50 },
   close: { alignSelf: 'flex-end', padding: 10 },
   closeText: { fontSize: 22, color: '#382344' },
