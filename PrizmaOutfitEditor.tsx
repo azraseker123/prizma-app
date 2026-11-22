@@ -1,3 +1,4 @@
+import PrizmaLineIcon from './PrizmaLineIcon';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Image, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PRIZMA } from './prizmaTheme';
@@ -79,7 +80,7 @@ export default function PrizmaOutfitEditor({items,availableItems=[],onAddItem,on
   <View style={s.canvasRow}>
     <View style={s.categoryRail}>
       {([['Üst','♧'],['Alt','▥'],['Dış','▤'],['Ayakkabı','⌁'],['Çanta','▢'],['Aksesuar','○']] as const).map(([name,icon])=><TouchableOpacity accessibilityRole="button" accessibilityState={{selected:selectedCategory===name}} onPress={()=>setSelectedCategory(name)} key={name} style={[s.railButton,selectedCategory===name&&s.railSelected]}>
-       <Text style={s.railSymbol}>{icon}</Text><Text style={s.railLabel}>{name}</Text>
+       <PrizmaLineIcon name={name==='Üst'?'shirt':name==='Alt'?'layers':name==='Dış'?'hanger':name==='Ayakkabı'?'scan':name==='Çanta'?'bag':'palette'} size={23}/><Text style={s.railLabel}>{name}</Text>
       </TouchableOpacity>)}
     </View>
     <View style={s.board}>
@@ -100,15 +101,15 @@ export default function PrizmaOutfitEditor({items,availableItems=[],onAddItem,on
        </TouchableOpacity>;
       })}
     </ScrollView>
-    <Text style={s.helperText}>Parçayı sürükle; iki parmağınla büyüt veya küçült. Sabitleme gerekirse parçaya uzun bas.</Text>
+    <Text style={s.helperText}>Parçayı sürükle; iki parmağınla büyüt veya küçült.</Text>
   </View>
   <View style={s.featureRow}>
     {(['Renk Uyumu','Stil Filtresi','Alternatifler','Hava Durumu','Ortam Seç'] as const).map((label,index)=><TouchableOpacity key={label} style={s.featureButton} accessibilityRole="button" onPress={()=>{if(onAiComplete)onAiComplete(label);}}>
-      <Text style={s.featureIcon}>{['◉','☷','▱','☁','▦'][index]}</Text><Text style={s.featureText}>{label}</Text>
+      <PrizmaLineIcon name={index===0?'palette':index===1?'layers':index===2?'images':index===3?'calendar':'profile'} size={23}/><Text style={s.featureText}>{label}</Text>
     </TouchableOpacity>)}
   </View>
   <TouchableOpacity disabled={aiBusy||!onAiComplete} onPress={()=>onAiComplete?.()} style={s.aiComplete}>
-    <Text style={s.aiCompleteText}>{aiBusy?'Alternatifler hazırlanıyor...':'◎  PRİZMA AI ile Tamamla'}</Text>
+    <Text style={s.aiCompleteText}>{aiBusy?'Alternatifler hazırlanıyor...':'PRİZMA AI ile Tamamla'}</Text>
   </TouchableOpacity>
   <Text style={s.note}>AI eşleştirmesi yalnızca seçtiğin gardırop parçalarından öneri oluşturur.</Text>
  </View>;
