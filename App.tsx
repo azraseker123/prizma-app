@@ -1,3 +1,4 @@
+import PrizmaProfileScreen from './PrizmaProfileScreen';
 import { PRIZMA } from './prizmaTheme';
 import RoutineScreen from './RoutineScreen';
 import PrizmaConfirm from './PrizmaConfirm';
@@ -754,62 +755,15 @@ export default function App() {
           </View>
         )}
 
-        {/* PROFİL */}
+        {/* PROFİL: minimalist hub and PRİZMA İmzam */}
         {tab === 'Profil' && (
-          <>
-            <Text style={styles.eyebrow}>
-              YOUR PRİZMA PROFILE
-            </Text>
-
-            <Text style={styles.pageTitle}>
-              Profilim
-            </Text>
-
-            <View style={styles.profileCard}>
-              <View style={styles.profileAvatar}>
-                <Text style={styles.profileAvatarText}>
-                  
-                </Text>
-              </View>
-
-              <Text style={styles.profileWelcome}>
-                PRİZMA'ya hoş geldin
-              </Text>
-
-              <Text style={styles.profileEmail}>
-                {session.user.email || emailName}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.profileInfoCard}
-              onPress={() => { void openProfileEditor(); }}
-              disabled={loadingEditProfile}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.profileInfoTitle}>
-                 PRİZMA İmzan
-              </Text>
-
-              <Text style={styles.profileInfoDescription}>
-                Stil, cilt, saç ve makyaj tercihlerini
-                görüntüle ve düzenle. →
-              </Text>
-
-              {loadingEditProfile && (
-                <ActivityIndicator color={C.lavender} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-            >
-              <Text style={styles.logoutText}>
-                Çıkış Yap →
-              </Text>
-            </TouchableOpacity>
-          </>
+          <PrizmaProfileScreen
+            userId={session.user.id}
+            email={session.user.email || emailName}
+            onEdit={() => { void openProfileEditor(); }}
+            onLogout={handleLogout}
+            editing={loadingEditProfile}
+          />
         )}
       </ScrollView>
 
