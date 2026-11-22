@@ -1,3 +1,4 @@
+import LicensedProductImage from './LicensedProductImage';
 import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
 import React, { useState } from 'react';
 import {
@@ -23,6 +24,8 @@ type Advice = {
 
 export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }: Props) {
   const [category, setCategory] = useState<'skin' | 'hair' | 'makeup'>(initialCategory);
+  const [budget,setBudget]=useState<'Tümü'|'500 TL altı'|'500–1000 TL'|'1000 TL üzeri'>('Tümü');
+  const [expandedRecommendation,setExpandedRecommendation]=useState<number|null>(null);
   const [concern, setConcern] = useState('');
   const [loading, setLoading] = useState(false);
   const [advice, setAdvice] = useState<Advice | null>(null);
@@ -49,7 +52,7 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
     try {
       const { data, error } = await supabase.functions.invoke(
         'beauty-advisor',
-        { body: { category, concern: concern.trim() } }
+        { body: { category, concern: [concern.trim(),budget!=='Tümü'?'Bütçem: '+budget:''].filter(Boolean).join('. ') } }
       );
 
       if (error) {
@@ -134,133 +137,53 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
     finally { setSaving(null); }
   };
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text style={styles.eyebrow}>THE BEAUTY ADVISOR</Text>
-      <Text style={styles.title}>PRİZMA Güzellik Danışmanı </Text>
-
-      <Text style={styles.description}>
-        Cilt, saç ve makyaj ihtiyaçların için
-        kişiselleştirilmiş ürün önerileri al.
-      </Text>
-
-      <View style={styles.categoryRow}>
-        {([
-          ['skin', 'Cilt'],
-          ['hair', 'Saç'],
-          ['makeup', 'Makyaj'],
-        ] as const).map(([value, label]) => (
-          <TouchableOpacity
-            key={value}
-            style={[
-              styles.categoryButton,
-              category === value && styles.categorySelected,
-            ]}
-            onPress={() => {
-              setCategory(value);
-              setAdvice(null);
-              setMessage('');
-              setSaved([]);
-            }}
-          >
-            <Text style={[
-              styles.categoryText,
-              category === value && styles.categoryTextSelected,
-            ]}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.label}>Neye ihtiyacın var?</Text>
-
-      <TextInput
-        style={styles.input}
-        multiline
-        maxLength={300}
-        placeholder="Örneğin: Günlük kullanım için hafif bir nemlendirici arıyorum."
-        placeholderTextColor="#9A91A4"
-        value={concern}
-        onChangeText={setConcern}
-        editable={!loading}
-      />
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.disabled]}
-        onPress={analyze}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.buttonText}>Önerilerimi Oluştur </Text>
-        )}
-      </TouchableOpacity>
-
-      {!!message && <Text style={styles.message}>{message}</Text>}
-
-      {advice && (
-        <View style={styles.results}>
-          <Text style={styles.sectionTitle}>Sana özel öneriler </Text>
-          <Text style={styles.description}>{advice.introduction}</Text>
-
-          {advice.products.map((product, index) => (
-            <View key={`${product.brand}-${product.name}-${index}`} style={styles.card}>
-              <Text style={styles.brand}>{product.brand}</Text>
-              <Text style={styles.productName}>{product.name}</Text>
-
-              <Text style={styles.cardLabel}>Neden önerildi?</Text>
-              <Text style={styles.cardText}>{product.reason}</Text>
-
-              <Text style={styles.cardLabel}>Dikkat etmen gerekenler</Text>
-              <Text style={styles.cardText}>{product.caution}</Text>
-
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  saved.includes(String(index)) && styles.savedButton,
-                ]}
-                onPress={() => saveProduct(product, index)}
-                disabled={saving !== null || saved.includes(String(index))}
-              >
-                <Text style={styles.saveButtonText}>
-                  {saved.includes(String(index))
-                    ? '✓ Koleksiyonuma Kaydedildi'
-                    : saving === String(index)
-                      ? 'Kaydediliyor...'
-                      : '+ Bakım Koleksiyonuma Kaydet'}
-                </Text>
-              </TouchableOpacity>
-              <View style={styles.periodRow}>
-                {(['Sabah', 'Akşam'] as const).map(p => (
-                  <TouchableOpacity key={p} onPress={() => setRoutinePeriod(p)} style={[styles.periodChip, routinePeriod === p && styles.periodChipSelected]}>
-                    <Text style={[styles.periodText, routinePeriod === p && styles.periodTextSelected]}>{p}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TouchableOpacity style={styles.routineButton} disabled={saving !== null || routineSaved.includes(`${index}:${routinePeriod}`)} onPress={() => void saveToRoutine(product, index)}>
-                <Text style={styles.routineButtonText}>{routineSaved.includes(`${index}:${routinePeriod}`) ? '✓ Rutinime Eklendi' : '+ Rutinime Ekle'}</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-
-          {advice.products.length === 0 && (
-            <Text style={styles.description}>
-              Bu ihtiyaç için güvenle adlandırabileceğim bir ürün bulunamadı.
-            </Text>
-          )}
-
-          <Text style={styles.disclaimer}>
-            {advice.disclaimer ||
-              'AI hata yapabilir. Ürün içeriklerini ambalajdan doğrula.'}
-          </Text>
+  const needs = category==='skin'?
+    ['Nemlendirme','Sivilce & Komedon','Güneş Koruması','Hassasiyet','Cilt Bariyeri','Leke Görünümü']:
+    category==='hair'?['Nemlendirme','Saç Derisi','Yıpranma','Bukle Belirginliği','Hacim','Isı Koruması']:
+    ['Günlük Makyaj','Ten Ürünleri','Dudak','Göz Makyajı','Kalıcılık','Doğal Görünüm'];
+  return <ScrollView style={{backgroundColor:'#FFFFFF'}} contentContainerStyle={v.content} keyboardShouldPersistTaps="handled">
+    <Text style={v.title}>Güzellik Danışmanı</Text>
+    <Text style={v.subtitle}>Cilt, saç ve makyaj ihtiyaçların için sana özel öneriler.</Text>
+    <View style={v.categoryGrid}>
+      {([['skin','▤','Cilt Bakımı'],['hair','〰','Saç Bakımı'],['makeup','▰','Makyaj']] as const).map(([key,icon,label])=>
+      <TouchableOpacity key={key} style={[v.categoryTile,category===key&&v.categoryTileActive]} onPress={()=>{setCategory(key);setConcern('');setAdvice(null);}} accessibilityRole="tab" accessibilityState={{selected:category===key}}>
+       <Text style={v.categoryIcon}>{icon}</Text><Text style={[v.categoryLabel,category===key&&v.categoryLabelActive]}>{label}</Text>
+      </TouchableOpacity>)}
+    </View>
+    <View style={v.profileCard}>
+      <Text style={v.profileIcon}>◯</Text>
+      <View style={{flex:1}}><Text style={v.profileTitle}>Güzellik Profilin</Text><Text style={v.profileDescription}>İhtiyaçlarına göre rehberli öneriler keşfet.</Text></View>
+    </View>
+    {!advice&&<>
+      <Text style={v.sectionTitle}>Bugün neye ihtiyacın var?</Text>
+      <Text style={v.smallCaption}>Bir konu seç veya kendi ihtiyacını anlat.</Text>
+      <View style={v.needWrap}>{needs.map(need=><TouchableOpacity key={need} style={[v.needChip,concern===need&&v.needChipSelected]} onPress={()=>setConcern(need)}>
+        <Text style={[v.needText,concern===need&&v.needTextSelected]}>{need}</Text>
+      </TouchableOpacity>)}</View>
+      <Text style={v.sectionTitle}>Bütçe Tercihin</Text>
+      <View style={v.needWrap}>{(['Tümü','500 TL altı','500–1000 TL','1000 TL üzeri'] as const).map(value=><TouchableOpacity key={value} onPress={()=>setBudget(value)} style={[v.needChip,budget===value&&v.needChipSelected]}><Text style={[v.needText,budget===value&&v.needTextSelected]}>{value}</Text></TouchableOpacity>)}</View>
+      <TextInput value={concern} onChangeText={setConcern} multiline maxLength={300} style={v.input} placeholder="İhtiyacını biraz daha anlatabilirsin..." placeholderTextColor="#8B858E"/>
+      <TouchableOpacity onPress={()=>{void analyze();}} disabled={loading||!concern.trim()} style={v.primary}>{loading?<ActivityIndicator color="#FFFFFF"/>:<Text style={v.primaryText}>PRİZMA AI ile Önerilerimi Bul</Text>}</TouchableOpacity>
+    </>}
+    {!!message&&<Text style={v.feedback}>{message}</Text>}
+    {advice&&<View>
+      <View style={v.resultHeading}><Text style={v.sectionTitle}>Bugün Sana Önerilerim</Text><TouchableOpacity onPress={()=>{setAdvice(null);}}><Text style={v.link}>Yeni Arama ›</Text></TouchableOpacity></View>
+      <Text style={v.smallCaption}>{advice.introduction}</Text>
+      {advice.products.map((p,i)=><View key={p.name+i} style={v.productCard}>
+        <View style={v.productLine}><LicensedProductImage alt={p.name} height={110}/>
+          <View style={{flex:2}}><Text style={v.productBrand}>{p.brand}</Text><Text style={v.productName}>{p.name}</Text><Text style={v.productReason} numberOfLines={3}>{p.reason}</Text></View>
         </View>
-      )}
-    </ScrollView>
-  );
+        <View style={v.productActions}>
+          <TouchableOpacity style={v.outline} disabled={saving!==null||saved.includes(String(i))} onPress={()=>{void saveProduct(p,i);}}><Text style={v.outlineText}>{saved.includes(String(i))?'✓ Koleksiyonda':'Koleksiyona Ekle'}</Text></TouchableOpacity>
+          <TouchableOpacity style={v.fill} disabled={saving!==null||routineSaved.includes(i+':'+routinePeriod)} onPress={()=>{void saveToRoutine(p,i);}}><Text style={v.fillText}>Rutine Ekle</Text></TouchableOpacity>
+        </View>
+        <View style={v.periodRow}>{(['Sabah','Akşam'] as const).map(value=><TouchableOpacity onPress={()=>setRoutinePeriod(value)} key={value} style={[v.periodButton,routinePeriod===value&&v.periodButtonSelected]}><Text style={v.periodText}>{value}</Text></TouchableOpacity>)}</View>
+        <TouchableOpacity onPress={()=>setExpandedRecommendation(expandedRecommendation===i?null:i)} style={v.accordion}><Text style={v.accordionText}>Neden önerildi? {expandedRecommendation===i?'⌃':'⌄'}</Text></TouchableOpacity>
+        {expandedRecommendation===i&&<View style={v.expanded}><Text style={v.productReason}>{p.reason}</Text><Text style={v.caution}>Dikkat: {p.caution}</Text></View>}
+      </View>)}
+      <Text style={v.disclaimer}>ⓘ AI hata yapabilir. Ürün içeriklerini, kullanım talimatlarını ve kişisel uyumluluğunu kontrol et.</Text>
+    </View>}
+  </ScrollView>;
 }
 
 const styles = StyleSheet.create({
@@ -362,4 +285,28 @@ const styles = StyleSheet.create({
     fontSize: 12, lineHeight: 19,
     color: '#82778C', marginTop: 12,
   },
+});
+
+const v=StyleSheet.create({
+ content:{paddingHorizontal:15,paddingBottom:45,backgroundColor:'#FFFFFF'},
+ title:{fontSize:23,fontWeight:'800',color:'#242124',textAlign:'center',marginTop:11},
+ subtitle:{textAlign:'center',fontSize:13,color:'#6E6872',lineHeight:20,marginTop:8,marginBottom:18},
+ categoryGrid:{flexDirection:'row',gap:9},
+ categoryTile:{flex:1,borderWidth:1,borderColor:'#D8D6DC',borderRadius:16,minHeight:105,justifyContent:'center',alignItems:'center',gap:8,backgroundColor:'#FFFFFF'},
+ categoryTileActive:{borderColor:'#69318A'},
+ categoryIcon:{fontSize:31,color:'#69318A'},categoryLabel:{fontSize:12,color:'#242124'},categoryLabelActive:{fontWeight:'700',color:'#69318A'},
+ profileCard:{borderWidth:1,borderColor:'#D8D6DC',borderRadius:16,padding:14,flexDirection:'row',alignItems:'center',gap:11,marginTop:16,minHeight:87},
+ profileIcon:{fontSize:30,color:'#69318A'},profileTitle:{color:'#242124',fontWeight:'700',fontSize:15},profileDescription:{fontSize:12,color:'#6E6872',marginTop:6},
+ sectionTitle:{fontSize:17,fontWeight:'700',color:'#242124',marginTop:20,marginBottom:9},smallCaption:{fontSize:12,color:'#6E6872',marginBottom:10,lineHeight:18},
+ needWrap:{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:14},needChip:{borderRadius:19,borderWidth:1,borderColor:'#D8D6DC',paddingHorizontal:13,minHeight:40,justifyContent:'center'},needChipSelected:{backgroundColor:'#69318A',borderColor:'#69318A'},
+ needText:{fontSize:12,color:'#69318A'},needTextSelected:{fontWeight:'700',color:'#FFFFFF'},input:{borderWidth:1,borderColor:'#D8D6DC',borderRadius:14,padding:12,minHeight:68,marginTop:6,fontSize:13,color:'#242124'},
+ primary:{minHeight:52,backgroundColor:'#69318A',borderRadius:15,alignItems:'center',justifyContent:'center',marginTop:15},primaryText:{fontSize:14,color:'#FFFFFF',fontWeight:'700'},feedback:{fontSize:12,color:'#69318A',marginTop:10},
+ resultHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},link:{color:'#69318A',fontSize:12,fontWeight:'700'},
+ productCard:{borderWidth:1,borderColor:'#D8D6DC',borderRadius:16,padding:12,marginTop:12},
+ productLine:{flexDirection:'row',alignItems:'center',gap:12},productBrand:{fontSize:12,color:'#6E6872'},productName:{fontSize:15,color:'#242124',fontWeight:'700',marginTop:4},productReason:{fontSize:12,color:'#6E6872',lineHeight:18,marginTop:6},
+ productActions:{flexDirection:'row',gap:8,marginTop:13},outline:{flex:1,minHeight:44,borderWidth:1,borderColor:'#69318A',borderRadius:12,alignItems:'center',justifyContent:'center'},outlineText:{color:'#69318A',fontWeight:'700',fontSize:12},
+ fill:{flex:1,minHeight:44,backgroundColor:'#69318A',borderRadius:12,alignItems:'center',justifyContent:'center'},fillText:{color:'#FFFFFF',fontSize:12,fontWeight:'700'},
+ periodRow:{flexDirection:'row',gap:8,marginTop:8},periodButton:{borderWidth:1,borderColor:'#D8D6DC',minHeight:37,borderRadius:11,paddingHorizontal:15,justifyContent:'center'},periodButtonSelected:{borderColor:'#69318A'},periodText:{fontSize:11,color:'#69318A'},
+ accordion:{marginTop:12,minHeight:45,borderWidth:1,borderColor:'#D8D6DC',borderRadius:11,justifyContent:'center',paddingHorizontal:11},accordionText:{color:'#242124',fontWeight:'700',fontSize:12},expanded:{padding:12},caution:{fontSize:11,color:'#6E6872',marginTop:8},
+ disclaimer:{fontSize:11,color:'#6E6872',lineHeight:17,marginTop:16}
 });
