@@ -46,6 +46,7 @@ type WardrobeItemWithImage = WardrobeItem & {
 type Props = {
   userId: string;
   onSetupTryOnPhoto?: () => void;
+  onOpenTryOn?: () => void;
   initialTab?: 'clothes' | 'outfits' | 'ai';
 };
 
@@ -79,7 +80,7 @@ const CATEGORIES = [
   'Diğer',
 ];
 
-export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab = 'clothes' }: Props) {
+export default function WardrobeScreen({ userId, onSetupTryOnPhoto, onOpenTryOn, initialTab = 'clothes' }: Props) {
 
   const [notice, setNotice] = useState<{
     type: NoticeType;
@@ -1086,6 +1087,9 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         <View style={styles.catalogDivider}/>
         <Text style={styles.catalogStat}>▱  {outfits.length} Kombin</Text>
       </View>
+      {onOpenTryOn&&<TouchableOpacity accessibilityRole="button" style={styles.tryOnEntry} onPress={onOpenTryOn}>
+        <Text style={styles.tryOnEntryTitle}>Sanal Deneme</Text><Text style={styles.tryOnEntryDescription}>Kıyafetleri kendi fotoğrafında dene ›</Text>
+      </TouchableOpacity>}
       {/* GARDIROP SEKME NAVIGASYONU */}
       <View style={styles.wardrobeTabRow} accessibilityRole="tablist">
         {([
@@ -1912,6 +1916,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 // ====================================================
 
 const styles = StyleSheet.create({
+  tryOnEntry:{minHeight:70,borderWidth:1,borderColor:'#D8D6DC',backgroundColor:'#FFFFFF',borderRadius:16,paddingHorizontal:17,paddingVertical:12,marginBottom:14},tryOnEntryTitle:{fontWeight:'700',color:C.lavender,fontSize:15},tryOnEntryDescription:{color:C.muted,fontSize:12,marginTop:5},
   outfitCompactGrid:{flexDirection:'row',flexWrap:'wrap',gap:9,marginTop:13},
   outfitCompactCard:{width:'48%',borderWidth:1,borderColor:C.border,borderRadius:16,padding:9,backgroundColor:'#FFFFFF',marginBottom:7},
   outfitCompactPreview:{height:137,width:'100%',flexDirection:'row',flexWrap:'wrap',alignContent:'center',gap:2},
