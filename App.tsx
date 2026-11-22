@@ -632,44 +632,73 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === 'Ana Sayfa' && (
-          <View style={styles.compactHome}>
-            <Text style={styles.compactHomeWelcome}>Merhaba </Text>
-            <Text style={styles.compactHomeSub}>Bugün ne yapmak istersin?</Text>
-            <View style={styles.quickHomeRow}>
-              {([
-                ['♧', 'Gardırop', 'Gardırop'],
-                ['', 'Güzellik', 'Güzellik'],
-                ['▢', 'Alışveriş', 'Alışveriş'],
-                ['♡', 'Koleksiyon', 'Bakım Koleksiyonum'],
-              ] as const).map(([icon, title, target]) => (
-                <TouchableOpacity key={title} style={styles.quickHomeItem} onPress={() => open(target)}>
-                  <View style={styles.quickHomeIconBox}><Text style={styles.quickHomeIcon}>{icon}</Text></View>
-                  <Text style={styles.quickHomeLabel}>{title}</Text>
+          <View style={styles.homeV2}>
+            <Text style={styles.homeV2Greeting}>Günaydın, PRİZMA'ya hoş geldin</Text>
+            <Text style={styles.homeV2Intro}>Bugünün stilini birlikte hazırlayalım.</Text>
+
+            <View style={styles.homeV2DailyCard}>
+              <View style={styles.homeV2Between}>
+                <Text style={styles.homeV2Section}>Günlük Planım</Text>
+                <Text style={styles.homeV2Minor}>Bugün</Text>
+              </View>
+              <Text style={styles.homeV2DailyText}>Bugün ne giymek istediğine karar veremedin mi?</Text>
+              <TouchableOpacity
+                style={styles.homeV2Outline}
+                onPress={() => open('PRİZMA AI')}
+                accessibilityRole="button"
+              >
+                <Text style={styles.homeV2OutlineText}>PRİZMA AI ile Planla  ›</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.homeV2Between}>
+              <Text style={styles.homeV2Section}>Bugünün Kombinleri</Text>
+              <TouchableOpacity onPress={() => open('Gardırop')} accessibilityRole="button"><Text style={styles.homeV2TextAction}>Gardırobuma Git ›</Text></TouchableOpacity>
+            </View>
+            <Text style={styles.homeV2Hint}>Üç kişisel kombin önerisi için gardırobunu hazırlayabilirsin.</Text>
+            <View style={styles.homeV2Triple}>
+              {(['Günlük Stil', 'Rahat Stil', 'Özenli Stil'] as const).map((label, index) => (
+                <TouchableOpacity key={label} style={styles.homeV2Outfit} onPress={() => open('PRİZMA AI')} accessibilityRole="button">
+                  <View style={styles.homeV2OutfitArt}><Text style={styles.homeV2OutfitIcon}>{index === 0 ? '♧' : index === 1 ? '▥' : '◇'}</Text></View>
+                  <Text style={styles.homeV2OutfitTitle}>{label}</Text>
+                  <Text style={styles.homeV2OutfitCaption}>Öneri al ›</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity style={styles.compactAIHero} onPress={() => open('PRİZMA AI')}>
+
+            <Text style={styles.homeV2Section}>Günlük Bakımım</Text>
+            <TouchableOpacity style={styles.homeV2FeatureRow} onPress={() => open('Bakım Rutini')} accessibilityRole="button">
+              <View style={styles.homeV2FeatureIcon}><Text style={styles.homeV2FeatureGlyph}>◯</Text></View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.compactAIName}>PRİZMA AI </Text>
-                <Text style={styles.compactAIDesc}>Kişisel asistanın her an yanında.</Text>
+                <Text style={styles.homeV2FeatureTitle}>Sabah ve Akşam Rutinim</Text>
+                <Text style={styles.homeV2FeatureDesc}>Adımlarını görüntüle ve yönet</Text>
               </View>
-              <Text style={styles.compactAIArrow}>➜</Text>
+              <Text style={styles.homeV2Arrow}>›</Text>
             </TouchableOpacity>
-            {([
-              ['♧', 'Gardırop', 'Kıyafetlerin, kombinlerin ve AI stil önerileri', 'Gardırop'],
-              ['', 'Güzellik', 'Cilt, saç ve makyaj rutinlerin', 'Güzellik'],
-              ['▢', 'Alışveriş Analizi', 'Almadan önce birlikte değerlendirelim', 'Alışveriş'],
-              ['♡', 'Koleksiyonum', 'Kaydettiğin tüm ürünler', 'Bakım Koleksiyonum'],
-            ] as const).map(([icon, title, description, target]) => (
-              <TouchableOpacity key={title} style={styles.compactHomeListCard} onPress={() => open(target)}>
-                <View style={styles.compactListIcon}><Text style={styles.compactListIconText}>{icon}</Text></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.compactListTitle}>{title}</Text>
-                  <Text style={styles.compactListDesc}>{description}</Text>
-                </View>
-                <Text style={styles.compactListArrow}>›</Text>
-              </TouchableOpacity>
-            ))}
+
+            <Text style={styles.homeV2Section}>Güzellik Danışmanım</Text>
+            <View style={styles.homeV2Shortcuts}>
+              {([
+                ['Cilt', '◉', 'skin'],
+                ['Saç', '〰', 'hair'],
+                ['Makyaj', '♡', 'makeup'],
+              ] as const).map(([label, icon, selected]) => (
+                <TouchableOpacity
+                  key={label}
+                  style={styles.homeV2Shortcut}
+                  accessibilityRole="button"
+                  onPress={() => { setBeautyCategory(selected); open('Cilt Danışmanı'); }}
+                >
+                  <Text style={styles.homeV2ShortcutIcon}>{icon}</Text>
+                  <Text style={styles.homeV2ShortcutText}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.homeV2AI} onPress={() => open('PRİZMA AI')} accessibilityRole="button">
+              <Text style={styles.homeV2AITitle}>PRİZMA AI</Text>
+              <Text style={styles.homeV2AIDesc}>Tarzına ve tercihlerine uygun önerileri keşfet.</Text>
+              <Text style={styles.homeV2AIAction}>Sohbete başla  ›</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -817,6 +846,39 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  homeV2: { gap: 12, paddingBottom: 18 },
+  homeV2Greeting: { color: PRIZMA.ink, fontSize: 24, fontWeight: '700', marginTop: 3 },
+  homeV2Intro: { color: PRIZMA.muted, fontSize: 14, marginBottom: 5 },
+  homeV2Between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 9 },
+  homeV2Section: { color: PRIZMA.ink, fontSize: 18, fontWeight: '700', marginTop: 11 },
+  homeV2Minor: { color: PRIZMA.muted, fontSize: 12 },
+  homeV2DailyCard: { backgroundColor: PRIZMA.white, borderWidth: 1, borderColor: PRIZMA.border, borderRadius: 18, padding: 16 },
+  homeV2DailyText: { color: PRIZMA.muted, fontSize: 13, lineHeight: 20, marginVertical: 10 },
+  homeV2Outline: { backgroundColor: PRIZMA.white, borderWidth: 1, borderColor: PRIZMA.purple, borderRadius: 12, minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  homeV2OutlineText: { color: PRIZMA.purple, fontSize: 13, fontWeight: '700' },
+  homeV2TextAction: { color: PRIZMA.purple, fontSize: 12, fontWeight: '700' },
+  homeV2Hint: { color: PRIZMA.muted, fontSize: 12, lineHeight: 18 },
+  homeV2Triple: { flexDirection: 'row', gap: 9, marginBottom: 4 },
+  homeV2Outfit: { flex: 1, backgroundColor: PRIZMA.white, borderColor: PRIZMA.border, borderWidth: 1, borderRadius: 15, padding: 7, minHeight: 138 },
+  homeV2OutfitArt: { height: 82, borderRadius: 11, backgroundColor: PRIZMA.purpleLight, alignItems: 'center', justifyContent: 'center' },
+  homeV2OutfitIcon: { fontSize: 30, color: PRIZMA.purple },
+  homeV2OutfitTitle: { fontSize: 12, fontWeight: '700', color: PRIZMA.ink, marginTop: 8 },
+  homeV2OutfitCaption: { color: PRIZMA.purple, fontSize: 11, marginTop: 2 },
+  homeV2FeatureRow: { flexDirection: 'row', backgroundColor: PRIZMA.white, borderColor: PRIZMA.border, borderWidth: 1, borderRadius: 16, minHeight: 76, alignItems: 'center', padding: 12, gap: 12 },
+  homeV2FeatureIcon: { height: 48, width: 48, borderRadius: 13, backgroundColor: PRIZMA.purpleLight, alignItems: 'center', justifyContent: 'center' },
+  homeV2FeatureGlyph: { color: PRIZMA.purple, fontSize: 25 },
+  homeV2FeatureTitle: { color: PRIZMA.ink, fontSize: 14, fontWeight: '700' },
+  homeV2FeatureDesc: { color: PRIZMA.muted, fontSize: 12, marginTop: 4 },
+  homeV2Arrow: { color: PRIZMA.purple, fontSize: 25 },
+  homeV2Shortcuts: { flexDirection: 'row', gap: 9 },
+  homeV2Shortcut: { flex: 1, minHeight: 82, borderWidth: 1, borderColor: PRIZMA.border, backgroundColor: PRIZMA.white, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  homeV2ShortcutIcon: { color: PRIZMA.purple, fontSize: 23 },
+  homeV2ShortcutText: { color: PRIZMA.ink, fontSize: 12, fontWeight: '700' },
+  homeV2AI: { backgroundColor: PRIZMA.purpleLight, borderColor: PRIZMA.border, borderWidth: 1, borderRadius: 16, padding: 17, marginTop: 4 },
+  homeV2AITitle: { color: PRIZMA.purple, fontSize: 16, fontWeight: '700' },
+  homeV2AIDesc: { color: PRIZMA.muted, fontSize: 12, marginTop: 5 },
+  homeV2AIAction: { color: PRIZMA.purple, fontSize: 13, fontWeight: '700', marginTop: 10 },
+
   compactHome: { paddingTop: 7, paddingBottom: 24 },
   compactHomeWelcome: { fontSize: 22, fontWeight: '800', color: '#25183C', marginBottom: 3 },
   compactHomeSub: { fontSize: 13, color: '#574766', marginBottom: 20 },
