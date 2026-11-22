@@ -2,14 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 const steps = [
-  { number: '01', icon: '✧', title: 'Temizle', description: 'Yüzünü nazik bir temizleyiciyle yıka.' },
+  { number: '01', icon: '', title: 'Temizle', description: 'Yüzünü nazik bir temizleyiciyle yıka.' },
   { number: '02', icon: '◷', title: 'Bekle', description: 'Ürün sürmeden yaklaşık 30 dakika bekle.' },
   { number: '03', icon: '⌕', title: 'Gözlemle', description: 'Cildinin nasıl hissettiğini incele.' },
 ];
 
 const types = [
   { icon: '♧', title: 'Kuru Cilt', description: 'Gerginlik, kuruluk ve pullanma görülebilir.' },
-  { icon: '✦', title: 'Yağlı Cilt', description: 'Parlama ve belirgin gözenekler görülebilir.' },
+  { icon: '', title: 'Yağlı Cilt', description: 'Parlama ve belirgin gözenekler görülebilir.' },
   { icon: '◐', title: 'Karma Cilt', description: 'T bölgesi yağlı, yanaklar daha kuru olabilir.' },
   { icon: '♡', title: 'Normal Cilt', description: 'Genellikle dengeli, belirgin kuruluk veya yağlanma yoktur.' },
 ];
@@ -17,7 +17,7 @@ const types = [
 export default function SkinTypeGuide() {
   return (
     <View style={styles.container}>
-      <Text style={styles.brand}>PRİZMA ✦ SKIN GUIDE</Text>
+      <Text style={styles.brand}>PRİZMA  SKIN GUIDE</Text>
       <Text style={styles.heading}>Cilt Tipini Keşfet</Text>
       <Text style={styles.subtitle}>3 basit adımda cildini daha iyi tanı.</Text>
 
@@ -32,7 +32,7 @@ export default function SkinTypeGuide() {
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>✦ Cilt Tipleri ✦</Text>
+      <Text style={styles.sectionTitle}> Cilt Tipleri </Text>
 
       <View style={styles.grid}>
         {types.map(type => (
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 18,
     paddingHorizontal: 12,
-    backgroundColor: '#FBF5FA',
+    backgroundColor: '#FFFFFF',
     borderRadius: 22,
   },
   brand: {
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 2,
-    color: '#A77E9F',
+    color: '#69318A',
   },
   heading: {
     marginTop: 9,
@@ -101,16 +101,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#F0E3ED',
+    borderColor: '#D8D6DC',
   },
   stepNumber: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#B68BA9',
+    color: '#69318A',
   },
   stepIcon: {
     fontSize: 25,
-    color: '#A77E9F',
+    color: '#69318A',
     marginVertical: 6,
   },
   stepTitle: {
@@ -145,11 +145,11 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     padding: 13,
     borderWidth: 1,
-    borderColor: '#F0E3ED',
+    borderColor: '#D8D6DC',
   },
   typeIcon: {
     fontSize: 25,
-    color: '#B68BA9',
+    color: '#69318A',
   },
   typeTitle: {
     fontSize: 14,
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
   note: {
-    backgroundColor: '#F1E2ED',
+    backgroundColor: '#F3EAF8',
     borderRadius: 16,
     padding: 15,
     marginTop: 18,
