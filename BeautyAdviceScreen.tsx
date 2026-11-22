@@ -1,9 +1,9 @@
 import LicensedProductImage from './LicensedProductImage';
-import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
-import React, { useState } from 'react';
+import { addRoutineItem, removeRoutineItem, type RoutinePeriod } from './RoutineStore';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, StyleSheet,
+  ScrollView, ActivityIndicator, StyleSheet, Image, Linking, Modal, Keyboard,
 } from 'react-native';
 import { supabase } from './supabase';
 
@@ -34,6 +34,29 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
   const [saved, setSaved] = useState<string[]>([]);
   const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Akşam');
   const [routineSaved, setRoutineSaved] = useState<string[]>([]);
+  const [routinePicker,setRoutinePicker]=useState<number|null>(null);
+  const [licensedPhotos,setLicensedPhotos]=useState<Record<number,{url:string;source:string;license:string}>>({});
+  const searchGeneration=useRef(0);
+  useEffect(()=>{
+    const current=++searchGeneration.current;
+    setLicensedPhotos({});
+    if(!advice?.products?.length)return;
+    const lookup=async()=>{
+      const products=advice.products.slice(0,4);
+      await Promise.all(products.map(async (product,index)=>{
+        try{
+          if(!product.brand?.trim()||!product.name?.trim())return;
+          const {data,error}=await supabase.functions.invoke('lookup-beauty-image',{body:{name:product.name,brand:product.brand}});
+          if(error||!Array.isArray(data?.candidates)||!data.candidates.length)return;
+          const image=data.candidates[0];
+          if(typeof image?.image!=='string'||!/^https:\/\/images\.openbeautyfacts\.org\//.test(image.image))return;
+          if(typeof image?.source_page!=='string'||!image.source_page.startsWith('https://world.openbeautyfacts.org/product/'))return;
+          if(searchGeneration.current===current)setLicensedPhotos(old=>({...old,[index]:{url:image.image,source:image.source_page,license:image.license_name||'Open Beauty Facts CC BY-SA'}}));
+        }catch{}
+      }));
+    };void lookup();
+    return ()=>{searchGeneration.current++;};
+  },[advice]);
 
   const analyze = async () => {
     if (loading) return;
@@ -118,30 +141,32 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
     }
   };
 
-  const saveToRoutine = async (product: Product, index: number) => {
-    const key = `${index}:${routinePeriod}`;
-    if (saving !== null || routineSaved.includes(key)) return;
-    setSaving(key);
-    setMessage('');
-    try {
-      await addRoutineItem(userId, {
-        title: `${product.brand ? `${product.brand} — ` : ''}${product.name}`,
-        period: routinePeriod,
-        category,
-        source: 'ai-suggestion',
-        note: product.caution,
-      });
-      setRoutineSaved(previous => [...previous, key]);
-      setMessage(`✓ Ürün ${routinePeriod.toLowerCase()} rutinine eklendi. Kullanım talimatlarını doğrula.`);
-    } catch { setMessage('Rutine eklenemedi. Tekrar dene.'); }
-    finally { setSaving(null); }
+  const saveToRoutine=async(product:Product,index:number,chosen:RoutinePeriod|'Her İkisi')=>{
+    if(saving!==null)return;
+    const periods:RoutinePeriod[]=chosen==='Her İkisi'?['Sabah','Akşam']:[chosen];
+    const missing=periods.filter(p=>!routineSaved.includes(index+':'+p));
+    if(!missing.length){setRoutinePicker(null);return;}
+    setSaving(String(index));setMessage('');
+    const created:string[]=[];
+    try{
+      for(const period of missing){
+        const result=await addRoutineItem(userId,{title:(product.brand?product.brand+' — ':'')+product.name,
+          period,category,source:'ai-suggestion',note:product.caution});
+        created.push(result.id);
+      }
+      setRoutineSaved(old=>[...old,...missing.map(p=>index+':'+p)]);
+      setRoutinePicker(null);setMessage('✓ Ürün seçtiğin rutinine eklendi.');
+    }catch{
+      for(const id of created)await removeRoutineItem(userId,id).catch(()=>{});
+      setMessage('Rutine eklenemedi. Tekrar deneyebilirsin.');
+    }finally{setSaving(null);}
   };
 
   const needs = category==='skin'?
     ['Nemlendirme','Sivilce & Komedon','Güneş Koruması','Hassasiyet','Cilt Bariyeri','Leke Görünümü']:
     category==='hair'?['Nemlendirme','Saç Derisi','Yıpranma','Bukle Belirginliği','Hacim','Isı Koruması']:
     ['Günlük Makyaj','Ten Ürünleri','Dudak','Göz Makyajı','Kalıcılık','Doğal Görünüm'];
-  return <ScrollView style={{backgroundColor:'#FFFFFF'}} contentContainerStyle={v.content} keyboardShouldPersistTaps="handled">
+  return <><ScrollView style={{backgroundColor:'#FFFFFF'}} contentContainerStyle={v.content} keyboardShouldPersistTaps="handled">
     <Text style={v.title}>Güzellik Danışmanı</Text>
     <Text style={v.subtitle}>Cilt, saç ve makyaj ihtiyaçların için sana özel öneriler.</Text>
     <View style={v.categoryGrid}>
@@ -168,22 +193,28 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
     {!!message&&<Text style={v.feedback}>{message}</Text>}
     {advice&&<View>
       <View style={v.resultHeading}><Text style={v.sectionTitle}>Bugün Sana Önerilerim</Text><TouchableOpacity onPress={()=>{setAdvice(null);}}><Text style={v.link}>Yeni Arama ›</Text></TouchableOpacity></View>
-      <Text style={v.smallCaption}>{advice.introduction}</Text>
+      <Text style={v.smallCaption} numberOfLines={3}>{advice.introduction.split(/Bu bir tıbbi|Satın almadan önce|İçerik listesini/i)[0].trim()}</Text>
       {advice.products.map((p,i)=><View key={p.name+i} style={v.productCard}>
-        <View style={v.productLine}><LicensedProductImage alt={p.name} height={110}/>
+        <View style={v.productLine}><View style={v.compactProductImage}>{licensedPhotos[i]?<TouchableOpacity onPress={()=>{void Linking.openURL(licensedPhotos[i].source);}}><Image source={{uri:licensedPhotos[i].url}} style={v.licensedImage} resizeMode="contain"/><Text style={v.photoCredit}>Kaynak: Open Beauty Facts</Text></TouchableOpacity>:<LicensedProductImage alt={p.name} height={90}/>}</View>
           <View style={{flex:2}}><Text style={v.productBrand}>{p.brand}</Text><Text style={v.productName}>{p.name}</Text><Text style={v.productReason} numberOfLines={3}>{p.reason}</Text></View>
         </View>
         <View style={v.productActions}>
           <TouchableOpacity style={v.outline} disabled={saving!==null||saved.includes(String(i))} onPress={()=>{void saveProduct(p,i);}}><Text style={v.outlineText}>{saved.includes(String(i))?'✓ Koleksiyonda':'Koleksiyona Ekle'}</Text></TouchableOpacity>
-          <TouchableOpacity style={v.fill} disabled={saving!==null||routineSaved.includes(i+':'+routinePeriod)} onPress={()=>{void saveToRoutine(p,i);}}><Text style={v.fillText}>Rutine Ekle</Text></TouchableOpacity>
+          <TouchableOpacity style={v.fill} disabled={saving!==null} onPress={()=>setRoutinePicker(i)}><Text style={v.fillText}>Rutine Ekle</Text></TouchableOpacity>
         </View>
-        <View style={v.periodRow}>{(['Sabah','Akşam'] as const).map(value=><TouchableOpacity onPress={()=>setRoutinePeriod(value)} key={value} style={[v.periodButton,routinePeriod===value&&v.periodButtonSelected]}><Text style={v.periodText}>{value}</Text></TouchableOpacity>)}</View>
+
         <TouchableOpacity onPress={()=>setExpandedRecommendation(expandedRecommendation===i?null:i)} style={v.accordion}><Text style={v.accordionText}>Neden önerildi? {expandedRecommendation===i?'⌃':'⌄'}</Text></TouchableOpacity>
         {expandedRecommendation===i&&<View style={v.expanded}><Text style={v.productReason}>{p.reason}</Text><Text style={v.caution}>Dikkat: {p.caution}</Text></View>}
       </View>)}
       <Text style={v.disclaimer}>ⓘ AI hata yapabilir. Ürün içeriklerini, kullanım talimatlarını ve kişisel uyumluluğunu kontrol et.</Text>
     </View>}
-  </ScrollView>;
+  </ScrollView>
+  <Modal visible={routinePicker!==null} transparent animationType="slide" onRequestClose={()=>setRoutinePicker(null)}><View style={v.sheetOverlay}><View style={v.sheet}>
+  <Text style={v.sheetTitle}>Hangi rutinine ekleyelim?</Text>
+  <Text style={v.smallCaption}>Ürünün kullanım talimatlarını kontrol et.</Text>
+  {(['Sabah','Akşam','Her İkisi'] as const).map(period=><TouchableOpacity key={period} style={v.sheetOption} disabled={saving!==null} onPress={()=>{const index=routinePicker;if(index!==null&&advice?.products[index])void saveToRoutine(advice.products[index],index,period);}}><Text style={v.sheetOptionLabel}>{period}</Text><Text style={v.sheetOptionArrow}>›</Text></TouchableOpacity>)}
+  <TouchableOpacity style={v.sheetCancel} onPress={()=>setRoutinePicker(null)}><Text style={v.sheetCancelText}>Vazgeç</Text></TouchableOpacity>
+  </View></View></Modal></>;
 }
 
 const styles = StyleSheet.create({
@@ -288,6 +319,9 @@ const styles = StyleSheet.create({
 });
 
 const v=StyleSheet.create({
+ compactProductImage:{height:115,width:120,alignItems:'center',justifyContent:'center'},licensedImage:{width:112,height:92},photoCredit:{fontSize:8,color:'#6E6872',textAlign:'center',marginTop:3},
+ sheetOverlay:{flex:1,justifyContent:'flex-end',backgroundColor:'rgba(36,33,36,.35)'},sheet:{backgroundColor:'#FFFFFF',borderTopLeftRadius:22,borderTopRightRadius:22,padding:20,paddingBottom:32},sheetTitle:{fontSize:18,fontWeight:'700',color:'#242124',marginBottom:9},sheetOption:{minHeight:50,borderWidth:1,borderColor:'#D8D6DC',borderRadius:13,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:15,marginTop:9},sheetOptionLabel:{fontSize:14,color:'#69318A',fontWeight:'700'},sheetOptionArrow:{fontSize:23,color:'#69318A'},sheetCancel:{minHeight:48,alignItems:'center',justifyContent:'center'},sheetCancelText:{fontSize:13,color:'#6E6872'},
+
  content:{paddingHorizontal:15,paddingBottom:45,backgroundColor:'#FFFFFF'},
  title:{fontSize:23,fontWeight:'800',color:'#242124',textAlign:'center',marginTop:11},
  subtitle:{textAlign:'center',fontSize:13,color:'#6E6872',lineHeight:20,marginTop:8,marginBottom:18},
