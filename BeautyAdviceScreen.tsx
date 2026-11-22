@@ -141,7 +141,7 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.eyebrow}>THE BEAUTY ADVISOR</Text>
-      <Text style={styles.title}>PRİZMA Güzellik Danışmanı ✦</Text>
+      <Text style={styles.title}>PRİZMA Güzellik Danışmanı </Text>
 
       <Text style={styles.description}>
         Cilt, saç ve makyaj ihtiyaçların için
@@ -196,7 +196,7 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
         {loading ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
-          <Text style={styles.buttonText}>Önerilerimi Oluştur ✦</Text>
+          <Text style={styles.buttonText}>Önerilerimi Oluştur </Text>
         )}
       </TouchableOpacity>
 
@@ -204,7 +204,7 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
 
       {advice && (
         <View style={styles.results}>
-          <Text style={styles.sectionTitle}>Sana özel öneriler ✦</Text>
+          <Text style={styles.sectionTitle}>Sana özel öneriler </Text>
           <Text style={styles.description}>{advice.introduction}</Text>
 
           {advice.products.map((product, index) => (
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   },
   categoryButton: {
     flex: 1, paddingVertical: 13, borderRadius: 12,
-    backgroundColor: '#F5EFF8', alignItems: 'center',
+    backgroundColor: '#FFFFFF', alignItems: 'center',
   },
   categorySelected: {
     backgroundColor: '#805C9F',
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 105, borderWidth: 1,
-    borderColor: '#E5D8EA', borderRadius: 16,
+    borderColor: '#D8D6DC', borderRadius: 16,
     padding: 14, textAlignVertical: 'top',
     color: '#352943', fontSize: 14,
     backgroundColor: '#FFFFFF', marginBottom: 14,
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18, padding: 18,
     marginBottom: 14, borderWidth: 1,
-    borderColor: '#F0E5F5',
+    borderColor: '#F3EAF8',
   },
   brand: {
     fontSize: 12, color: '#805C9F',
