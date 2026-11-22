@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { supabase } from './supabase';
 import { PRIZMA as P } from './prizmaTheme';
 
-type ViewName = 'main' | 'signature' | 'privacy' | 'notifications' | 'settings' | 'premium';
+type ViewName = 'main' | 'signature' | 'privacy' | 'notifications' | 'settings' | 'premium' | 'learned';
 type Props = {
   userId: string;
   email: string;
@@ -29,6 +29,23 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
   const [useChats, setUseChats] = useState(false);
   const [savingPrivacy, setSavingPrivacy] = useState(false);
   const [privacyFeedback, setPrivacyFeedback] = useState('');
+  const [learnedRows, setLearnedRows] = useState<{id:string;sentiment:'liked'|'disliked';item_ids:string[]}[]>([]);
+  const [learnedLoading, setLearnedLoading] = useState(false);
+  const loadLearned=async()=>{
+    setLearnedLoading(true);
+    const {data,error}=await supabase.from('outfit_feedback').select('id,sentiment,item_ids')
+      .eq('user_id',userId).order('created_at',{ascending:false}).limit(100);
+    if(error)setPrivacyFeedback('Öğrenilen tercihler yüklenemedi.');
+    else setLearnedRows((data||[]) as {id:string;sentiment:'liked'|'disliked';item_ids:string[]}[]);
+    setLearnedLoading(false);
+  };
+  const deleteLearned=async(id:string)=>{
+    setLearnedLoading(true);
+    const {error}=await supabase.from('outfit_feedback').delete().eq('user_id',userId).eq('id',id);
+    if(error)setPrivacyFeedback('Tercih silinemedi.');
+    else setLearnedRows(old=>old.filter(x=>x.id!==id));
+    setLearnedLoading(false);
+  };
   useEffect(() => {
     let mounted = true;
     supabase.from('prizma_ai_preferences').select('learn_preferences,use_chats_for_personalization')
@@ -128,9 +145,13 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
               <Text style={s.paragraph}>İzin verdiğin bilgiler, kişiselleştirilmiş önerilerin temelini oluşturacak.</Text>
             </View>
             <View style={s.infoBox}>
-              <Text style={s.sectionTitle}>Hedeflerim ve Öğrenilen Tercihlerim</Text>
-              <Text style={s.paragraph}>Kişisel tercihlerini gözden geçir, değiştir veya kaldır.</Text>
+              <Text style={s.sectionTitle}>Hedeflerim</Text>
+              <Text style={s.paragraph}>Stil ve güzellik hedeflerini profil düzenleme alanından güncelleyebilirsin.</Text>
             </View>
+            <TouchableOpacity accessibilityRole="button" style={s.infoBox} onPress={()=>{setPage('learned');void loadLearned();}}>
+              <Text style={s.sectionTitle}>Öğrenilen Tercihlerim</Text>
+              <Text style={s.paragraph}>Geçmiş kombin beğenilerini gör, tek tek kaldır ve yönet ›</Text>
+            </TouchableOpacity>
           </>
         )}
         {signatureTab === 'Stil' && (
@@ -151,8 +172,9 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
         {signatureTab === 'AI Tercihlerim' && (
           <View style={s.infoBox}>
             <Text style={s.sectionTitle}>AI Öğrenme Tercihlerim</Text>
-            <Text style={s.paragraph}>Otomatik öğrenme henüz etkin değil. Bu özellik eklendiğinde kişisel verilerini yönetip öğrenmeyi açıp kapatabileceksin.</Text>
+            <Text style={s.paragraph}>Tercihlerimden öğrenme iznini yönetebilir ve kayıtlı beğenilerini silebilirsin. İzin varsayılan olarak kapalıdır.</Text>
             <TouchableOpacity style={s.outlineButton} onPress={() => setPage('privacy')}><Text style={s.outlineText}>Gizlilik Ayarlarını Gör</Text></TouchableOpacity>
+            <TouchableOpacity style={s.outlineButton} onPress={()=>{setPage('learned');void loadLearned();}}><Text style={s.outlineText}>Öğrenilen Tercihlerimi Yönet</Text></TouchableOpacity>
           </View>
         )}
         <TouchableOpacity style={s.primaryButton} onPress={onEdit} disabled={editing}>
@@ -171,6 +193,23 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
         <View style={s.infoBox}><Text style={s.paragraph}>Bu bölümün ayarları henüz etkin değil. Hazır olduğunda burada yönetilebilecek.</Text></View>
       </View>
     );
+  }
+
+  if (page === 'learned') {
+    return <View style={s.page}>
+      <TouchableOpacity accessibilityRole="button" onPress={()=>setPage('signature')} style={s.back}><Text style={s.backText}>‹ PRİZMA İmzam</Text></TouchableOpacity>
+      <Text style={s.heading}>Öğrenilen Tercihlerim</Text>
+      <Text style={s.subtitle}>Kombinlerine verdiğin beğeni ve beğenmeme işaretleri burada yönetilir. Öğrenme izni kapalıysa bu veriler yeni AI önerilerinde kullanılmaz.</Text>
+      {learnedLoading&&<ActivityIndicator color={P.purple}/>}
+      {!learnedLoading&&learnedRows.length===0&&<View style={s.infoBox}><Text style={s.paragraph}>Henüz kayıtlı kombin geri bildirimi yok.</Text></View>}
+      {learnedRows.map(row=><View style={s.learnedRow} key={row.id}>
+        <View style={{flex:1}}><Text style={s.permissionTitle}>{row.sentiment==='liked'?'Beğendiğim kombin':'Beğenmediğim kombin'}</Text>
+          <Text style={s.paragraph}>{row.item_ids.length} kıyafet parçası</Text></View>
+        <TouchableOpacity onPress={()=>{void deleteLearned(row.id);}} disabled={learnedLoading} accessibilityRole="button"><Text style={s.deleteAction}>Kaldır</Text></TouchableOpacity>
+      </View>)}
+      {!!privacyFeedback&&<Text style={s.feedback}>{privacyFeedback}</Text>}
+      <TouchableOpacity style={s.outlineButton} onPress={()=>setPage('privacy')}><Text style={s.outlineText}>AI Öğrenme İzinlerine Git</Text></TouchableOpacity>
+    </View>;
   }
 
   if (page === 'privacy') {
@@ -193,6 +232,7 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
             </TouchableOpacity>
           ))}
           {!!privacyFeedback&&<Text style={s.feedback} accessibilityRole="alert">{privacyFeedback}</Text>}
+          <TouchableOpacity style={s.outlineButton} onPress={()=>{setPage('learned');void loadLearned();}}><Text style={s.outlineText}>Öğrenilen Tercihleri Yönet</Text></TouchableOpacity>
           <TouchableOpacity style={s.outlineButton} disabled={savingPrivacy} onPress={()=>{void resetPreferences();}}>
             <Text style={s.outlineText}>Öğrenme İzinlerimi Sıfırla</Text>
           </TouchableOpacity>
@@ -230,6 +270,8 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
   );
 }
 const s = StyleSheet.create({
+  learnedRow:{flexDirection:'row',alignItems:'center',gap:12,minHeight:68,padding:13,borderWidth:1,borderColor:'#D8D6DC',borderRadius:13},
+  deleteAction:{color:'#B33F54',fontSize:12,fontWeight:'700'},
   permissionRow:{flexDirection:'row',alignItems:'center',paddingVertical:14,gap:12,borderBottomWidth:1,borderBottomColor:'#D8D6DC'},
   permissionTitle:{fontSize:13,fontWeight:'700',color:'#242124',marginBottom:5},
   switchTrack:{width:44,height:26,borderRadius:14,backgroundColor:'#D8D6DC',padding:3,justifyContent:'center'},
