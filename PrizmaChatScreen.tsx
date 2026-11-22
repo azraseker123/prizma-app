@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { ScrollViewInstance } from 'react-native';
 import { supabase } from './supabase';
-import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
+import { addRoutineItem, removeRoutineItem, type RoutinePeriod } from './RoutineStore';
 import { PRIZMA_COLORS as C } from './theme';
 import { createChat, deleteChat, renameChat, listChatHistory, saveChatMessages, type ChatRecord, type ChatMessage } from './ChatHistoryStore';
 
@@ -26,7 +26,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
   const [showChats, setShowChats] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Akşam');
+  const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod | 'Her İkisi'>('Akşam');
   const [archiveQuery, setArchiveQuery] = useState('');
   const [explanations, setExplanations] = useState<string[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
@@ -172,9 +172,10 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 
   const saveProduct = async (message: Message, product: Product, index: number, action: 'collection' | 'routine') => {
     const selectedPeriod = routinePeriod;
+    const targetPeriods:RoutinePeriod[] = selectedPeriod === 'Her İkisi' ? ['Sabah','Akşam'] : [selectedPeriod];
     const alreadySaved = action === 'collection'
       ? message.savedCollection?.includes(index)
-      : message.savedRoutines?.includes(index + ':' + selectedPeriod);
+      : targetPeriods.every(period => message.savedRoutines?.includes(index + ':' + period));
     if (busyAction || loading || alreadySaved) return;
     setBusyAction('save');
     setFeedback('');
@@ -186,15 +187,25 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         });
         if (error) throw error;
       } else {
-        await addRoutineItem(userId, {
-          title: (product.brand ? product.brand + ' — ' : '') + product.name,
-          period: selectedPeriod, category: message.category, source: 'ai-suggestion', note: product.caution,
-        });
+        const createdIds:string[]=[];
+        try{
+          for(const period of targetPeriods){
+            if(message.savedRoutines?.includes(index+':'+period))continue;
+            const created=await addRoutineItem(userId, {
+              title: (product.brand ? product.brand + ' — ' : '') + product.name,
+              period, category: message.category, source: 'ai-suggestion', note: product.caution,
+            });
+            createdIds.push(created.id);
+          }
+        }catch(error){
+          for(const id of createdIds)await removeRoutineItem(userId,id);
+          throw error;
+        }
       }
       const updated = messages.map(m => m.id === message.id ? ({
         ...m,
         savedCollection: action === 'collection' ? [...(m.savedCollection || []), index] : m.savedCollection,
-        savedRoutines: action === 'routine' ? [...(m.savedRoutines || []), index + ':' + selectedPeriod] : m.savedRoutines,
+        savedRoutines: action === 'routine' ? [...new Set([...(m.savedRoutines || []), ...targetPeriods.map(period => index + ':' + period)])] : m.savedRoutines,
       }) : m);
       setMessages(updated);
       if (activeChatId) {
@@ -206,7 +217,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
           return;
         }
       }
-      setFeedback(action === 'collection' ? '✓ Koleksiyona eklendi.' : '✓ ' + selectedPeriod + ' rutinine eklendi.');
+      setFeedback(action === 'collection' ? '✓ Koleksiyona eklendi.' : selectedPeriod === 'Her İkisi' ? '✓ Sabah ve akşam rutinlerine eklendi.' : '✓ ' + selectedPeriod + ' rutinine eklendi.');
     } catch { setFeedback('Kaydedilemedi. Tekrar dene.'); }
     finally { setBusyAction(null); }
   };
@@ -261,7 +272,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
             <Text style={[s.messageText, m.role === 'user' && s.userText]}>{m.text}</Text>
             {m.products?.map((p, index) => {
               const isCollected = m.savedCollection?.includes(index) === true;
-              const isRoutineSaved = m.savedRoutines?.includes(index + ':' + routinePeriod) === true;
+              const isRoutineSaved = (routinePeriod === 'Her İkisi' ? (['Sabah','Akşam'] as const) : [routinePeriod]).every(period => m.savedRoutines?.includes(index+':'+period));
               return (
                 <View key={String(index)} style={s.product}>
                   <Text style={s.brand}>{p.brand}</Text>
@@ -275,7 +286,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
                     <Text style={s.saveText}>{isCollected ? '✓ Koleksiyonda' : '+ Koleksiyona Ekle'}</Text>
                   </TouchableOpacity>
                   <View style={s.routineRow}>
-                    {(['Sabah', 'Akşam'] as const).map(period => (
+                    {(['Sabah', 'Akşam','Her İkisi'] as const).map(period => (
                       <TouchableOpacity key={period} onPress={() => setRoutinePeriod(period)} style={[s.period, period === routinePeriod && s.periodSelected]}>
                         <Text style={[s.periodText, period === routinePeriod && s.periodTextSelected]}>{period}</Text>
                       </TouchableOpacity>
