@@ -24,7 +24,7 @@ export default function LicensedProductImage({ url, licenseStatus, alt, height =
 }
 const styles = StyleSheet.create({
   image: { width: '100%', backgroundColor: PRIZMA.white, borderRadius: 12 },
-  placeholder: { width: '100%', borderRadius: 12, backgroundColor: PRIZMA.purpleLight, alignItems: 'center', justifyContent: 'center' },
+  placeholder: { width: '100%', borderRadius: 12, backgroundColor: PRIZMA.white, borderWidth: 1, borderColor: PRIZMA.border, alignItems: 'center', justifyContent: 'center' },
   icon: { color: PRIZMA.purple, fontSize: 27 },
   caption: { color: PRIZMA.muted, fontSize: 10, marginTop: 6 },
 });
