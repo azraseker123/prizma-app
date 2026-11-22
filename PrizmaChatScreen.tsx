@@ -220,49 +220,8 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
           <Text style={s.newChatButtonText}>＋ Yeni</Text>
         </TouchableOpacity>
       </View>
-      {showChats ? (
-        <View style={s.sidePanel}>
-        <Text style={s.archiveTitle}>Sohbet Arşivim</Text>
-        <TextInput style={s.archiveInput} placeholder="Sohbetlerde ara" placeholderTextColor={C.muted} value={archiveQuery} onChangeText={setArchiveQuery}/>
-        <ScrollView style={s.chatList} contentContainerStyle={s.chatListContent} keyboardShouldPersistTaps="handled">
-          {historyLoading && <ActivityIndicator color={C.lavender} />}
-          {!historyLoading && filteredChats.length === 0 && <Text style={s.listEmpty}>Sohbet bulunamadı.</Text>}
-          {filteredChats.map(chat => (
-            <View key={chat.id} style={s.chatListRow}>
-              <TouchableOpacity style={s.chatListOpen} onPress={() => openChat(chat)} disabled={loading || !!busyAction}>
-                <Text style={s.chatListTitle} numberOfLines={2}>{pinnedIds.includes(chat.id)?'●  ':''}{chat.title}</Text>
-                <Text style={s.chatListMeta}>{chat.messages.length} mesaj</Text>
-              </TouchableOpacity>
-              <View style={s.archiveActions}>
-                <TouchableOpacity onPress={()=>{void togglePin(chat.id);}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>{pinnedIds.includes(chat.id)?'Sabiti kaldır':'Sabitle'}</Text></TouchableOpacity>
-                <TouchableOpacity onPress={()=>{setRenameId(chat.id);setRenameDraft(chat.title);}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>Adlandır</Text></TouchableOpacity>
-              </View>
-              {confirmDelete === chat.id ? (
-                <View style={s.confirmRow}>
-                  <TouchableOpacity onPress={() => void removeChat(chat.id)} disabled={!!busyAction}>
-                    <Text style={s.deleteConfirm}>Evet, sil</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setConfirmDelete(null)}>
-                    <Text style={s.deleteCancel}>Vazgeç</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity onPress={() => setConfirmDelete(chat.id)} disabled={!!busyAction}>
-                  <Text style={s.deleteText}>Sil</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
-        </ScrollView>
-        {renameId && <View style={s.renameBox}>
-          <TextInput value={renameDraft} onChangeText={setRenameDraft} maxLength={80} style={s.archiveInput} placeholder="Yeni sohbet adı"/>
-          <View style={s.renameActions}>
-            <TouchableOpacity onPress={()=>setRenameId(null)} accessibilityRole="button"><Text style={s.archiveActionText}>Vazgeç</Text></TouchableOpacity>
-            <TouchableOpacity onPress={()=>{void commitRename();}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>Kaydet</Text></TouchableOpacity>
-          </View>
-        </View>}
-        </View>
-      ) : (<>
+      <>
+
       <View style={s.heading}>
         <Text style={s.eyebrow}>PRİZMA  KİŞİSEL ASİSTAN</Text>
         <Text style={s.title}>Sana nasıl yardımcı olayım?</Text>
@@ -336,13 +295,63 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
           <Text style={s.sendText}>➤</Text>
         </TouchableOpacity>
       </View>
-      </>)}
+
+      {showChats && (
+        <View style={s.drawerOverlay}>
+          <TouchableOpacity style={s.drawerScrim} onPress={()=>setShowChats(false)} accessibilityRole="button" accessibilityLabel="Sohbet arşivini kapat"/>
+        <View style={s.sidePanel}>
+        <Text style={s.archiveTitle}>Sohbet Arşivim</Text>
+        <TextInput style={s.archiveInput} placeholder="Sohbetlerde ara" placeholderTextColor={C.muted} value={archiveQuery} onChangeText={setArchiveQuery}/>
+        <ScrollView style={s.chatList} contentContainerStyle={s.chatListContent} keyboardShouldPersistTaps="handled">
+          {historyLoading && <ActivityIndicator color={C.lavender} />}
+          {!historyLoading && filteredChats.length === 0 && <Text style={s.listEmpty}>Sohbet bulunamadı.</Text>}
+          {filteredChats.map(chat => (
+            <View key={chat.id} style={s.chatListRow}>
+              <TouchableOpacity style={s.chatListOpen} onPress={() => openChat(chat)} disabled={loading || !!busyAction}>
+                <Text style={s.chatListTitle} numberOfLines={2}>{pinnedIds.includes(chat.id)?'●  ':''}{chat.title}</Text>
+                <Text style={s.chatListMeta}>{chat.messages.length} mesaj</Text>
+              </TouchableOpacity>
+              <View style={s.archiveActions}>
+                <TouchableOpacity onPress={()=>{void togglePin(chat.id);}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>{pinnedIds.includes(chat.id)?'Sabiti kaldır':'Sabitle'}</Text></TouchableOpacity>
+                <TouchableOpacity onPress={()=>{setRenameId(chat.id);setRenameDraft(chat.title);}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>Adlandır</Text></TouchableOpacity>
+              </View>
+              {confirmDelete === chat.id ? (
+                <View style={s.confirmRow}>
+                  <TouchableOpacity onPress={() => void removeChat(chat.id)} disabled={!!busyAction}>
+                    <Text style={s.deleteConfirm}>Evet, sil</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setConfirmDelete(null)}>
+                    <Text style={s.deleteCancel}>Vazgeç</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setConfirmDelete(chat.id)} disabled={!!busyAction}>
+                  <Text style={s.deleteText}>Sil</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+        {renameId && <View style={s.renameBox}>
+          <TextInput value={renameDraft} onChangeText={setRenameDraft} maxLength={80} style={s.archiveInput} placeholder="Yeni sohbet adı"/>
+          <View style={s.renameActions}>
+            <TouchableOpacity onPress={()=>setRenameId(null)} accessibilityRole="button"><Text style={s.archiveActionText}>Vazgeç</Text></TouchableOpacity>
+            <TouchableOpacity onPress={()=>{void commitRename();}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>Kaydet</Text></TouchableOpacity>
+          </View>
+        </View>}
+        </View>
+
+        </View>
+      )}
+      </>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  sidePanel:{flex:1,backgroundColor:C.white,borderWidth:1,borderColor:C.border,borderRadius:17,padding:11},
+  drawerOverlay:{position:'absolute',top:0,bottom:0,left:0,right:0,zIndex:500,flexDirection:'row',justifyContent:'flex-end'},
+  drawerScrim:{position:'absolute',top:0,bottom:0,left:0,right:0,backgroundColor:'rgba(36,33,36,0.27)'},
+  sidePanel:{height:'100%',width:'86%',maxWidth:370,backgroundColor:C.white,borderLeftWidth:1,borderColor:C.border,padding:13,elevation:10},
   archiveTitle:{fontSize:17,fontWeight:'700',color:C.ink,marginBottom:10},
   archiveInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.border,borderRadius:12,padding:10,minHeight:44,fontSize:13,color:C.ink,marginBottom:10},
   archiveActions:{gap:6,justifyContent:'center'},
