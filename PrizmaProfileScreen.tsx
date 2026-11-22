@@ -37,7 +37,7 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
         if(error){setPrivacyFeedback('İzin ayarları yüklenemedi.');return;}
         setLearnPreferences(data?.learn_preferences===true);
         setUseChats(data?.use_chats_for_personalization===true);
-      }).catch(()=>{if(mounted)setPrivacyFeedback('İzinler yüklenemedi.');});
+      });
     return ()=>{mounted=false;};
   },[userId]);
   const savePrivacy = async (name:'learn_preferences'|'use_chats_for_personalization', enabled:boolean) => {
