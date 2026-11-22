@@ -147,25 +147,49 @@ export function PrizmaStudio({userId,onOpen,onSoon}:Common){
 }
 
 export function PrizmaBeauty({onOpen,onBeautyCategory}:{onOpen:Go;onBeautyCategory:(v:'skin'|'hair'|'makeup')=>void}){
- const [category,setCategory]=useState<'Cilt'|'Saç'|'Makyaj'|'Bakım'>('Cilt');
- const choose=(v:'Cilt'|'Saç'|'Makyaj'|'Bakım')=>{setCategory(v);if(v==='Bakım'){onOpen('Bakım Rutini');return;}onBeautyCategory(v==='Cilt'?'skin':v==='Saç'?'hair':'makeup');onOpen('Cilt Danışmanı');};
- return <View style={ui.page}>
-  <Headline title="Güzellik" subtitle="Cilt, saç ve bakım dünyan bir arada."/>
-  <View style={ui.chips}>{(['Cilt','Saç','Makyaj','Bakım'] as const).map(v=>
-   <TouchableOpacity key={v} onPress={()=>choose(v)} style={[ui.chip,category===v&&ui.chipActive]}><Text style={[ui.chipLabel,category===v&&ui.chipLabelActive]}>{v}</Text></TouchableOpacity>)}</View>
-  <View style={ui.beautyFeature}>
-   <View style={ui.beautyBottles}><View style={ui.beautyBottleTall}/><View style={ui.beautyBottleShort}/><View style={ui.beautyJar}/></View>
-   <Text style={ui.beautyFeatureEyebrow}>SANA ÖZEL BAKIM</Text>
-   <Text style={ui.beautyFeatureTitle}>Rutinin, senin ritmin.</Text>
-   <Text style={ui.beautyFeatureSub}>Ürünlerini düzenle, sabah ve akşam bakımlarını planla.</Text>
-   <TouchableOpacity onPress={()=>onOpen('Bakım Rutini')} style={ui.primaryCTA}><Text style={ui.primaryCTAText}>Rutinimi görüntüle</Text><Text style={ui.primaryCTAText}>→</Text></TouchableOpacity>
+ const choose=(key:'skin'|'hair'|'makeup')=>{onBeautyCategory(key);onOpen('Cilt Danışmanı');};
+ return <View style={ui.beautyV2}>
+  <Headline title="Güzellik" subtitle="Cilt, saç ve makyaj dünyan tek bir yerde."/>
+  <Text style={ui.beautyV2Section}>Güzellik Alanların</Text>
+  <View style={ui.beautyV2Categories}>
+   <IconTile icon="◉" label="Cilt" onPress={()=>choose('skin')}/>
+   <IconTile icon="〰" label="Saç" onPress={()=>choose('hair')}/>
+   <IconTile icon="♡" label="Makyaj" onPress={()=>choose('makeup')}/>
   </View>
-  <Section title="Bakım alanım"/>
-  <TextRow symbol="☼" title="Sabah ve akşam rutinim" description="Kayıtlı ürünlerin ve bakım sıralaman" onPress={()=>onOpen('Bakım Rutini')}/>
-  <TextRow symbol="▤" title="Ürün koleksiyonum" description="Kaydettiğin güzellik ürünleri" onPress={()=>onOpen('Bakım Koleksiyonum')}/>
-  <TextRow symbol="◉" title="Cilt analizi" description="Cilt tipini keşfet, önerileri incele" onPress={()=>onOpen('Cilt Analizi')}/>
-  <TextRow symbol="▢" title="AI ile ürün önerisi" description="İhtiyacına uygun seçenekler" onPress={()=>{onBeautyCategory('skin');onOpen('Cilt Danışmanı');}}/>
-  <Text style={ui.footnote}>AI önerileri hata yapabilir; ürün etiketlerini ve kullanım talimatlarını kontrol et.</Text>
+  <Text style={ui.beautyV2Section}>Güzellik Profilim</Text>
+  <TouchableOpacity style={ui.beautyV2Profile} onPress={()=>onOpen('Profil')} accessibilityRole="button">
+   <Text style={ui.beautyV2ProfileIcon}>◎</Text>
+   <View style={{flex:1}}><Text style={ui.beautyV2ProfileTitle}>PRİZMA İmzam</Text>
+    <Text style={ui.beautyV2ProfileSub}>Cilt, saç ve makyaj tercihlerini yönet</Text></View>
+   <Text style={ui.chevron}>›</Text>
+  </TouchableOpacity>
+  <Text style={ui.beautyV2Section}>Sana Özel Öneriler</Text>
+  <TouchableOpacity style={ui.beautyV2Recommendation} onPress={()=>choose('skin')} accessibilityRole="button">
+   <View style={ui.beautyV2RecoSymbol}><Text style={ui.beautyV2RecoGlyph}>◯</Text></View>
+   <View style={{flex:1}}>
+    <Text style={ui.beautyV2RecoTitle}>PRİZMA AI Güzellik Danışmanı</Text>
+    <Text style={ui.beautyV2RecoSub}>Ürünleri öner, incele ve koleksiyonuna ekle</Text>
+   </View>
+   <Text style={ui.chevron}>›</Text>
+  </TouchableOpacity>
+  <Text style={ui.beautyV2Section}>Bakım ve Koleksiyon</Text>
+  <View style={ui.beautyV2Grid}>
+   <TouchableOpacity style={ui.beautyV2Tile} onPress={()=>onOpen('Bakım Rutini')}>
+    <Text style={ui.beautyV2TileIcon}>☼</Text>
+    <Text style={ui.beautyV2TileTitle}>Bakım Rutinim</Text>
+    <Text style={ui.beautyV2TileSub}>Sabah / Akşam</Text>
+   </TouchableOpacity>
+   <TouchableOpacity style={ui.beautyV2Tile} onPress={()=>onOpen('Bakım Koleksiyonum')}>
+    <Text style={ui.beautyV2TileIcon}>▤</Text>
+    <Text style={ui.beautyV2TileTitle}>Ürün Koleksiyonum</Text>
+    <Text style={ui.beautyV2TileSub}>Sahip Olduklarım / İstek Listem</Text>
+   </TouchableOpacity>
+  </View>
+  <TouchableOpacity style={ui.beautyV2Footer} onPress={()=>onOpen('Cilt Analizi')} accessibilityRole="button">
+   <Text style={ui.beautyV2FooterText}>Cilt Tipi Rehberi ve Analiz</Text>
+   <Text style={ui.chevron}>›</Text>
+  </TouchableOpacity>
+  <Text style={ui.footnote}>ⓘ AI hata yapabilir. Ürün içeriklerini ve ambalaj talimatlarını kontrol et.</Text>
  </View>;
 }
 
@@ -197,6 +221,26 @@ export function PrizmaProfile({email,onOpen,onEdit,onLogout,onSoon}:{
 }
 
 const ui=StyleSheet.create({
+ beautyV2:{paddingTop:5,paddingBottom:28},
+ beautyV2Section:{fontSize:18,fontWeight:'700',color:C.ink,marginTop:21,marginBottom:12},
+ beautyV2Categories:{flexDirection:'row',gap:9},
+ beautyV2Profile:{flexDirection:'row',alignItems:'center',gap:12,minHeight:80,padding:14,borderRadius:16,borderWidth:1,borderColor:C.border,backgroundColor:C.white},
+ beautyV2ProfileIcon:{fontSize:30,color:C.lavender},
+ beautyV2ProfileTitle:{fontSize:15,fontWeight:'700',color:C.ink},
+ beautyV2ProfileSub:{fontSize:12,color:C.muted,marginTop:5},
+ beautyV2Recommendation:{flexDirection:'row',alignItems:'center',gap:12,minHeight:88,padding:13,borderRadius:16,borderWidth:1,borderColor:C.border,backgroundColor:C.white},
+ beautyV2RecoSymbol:{height:53,width:53,borderRadius:13,alignItems:'center',justifyContent:'center',backgroundColor:C.pale},
+ beautyV2RecoGlyph:{fontSize:25,color:C.lavender},
+ beautyV2RecoTitle:{fontSize:14,fontWeight:'700',color:C.ink},
+ beautyV2RecoSub:{fontSize:11,color:C.muted,lineHeight:16,marginTop:5},
+ beautyV2Grid:{flexDirection:'row',gap:10},
+ beautyV2Tile:{flex:1,minHeight:123,padding:13,borderWidth:1,borderColor:C.border,borderRadius:16,backgroundColor:C.white},
+ beautyV2TileIcon:{fontSize:24,color:C.lavender,marginBottom:11},
+ beautyV2TileTitle:{fontSize:13,fontWeight:'700',color:C.ink},
+ beautyV2TileSub:{fontSize:11,color:C.muted,marginTop:5,lineHeight:16},
+ beautyV2Footer:{minHeight:57,marginTop:12,borderWidth:1,borderColor:C.border,borderRadius:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14},
+ beautyV2FooterText:{fontSize:13,fontWeight:'700',color:C.ink},
+
  homeHint:{fontSize:12,lineHeight:18,color:C.muted,marginBottom:10},
  homeLooks:{flexDirection:'row',gap:9},
  homeLookCard:{flex:1,padding:7,borderRadius:15,backgroundColor:C.white,borderWidth:1,borderColor:C.border},
