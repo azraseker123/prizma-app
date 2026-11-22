@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { supabase } from './supabase';
 import { PRIZMA as P } from './prizmaTheme';
 
-type ViewName = 'main' | 'signature' | 'privacy';
+type ViewName = 'main' | 'signature' | 'privacy' | 'notifications' | 'settings' | 'premium';
 type Props = {
   userId: string;
   email: string;
@@ -22,6 +22,7 @@ const sections = [
 
 export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, editing }: Props) {
   const [page, setPage] = useState<ViewName>('main');
+  const [signatureTab, setSignatureTab] = useState<'Genel Bakış' | 'Stil' | 'Güzellik' | 'AI Tercihlerim'>('Genel Bakış');
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const reload = useCallback(async () => {
@@ -54,32 +55,80 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
         <TouchableOpacity accessibilityRole="button" onPress={() => setPage('main')} style={s.back}><Text style={s.backText}>‹ Profil</Text></TouchableOpacity>
         <Text style={s.heading}>PRİZMA İmzam</Text>
         <Text style={s.subtitle}>Sana özel stil ve güzellik kimliğin.</Text>
-        <View style={s.signature}>
-          <Text style={s.signatureIcon}>◎</Text>
-          <Text style={s.signatureTitle}>PRİZMA İmzam</Text>
-          <Text style={s.signatureDesc}>Tercihlerini tek bir yerden keşfet ve düzenle.</Text>
-        </View>
-        <Text style={s.sectionTitle}>Profil Özeti</Text>
-        <View style={s.grid}>
-          {sections.map((item) => (
-            <View style={s.gridCard} key={item.key}>
-              <Text style={s.gridIcon}>{item.icon}</Text>
-              <Text style={s.gridTitle}>{item.title}</Text>
-              <Text style={s.gridValue} numberOfLines={2}>{readable(answers[item.key])}</Text>
-            </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.signatureTabs}>
+          {(['Genel Bakış', 'Stil', 'Güzellik', 'AI Tercihlerim'] as const).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: signatureTab === tab }}
+              onPress={() => setSignatureTab(tab)}
+              style={[s.signatureTab, signatureTab === tab && s.signatureTabActive]}
+            ><Text style={[s.signatureTabLabel, signatureTab === tab && s.signatureTabLabelActive]}>{tab}</Text></TouchableOpacity>
           ))}
-        </View>
-        <View style={s.infoBox}>
-          <Text style={s.sectionTitle}>PRİZMA AI Özeti</Text>
-          <Text style={s.paragraph}>PRİZMA, izin verdiğin tercihleri kullanarak önerilerini kişiselleştirmeyi hedefler. Yeni öğrenilen bilgiler yalnızca onayınla kaydedilecek.</Text>
-        </View>
-        <View style={s.infoBox}>
-          <Text style={s.sectionTitle}>Hedeflerim ve Tercihlerim</Text>
-          <Text style={s.paragraph}>Stil ve güzellik tercihlerini dilediğin zaman düzenleyebilirsin.</Text>
-          <TouchableOpacity style={s.primaryButton} onPress={onEdit} disabled={editing}>
-            <Text style={s.primaryText}>{editing ? 'Açılıyor...' : 'Tercihlerimi Düzenle'}</Text>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
+        {signatureTab === 'Genel Bakış' && (
+          <>
+            <View style={s.signature}>
+              <Text style={s.signatureIcon}>◎</Text>
+              <Text style={s.signatureTitle}>PRİZMA İmzam</Text>
+              <Text style={s.signatureDesc}>Tercihlerini tek bir yerden keşfet ve düzenle.</Text>
+            </View>
+            <Text style={s.sectionTitle}>Profil Özeti</Text>
+            <View style={s.grid}>
+              {sections.map((item) => (
+                <View style={s.gridCard} key={item.key}>
+                  <Text style={s.gridIcon}>{item.icon}</Text>
+                  <Text style={s.gridTitle}>{item.title}</Text>
+                  <Text style={s.gridValue} numberOfLines={2}>{readable(answers[item.key])}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={s.infoBox}>
+              <Text style={s.sectionTitle}>PRİZMA AI Özeti</Text>
+              <Text style={s.paragraph}>İzin verdiğin bilgiler, kişiselleştirilmiş önerilerin temelini oluşturacak.</Text>
+            </View>
+            <View style={s.infoBox}>
+              <Text style={s.sectionTitle}>Hedeflerim ve Öğrenilen Tercihlerim</Text>
+              <Text style={s.paragraph}>Kişisel tercihlerini gözden geçir, değiştir veya kaldır.</Text>
+            </View>
+          </>
+        )}
+        {signatureTab === 'Stil' && (
+          <View style={s.infoBox}>
+            <Text style={s.sectionTitle}>Stil Kimliğim</Text>
+            <Text style={s.paragraph}>Stilim: {readable(answers.style)}</Text>
+            <Text style={s.paragraph}>Renk Paletim: {readable(answers.colors)}</Text>
+            <Text style={s.paragraph}>Giyimde Önceliğim: {readable(answers.clothing)}</Text>
+          </View>
+        )}
+        {signatureTab === 'Güzellik' && (
+          <View style={s.infoBox}>
+            <Text style={s.sectionTitle}>Güzellik Profilim</Text>
+            <Text style={s.paragraph}>Cilt Tipim: {readable(answers.skin_type)}</Text>
+            <Text style={s.paragraph}>Saç Tipim: {readable(answers.hair_type)}</Text>
+          </View>
+        )}
+        {signatureTab === 'AI Tercihlerim' && (
+          <View style={s.infoBox}>
+            <Text style={s.sectionTitle}>AI Öğrenme Tercihlerim</Text>
+            <Text style={s.paragraph}>Otomatik öğrenme henüz etkin değil. Bu özellik eklendiğinde kişisel verilerini yönetip öğrenmeyi açıp kapatabileceksin.</Text>
+            <TouchableOpacity style={s.outlineButton} onPress={() => setPage('privacy')}><Text style={s.outlineText}>Gizlilik Ayarlarını Gör</Text></TouchableOpacity>
+          </View>
+        )}
+        <TouchableOpacity style={s.primaryButton} onPress={onEdit} disabled={editing}>
+          <Text style={s.primaryText}>{editing ? 'Açılıyor...' : 'Tercihlerimi Düzenle'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (page === 'notifications' || page === 'settings' || page === 'premium') {
+    const heading = page === 'notifications' ? 'Bildirimler' : page === 'settings' ? 'Uygulama Ayarları' : 'Premium Üyelik';
+    return (
+      <View style={s.page}>
+        <TouchableOpacity accessibilityRole="button" onPress={() => setPage('main')} style={s.back}><Text style={s.backText}>‹ Profil</Text></TouchableOpacity>
+        <Text style={s.heading}>{heading}</Text>
+        <View style={s.infoBox}><Text style={s.paragraph}>Bu bölümün ayarları henüz etkin değil. Hazır olduğunda burada yönetilebilecek.</Text></View>
       </View>
     );
   }
@@ -117,15 +166,20 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
       <Text style={s.groupLabel}>HESAP VE AYARLAR</Text>
       {row('Hesap Bilgilerim', 'Profil tercihlerini düzenle', onEdit)}
       {row('Gizlilik ve Veri Yönetimi', 'AI öğrenme ve kişisel bilgiler', () => setPage('privacy'))}
-      {row('Bildirimler', 'Bildirim tercihleri', () => setPage('privacy'))}
-      {row('Uygulama Ayarları', 'Erişilebilirlik ve görünüm', () => setPage('privacy'))}
-      <View style={s.infoBox}><Text style={s.paragraph}>Premium üyelik seçenekleri ve uygulama ayarları geliştirme sürecinde netleştirilecek.</Text></View>
+      {row('Bildirimler', 'Bildirim tercihleri', () => setPage('notifications'))}
+      {row('Uygulama Ayarları', 'Erişilebilirlik ve görünüm', () => setPage('settings'))}
+      {row('Premium Üyelik', 'Üyelik durumum ve seçenekler', () => setPage('premium'))}
       <TouchableOpacity style={s.logout} onPress={onLogout} accessibilityRole="button"><Text style={s.logoutText}>Çıkış Yap</Text></TouchableOpacity>
       {loading && <ActivityIndicator color={P.purple}/>}
     </View>
   );
 }
 const s = StyleSheet.create({
+  signatureTabs: { flexDirection: 'row', gap: 7, marginVertical: 8, paddingBottom: 4 },
+  signatureTab: { minHeight: 40, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: P.border, alignItems: 'center', justifyContent: 'center', backgroundColor: P.white },
+  signatureTabActive: { backgroundColor: P.purpleLight, borderColor: P.purple },
+  signatureTabLabel: { fontSize: 12, color: P.muted, fontWeight: '600' },
+  signatureTabLabelActive: { color: P.purple, fontWeight: '700' },
   page: { paddingBottom: 36, gap: 10 },
   heading: { fontSize: 24, fontWeight: '700', color: P.ink, marginBottom: 2 },
   subtitle: { color: P.muted, fontSize: 13, marginBottom: 8, lineHeight: 20 },
