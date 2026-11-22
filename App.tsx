@@ -1,3 +1,4 @@
+import PrizmaBeautyV2 from './PrizmaBeautyV2';
 import PrizmaNavIcon from './PrizmaNavIcon';
 import PrizmaHomeV2 from './PrizmaHomeV2';
 import PrizmaProfileScreen from './PrizmaProfileScreen';
@@ -746,7 +747,7 @@ export default function App() {
         )}
 
         {tab === 'Güzellik' && (
-          <PrizmaBeauty onOpen={(page:PrizmaPage)=>open(page)} onBeautyCategory={setBeautyCategory}/>
+          <PrizmaBeautyV2 userId={session.user.id} onOpen={(page:PrizmaPage)=>open(page)} onBeautyCategory={setBeautyCategory}/>
         )}
         {tab === 'Profil' && (
           <PrizmaProfileScreen
