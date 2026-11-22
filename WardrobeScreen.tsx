@@ -471,8 +471,8 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 
       showNotice('success',
         wasEditing
-          ? 'Kıyafet güncellendi ✦'
-          : 'Kıyafetin eklendi ✦',
+          ? 'Kıyafet güncellendi '
+          : 'Kıyafetin eklendi ',
         wasEditing
           ? 'Değişikliklerin kaydedildi.'
           : 'Yeni parçan PRİZMA gardırobunda!'
@@ -861,7 +861,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         mimeType: 'image/png',
       });
 
-      showNotice('success', 'Arka plan hazır ✨',
+      showNotice('success', 'Arka plan hazır ',
         'Arka plan kaldırıldı. Değişikliği saklamak için Kaydet butonuna bas.');
     } catch (error: any) {
       showNotice('error', 'Arka plan kaldırılamadı',
@@ -930,7 +930,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         item={tryOnItem}
         userId={userId}
         onClose={() => setTryOnItem(null)}
-        onSetupPhoto={() => { setTryOnItem(null); if (onSetupTryOnPhoto) onSetupTryOnPhoto(); else showNotice('info', 'Fotoğrafını profilinden ekle ✦', 'Profil → Sanal Deneme Fotoğrafım bölümünden boydan fotoğraf yükleyebilirsin.'); }}
+        onSetupPhoto={() => { setTryOnItem(null); if (onSetupTryOnPhoto) onSetupTryOnPhoto(); else showNotice('info', 'Fotoğrafını profilinden ekle ', 'Profil → Sanal Deneme Fotoğrafım bölümünden boydan fotoğraf yükleyebilirsin.'); }}
       />
       <PrizmaNotice
         visible={Boolean(notice)}
@@ -987,7 +987,6 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         {([
           ['clothes', 'Kıyafetler'],
           ['outfits', 'Kombinler'],
-          ['ai', 'AI Kombin'],
         ] as const).map(([key, label]) => (
           <TouchableOpacity
             key={key}
@@ -1006,6 +1005,18 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
           </TouchableOpacity>
         ))}
       </View>
+
+      {activeWardrobeTab === 'outfits' && (
+        <TouchableOpacity style={styles.studioAiButton} accessibilityRole="button" onPress={() => selectWardrobeTab('ai')}>
+          <Text style={styles.studioAiButtonText}>◎  PRİZMA AI ile Kombin Oluştur</Text>
+          <Text style={styles.studioAiButtonText}>›</Text>
+        </TouchableOpacity>
+      )}
+      {activeWardrobeTab === 'ai' && (
+        <TouchableOpacity style={styles.aiBackButton} accessibilityRole="button" onPress={() => selectWardrobeTab('outfits')}>
+          <Text style={styles.aiBackText}>‹ Kombinlerime dön</Text>
+        </TouchableOpacity>
+      )}
 
       {activeWardrobeTab === 'clothes' && (
         <>
@@ -1140,8 +1151,8 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
             >
               <Text style={styles.formTitle}>
                 {editingItem
-                  ? 'Parçanı düzenle ✦'
-                  : 'Yeni bir parça ✦'}
+                  ? 'Parçanı düzenle '
+                  : 'Yeni bir parça '}
               </Text>
 
               <Text style={styles.formSubtitle}>
@@ -1181,7 +1192,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
                     <ActivityIndicator color={C.navy} />
                   ) : (
                     <Text style={styles.outlineText}>
-                      ✨ Arka Planı Kaldır
+                       Arka Planı Kaldır
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -1474,7 +1485,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 
                 <View style={styles.detailNotesCard}>
                   <Text style={styles.detailNotesTitle}>
-                    NOTLAR ✦
+                    NOTLAR 
                   </Text>
 
                   <Text style={styles.detailNotesText}>
@@ -1512,7 +1523,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>
-          Kombinlerim ✦
+          Kombinlerim 
         </Text>
 
         <Text style={styles.formSubtitle}>
@@ -1683,15 +1694,14 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         </View>
       ) : items.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>◇</Text>
+          <Text style={styles.emptyIcon}>♧</Text>
 
           <Text style={styles.emptyTitle}>
-            Gardırobunu oluşturalım
+            Gardırobun henüz boş
           </Text>
 
           <Text style={styles.emptyDescription}>
-            İlk kıyafetini ekle, kendi stil koleksiyonunu
-            oluşturmaya başla.
+            Kıyafetlerini ekleyerek kendi stil koleksiyonunu oluşturmaya başla.
           </Text>
 
           <TouchableOpacity
@@ -1699,7 +1709,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
             onPress={startAdding}
           >
             <Text style={styles.emptyButtonText}>
-              İlk Parçamı Ekle +
+              İlk Parçanı Ekle
             </Text>
           </TouchableOpacity>
         </View>
@@ -1953,7 +1963,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
       )}
 
       {activeWardrobeTab === 'ai' && (
-        <OutfitAIScreen userId={userId} onSaved={() => { void reloadOutfits(); setActiveWardrobeTab('outfits'); showNotice('success', 'Kombin kaydedildi ✦', 'AI kombinin Kombinler sekmesine eklendi.'); }} />
+        <OutfitAIScreen userId={userId} onSaved={() => { void reloadOutfits(); setActiveWardrobeTab('outfits'); showNotice('success', 'Kombin kaydedildi ', 'AI kombinin Kombinler sekmesine eklendi.'); }} />
       )}
     </View>
   );
@@ -1964,8 +1974,13 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 // ====================================================
 
 const styles = StyleSheet.create({
+  studioAiButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: C.lavender, borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, minHeight: 48, marginBottom: 15 },
+  studioAiButtonText: { color: C.lavender, fontWeight: '700', fontSize: 13 },
+  aiBackButton: { minHeight: 44, justifyContent: 'center', marginBottom: 10 },
+  aiBackText: { color: C.lavender, fontSize: 13, fontWeight: '700' },
+
   wardrobeCompactHeading:{flexDirection:'row',alignItems:'center',marginBottom:18},
-  wardrobeAddCircle:{width:42,height:42,borderRadius:21,alignItems:'center',justifyContent:'center',backgroundColor:'#5A2275'},
+  wardrobeAddCircle:{width:42,height:42,borderRadius:21,alignItems:'center',justifyContent:'center',backgroundColor:'#69318A'},
   wardrobeAddPlus:{color:'#FFFFFF',fontSize:27,lineHeight:32},
   wardrobeCategoryPreview:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:7,marginBottom:17},
   wardrobeCategoryTile:{width:'31.5%',minHeight:78,borderRadius:13,backgroundColor:'#F6F0F8',padding:8,alignItems:'center',justifyContent:'center'},
@@ -1977,7 +1992,7 @@ const styles = StyleSheet.create({
   wardrobeCompactDescription: { color: '#645777', fontSize: 12, lineHeight: 18 },
   compactWardrobeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 10 },
   compactCount: { color: '#59466D', fontSize: 13, fontWeight: '700' },
-  compactAdd: { backgroundColor: '#5A2275', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
+  compactAdd: { backgroundColor: '#69318A', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
   compactAddText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
   wardrobeTabRow: {
     flexDirection: 'row',
@@ -1987,8 +2002,8 @@ const styles = StyleSheet.create({
   wardrobeTab: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#E5D8EA',
-    backgroundColor: '#F2EAF7',
+    borderColor: '#D8D6DC',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 10,
     paddingHorizontal: 3,
     alignItems: 'center',
@@ -1996,8 +2011,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   wardrobeTabActive: {
-    backgroundColor: '#5A2275',
-    borderColor: '#5A2275',
+    backgroundColor: '#69318A',
+    borderColor: '#69318A',
   },
   wardrobeTabText: {
     color: '#31254C',
@@ -2013,7 +2028,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(11,20,54,0.45)',
   },
   prizmaSheet: {
-    backgroundColor: '#FAF8FC',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 24,
@@ -2632,7 +2647,7 @@ const styles = StyleSheet.create({
 
   emptyCard: {
     backgroundColor: C.white,
-    borderRadius: 27,
+    borderRadius: 18,
     padding: 25,
     minHeight: 280,
     alignItems: 'center',
@@ -2664,7 +2679,7 @@ const styles = StyleSheet.create({
   },
 
   emptyButton: {
-    backgroundColor: C.navy,
+    backgroundColor: C.lavender,
     borderRadius: 25,
     paddingHorizontal: 25,
     paddingVertical: 15,
