@@ -1,3 +1,4 @@
+import PrizmaOutfitEditor, { type OutfitLayout } from './PrizmaOutfitEditor';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 import { PRIZMA_COLORS as C } from './theme';
 import PrizmaConfirm from './PrizmaConfirm';
@@ -52,6 +53,7 @@ type Outfit = {
   id: string;
   name: string;
   item_ids: string[];
+  editor_layout?: OutfitLayout;
 };
 
 
@@ -136,6 +138,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
   const [editingOutfitId, setEditingOutfitId] =
     useState<string | null>(null);
   const [outfitSelected, setOutfitSelected] = useState<string[]>([]);
+  const [outfitLayout, setOutfitLayout] = useState<OutfitLayout>({});
   const [showOutfitBuilder, setShowOutfitBuilder] = useState(false);
 
   const [removingBackground, setRemovingBackground] = useState(false);
@@ -178,7 +181,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 
       const { data: outfitData, error: outfitError } = await supabase
         .from('wardrobe_outfits')
-        .select('id,name,item_ids')
+        .select('id,name,item_ids,editor_layout')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -611,6 +614,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
           .update({
             name: outfitName.trim(),
             item_ids: chosen,
+            editor_layout: Object.fromEntries(chosen.map(id => [id,outfitLayout[id]]).filter((entry) => Boolean(entry[1]))),
           })
           .eq('id', editingOutfitId)
           .eq('user_id', userId)
@@ -620,6 +624,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
             user_id: userId,
             name: outfitName.trim(),
             item_ids: chosen,
+            editor_layout: Object.fromEntries(chosen.map(id => [id,outfitLayout[id]]).filter((entry) => Boolean(entry[1]))),
           });
 
     const { error } = await query;
@@ -636,6 +641,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
     setEditingOutfitId(null);
     setOutfitName('');
     setOutfitSelected([]);
+    setOutfitLayout({});
 
     await loadItems();
   };
@@ -645,10 +651,12 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
     setEditingOutfitId(null);
     setOutfitName('');
     setOutfitSelected([]);
+    setOutfitLayout({});
   };
 
   const editOutfit = (outfit: Outfit) => {
     setEditingOutfitId(outfit.id);
+    setOutfitLayout(outfit.editor_layout || {});
     setOutfitName(outfit.name);
 
     setOutfitSelected(
@@ -1622,6 +1630,12 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
                 );
               })}
             </View>
+
+            {outfitSelected.length >= 1 && <PrizmaOutfitEditor
+              items={outfitSelected.map(id => items.find(item => item.id === id)).filter((item): item is WardrobeItemWithImage => Boolean(item))}
+              positions={outfitLayout}
+              onChange={setOutfitLayout}
+            />}
 
             <TouchableOpacity
               style={styles.saveButton}
