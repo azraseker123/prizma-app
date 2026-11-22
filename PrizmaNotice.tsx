@@ -1,11 +1,6 @@
-import React from 'react';
-import {
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { PRIZMA } from './prizmaTheme';
 
 export type NoticeType = 'success' | 'error' | 'info';
 
@@ -17,126 +12,59 @@ type Props = {
   onClose: () => void;
   actionLabel?: string;
   onAction?: () => void;
+  bottomOffset?: number;
 };
 
+/** Lightweight inline toast: never blocks the screen like a native Alert or Modal. */
 export default function PrizmaNotice({
-  visible,
-  type,
-  title,
-  message,
-  onClose,
-  actionLabel,
-  onAction,
+  visible, type, title, message, onClose, actionLabel, onAction, bottomOffset = 12,
 }: Props) {
-  const symbol =
-    type === 'success' ? '✓' :
-    type === 'error' ? '!' : '✦';
+  useEffect(() => {
+    if (!visible) return;
+    const timeout = setTimeout(onClose, actionLabel ? 6500 : 3800);
+    return () => clearTimeout(timeout);
+  }, [visible, type, title, message, onClose, actionLabel]);
 
-  const heading =
-    type === 'success' ? 'GÜZEL HABER' :
-    type === 'error' ? 'BİR SORUN OLUŞTU' : 'PRİZMA NOTU';
-
+  if (!visible) return null;
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <View style={styles.symbolCircle}>
-            <Text style={styles.symbol}>{symbol}</Text>
-          </View>
-
-          <Text style={styles.eyebrow}>{heading}</Text>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
-
-          {actionLabel && onAction && (
-            <TouchableOpacity
-              style={styles.button}
-              onPress={onAction}
-            >
-              <Text style={styles.buttonText}>
-                {actionLabel}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={onClose}
-          >
-            <Text style={styles.buttonText}>
-              {type === 'success' ? 'Harika ✦' : 'Tamam'}
-            </Text>
-          </TouchableOpacity>
+    <View pointerEvents="box-none" style={[styles.anchor, { bottom: bottomOffset }]}>
+      <View style={[styles.toast, type === 'error' && styles.error]} accessibilityRole="alert">
+        <Text style={[styles.symbol, type === 'error' && styles.errorText]}>
+          {type === 'success' ? '✓' : type === 'error' ? '!' : 'i'}
+        </Text>
+        <View style={styles.copy}>
+          {!!title && <Text style={styles.title} numberOfLines={1}>{title}</Text>}
+          {!!message && <Text style={styles.message} numberOfLines={2}>{message}</Text>}
         </View>
+        {actionLabel && onAction ? (
+          <TouchableOpacity style={styles.action} onPress={onAction} accessibilityRole="button">
+            <Text style={styles.actionText}>{actionLabel}</Text>
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Bildirimi kapat"
+          onPress={onClose}
+          style={styles.close}
+        >
+          <Text style={styles.closeText}>×</Text>
+        </TouchableOpacity>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: 'rgba(11,20,54,0.48)',
-  },
-  card: {
-    backgroundColor: '#FAF9FC',
-    borderRadius: 28,
-    padding: 27,
-    alignItems: 'center',
-  },
-  symbolCircle: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: '#EEE7FA',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  symbol: {
-    fontSize: 31,
-    fontWeight: '800',
-    color: '#8050B5',
-  },
-  eyebrow: {
-    color: '#A78BFA',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: 12,
-  },
-  title: {
-    color: '#0B1436',
-    fontSize: 23,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  message: {
-    color: '#77718B',
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginTop: 12,
-    marginBottom: 26,
-  },
-  button: {
-    width: '100%',
-    backgroundColor: '#8050B5',
-    borderRadius: 16,
-    padding: 17,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 15,
-  },
+  anchor: { position: 'absolute', bottom: 12, left: 12, right: 12, zIndex: 1000, elevation: 12 },
+  toast: { flexDirection: 'row', alignItems: 'center', minHeight: 58, backgroundColor: PRIZMA.purpleLight, borderColor: PRIZMA.border, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, elevation: 6 },
+  error: { backgroundColor: PRIZMA.dangerLight, borderColor: '#F2C6D0' },
+  symbol: { color: PRIZMA.purple, fontSize: 18, fontWeight: '800', width: 24, textAlign: 'center' },
+  errorText: { color: PRIZMA.danger },
+  copy: { flex: 1, paddingHorizontal: 8 },
+  title: { color: PRIZMA.ink, fontSize: 13, fontWeight: '700' },
+  message: { color: PRIZMA.muted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  actionText: { color: PRIZMA.purple, fontSize: 12, fontWeight: '700' },
+  close: { minWidth: 38, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  closeText: { color: PRIZMA.muted, fontSize: 24 },
 });
