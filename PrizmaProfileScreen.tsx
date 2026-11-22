@@ -25,6 +25,46 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
   const [signatureTab, setSignatureTab] = useState<'Genel Bakış' | 'Stil' | 'Güzellik' | 'AI Tercihlerim'>('Genel Bakış');
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [learnPreferences, setLearnPreferences] = useState(false);
+  const [useChats, setUseChats] = useState(false);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+  const [privacyFeedback, setPrivacyFeedback] = useState('');
+  useEffect(() => {
+    let mounted = true;
+    supabase.from('prizma_ai_preferences').select('learn_preferences,use_chats_for_personalization')
+      .eq('user_id',userId).maybeSingle().then(({data,error})=>{
+        if(!mounted)return;
+        if(error){setPrivacyFeedback('İzin ayarları yüklenemedi.');return;}
+        setLearnPreferences(data?.learn_preferences===true);
+        setUseChats(data?.use_chats_for_personalization===true);
+      }).catch(()=>{if(mounted)setPrivacyFeedback('İzinler yüklenemedi.');});
+    return ()=>{mounted=false;};
+  },[userId]);
+  const savePrivacy = async (name:'learn_preferences'|'use_chats_for_personalization', enabled:boolean) => {
+    if(savingPrivacy)return;
+    setSavingPrivacy(true);setPrivacyFeedback('');
+    const {error}=await supabase.from('prizma_ai_preferences').upsert({
+      user_id:userId,
+      learn_preferences:name==='learn_preferences'?enabled:learnPreferences,
+      use_chats_for_personalization:name==='use_chats_for_personalization'?enabled:useChats,
+      updated_at:new Date().toISOString(),
+    },{onConflict:'user_id'});
+    if(error)setPrivacyFeedback('İzin kaydedilemedi: '+error.message);
+    else {
+      setLearnPreferences(name==='learn_preferences'?enabled:learnPreferences);
+      setUseChats(name==='use_chats_for_personalization'?enabled:useChats);
+      setPrivacyFeedback('Tercihin kaydedildi.');
+    }
+    setSavingPrivacy(false);
+  };
+  const resetPreferences = async () => {
+    if(savingPrivacy)return;
+    setSavingPrivacy(true);
+    const {error}=await supabase.from('prizma_ai_preferences').delete().eq('user_id',userId);
+    if(error)setPrivacyFeedback('İzinler sıfırlanamadı.');
+    else {setLearnPreferences(false);setUseChats(false);setPrivacyFeedback('AI öğrenme izinlerin sıfırlandı. Sohbet arşivin bu işlemle silinmez.');}
+    setSavingPrivacy(false);
+  };
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -141,7 +181,22 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
         <Text style={s.subtitle}>Verilerinin nasıl kullanıldığını şeffaf biçimde gör.</Text>
         <View style={s.infoBox}>
           <Text style={s.sectionTitle}>AI Öğrenme İzinleri</Text>
-          <Text style={s.paragraph}>Tercihlerinden otomatik öğrenme ve sohbetlerini kişiselleştirmede kullanma şu anda etkin değil. Bu özellikler izin yönetimi ve veri silme mekanizmaları tamamlandığında açılacak.</Text>
+          <Text style={s.paragraph}>İki izin de varsayılan olarak kapalıdır. Sohbetlerin mevcut konuşmanın yanıtlanması için işlenmesi, sohbet geçmişinden kalıcı kişiselleştirme yapılmasından ayrıdır.</Text>
+          {([
+            { key:'learn_preferences' as const, title:'Tercihlerimden Öğren', detail:'Beğenilerini gelecekteki önerilerde kullanma izni.', checked:learnPreferences },
+            { key:'use_chats_for_personalization' as const, title:'Sohbetlerimi Kişiselleştirmede Kullan', detail:'Geçmiş sohbetlerden yeni kişisel öneriler oluşturma izni.', checked:useChats },
+          ]).map(item=>(
+            <TouchableOpacity key={item.key} style={s.permissionRow} accessibilityRole="switch" accessibilityState={{checked:item.checked,disabled:savingPrivacy}}
+              onPress={()=>{void savePrivacy(item.key,!item.checked);}} disabled={savingPrivacy}>
+              <View style={{flex:1}}><Text style={s.permissionTitle}>{item.title}</Text><Text style={s.paragraph}>{item.detail}</Text></View>
+              <View style={[s.switchTrack,item.checked&&s.switchActive]}><View style={[s.switchKnob,item.checked&&s.switchKnobActive]}/></View>
+            </TouchableOpacity>
+          ))}
+          {!!privacyFeedback&&<Text style={s.feedback} accessibilityRole="alert">{privacyFeedback}</Text>}
+          <TouchableOpacity style={s.outlineButton} disabled={savingPrivacy} onPress={()=>{void resetPreferences();}}>
+            <Text style={s.outlineText}>Öğrenme İzinlerimi Sıfırla</Text>
+          </TouchableOpacity>
+          <Text style={[s.paragraph,{marginTop:9}]}>Bu ayarlar kaydedilir. AI'ın geçmiş sohbetleri öğrenme kaynağı olarak kullanması için sunucu tarafındaki izin denetimi de zorunludur.</Text>
         </View>
         <View style={s.infoBox}>
           <Text style={s.sectionTitle}>Kayıtlı Stil Tercihleri</Text>
@@ -175,6 +230,13 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
   );
 }
 const s = StyleSheet.create({
+  permissionRow:{flexDirection:'row',alignItems:'center',paddingVertical:14,gap:12,borderBottomWidth:1,borderBottomColor:'#D8D6DC'},
+  permissionTitle:{fontSize:13,fontWeight:'700',color:'#242124',marginBottom:5},
+  switchTrack:{width:44,height:26,borderRadius:14,backgroundColor:'#D8D6DC',padding:3,justifyContent:'center'},
+  switchActive:{backgroundColor:'#69318A'},
+  switchKnob:{width:20,height:20,borderRadius:10,backgroundColor:'#FFFFFF'},
+  switchKnobActive:{alignSelf:'flex-end'},
+  feedback:{color:'#69318A',fontSize:12,marginTop:10},
   signatureTabs: { flexDirection: 'row', gap: 7, marginVertical: 8, paddingBottom: 4 },
   signatureTab: { minHeight: 40, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: P.border, alignItems: 'center', justifyContent: 'center', backgroundColor: P.white },
   signatureTabActive: { backgroundColor: P.purpleLight, borderColor: P.purple },
