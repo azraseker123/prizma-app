@@ -1,3 +1,4 @@
+import PrizmaLineIcon from './PrizmaLineIcon';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from './supabase';
@@ -12,7 +13,13 @@ type Props = {
   editing: boolean;
 };
 
-const readable = (value?: string) => value?.trim() || 'Henüz belirtilmedi';
+const readable = (value: unknown):string => {
+ if(Array.isArray(value))return value.map(readable).filter(x=>x!=='Henüz belirtilmedi').join(' · ')||'Henüz belirtilmedi';
+ if(typeof value!=='string')return 'Henüz belirtilmedi';
+ const trimmed=value.trim();if(!trimmed)return 'Henüz belirtilmedi';
+ if(trimmed.startsWith('[')){try{const parsed=JSON.parse(trimmed);if(Array.isArray(parsed))return parsed.map(readable).join(' · ');}catch{}}
+ return trimmed.replace(/["\[\]]/g,'').replace(/\s*,\s*/g,' · ');
+};
 const sections = [
   { key: 'style', icon: '♧', title: 'Stilim' },
   { key: 'colors', icon: '◐', title: 'Renk Paletim' },
@@ -124,15 +131,15 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
           ))}
         </ScrollView>
         {signatureTab === 'Genel Bakış' && (<>
-          <View style={s.signatureV2}><View style={s.signatureLogo}><Text style={s.fingerprint}>◎</Text></View>
+          <View style={s.signatureV2}><View style={s.signatureLogo}><PrizmaLineIcon name="palette" size={39}/></View>
             <View style={{flex:1}}><Text style={s.signatureHeading}>PRİZMA İmzam</Text><Text style={s.paragraph}>Stil, güzellik ve tercihlerinle sana özel profilin.</Text></View>
           </View>
           <View style={s.signatureSectionHeading}><Text style={s.sectionTitle}>Profil Özeti</Text><TouchableOpacity onPress={onEdit}><Text style={s.signatureEdit}>Düzenle  ✎</Text></TouchableOpacity></View>
           <View style={s.signatureGrid}>
-            <View style={s.signatureGridCard}><Text style={s.signatureGridIcon}>♧</Text><View style={{flex:1}}><Text style={s.gridTitle}>Stil</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.style)}</Text></View></View>
-            <View style={s.signatureGridCard}><Text style={s.signatureGridIcon}>◉</Text><View style={{flex:1}}><Text style={s.gridTitle}>Renk Paletim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.colors)}</Text></View></View>
-            <View style={s.signatureGridCard}><Text style={s.signatureGridIcon}>◯</Text><View style={{flex:1}}><Text style={s.gridTitle}>Cilt Profilim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.skin_type)}</Text></View></View>
-            <View style={s.signatureGridCard}><Text style={s.signatureGridIcon}>〰</Text><View style={{flex:1}}><Text style={s.gridTitle}>Saç Profilim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.hair_type)}</Text></View></View>
+            <View style={s.signatureGridCard}><PrizmaLineIcon name="hanger" size={28}/><View style={{flex:1}}><Text style={s.gridTitle}>Stil</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.style)}</Text><View style={s.swatchRow}><View style={[s.swatch,{backgroundColor:'#6B344D'}]}/><View style={[s.swatch,{backgroundColor:'#AE8494'}]}/><View style={[s.swatch,{backgroundColor:'#CFAB9B'}]}/></View></View></View>
+            <View style={s.signatureGridCard}><PrizmaLineIcon name="palette" size={28}/><View style={{flex:1}}><Text style={s.gridTitle}>Renk Paletim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.colors)}</Text><View style={s.swatchRow}>{['#4B304D','#956982','#D2AA94','#E6D5C7'].map(c=><View key={c} style={[s.swatch,{backgroundColor:c}]}/>)}</View></View></View>
+            <View style={s.signatureGridCard}><PrizmaLineIcon name="profile" size={28}/><View style={{flex:1}}><Text style={s.gridTitle}>Cilt Profilim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.skin_type)}</Text></View></View>
+            <View style={s.signatureGridCard}><PrizmaLineIcon name="brush" size={28}/><View style={{flex:1}}><Text style={s.gridTitle}>Saç Profilim</Text><Text style={s.gridValue} numberOfLines={2}>{readable(answers.hair_type)}</Text></View></View>
           </View>
           <TouchableOpacity style={s.signatureRow} onPress={()=>setSignatureTab('AI Tercihlerim')}>
             <Text style={s.signatureRowIcon}>◎</Text><View style={{flex:1}}><Text style={s.rowTitle}>PRİZMA AI Özeti</Text><Text style={s.rowDetail}>{learnPreferences?'Onayladığın tercihlerin önerilerinde kullanılabilir.':'Öğrenme izni kapalı. Verilerin kontrolü sende.'}</Text></View><Text style={s.chevron}>›</Text>
@@ -260,13 +267,16 @@ export default function PrizmaProfileScreen({ userId, email, onEdit, onLogout, e
   );
 }
 const s = StyleSheet.create({
+ swatchRow:{flexDirection:'row',gap:5,marginTop:8},
+ swatch:{width:19,height:19,borderRadius:11,borderWidth:1,borderColor:'#D8D6DC'},
+
  signatureV2:{flexDirection:'row',gap:13,alignItems:'center',borderWidth:1,borderColor:P.border,borderRadius:18,padding:17,backgroundColor:'#FFFFFF',marginVertical:13},
  signatureLogo:{width:67,height:67,borderRadius:34,borderWidth:2,borderColor:P.purple,alignItems:'center',justifyContent:'center'},
  fingerprint:{fontSize:41,color:P.purple},signatureHeading:{fontSize:20,color:P.ink,fontWeight:'800',marginBottom:7},
  signatureSectionHeading:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:10},
  signatureEdit:{fontSize:12,color:P.purple,fontWeight:'700'},
  signatureGrid:{flexDirection:'row',flexWrap:'wrap',gap:9,marginBottom:8},
- signatureGridCard:{width:'48%',minHeight:88,borderWidth:1,borderColor:P.border,borderRadius:15,padding:12,backgroundColor:'#FFFFFF',flexDirection:'row',gap:10,alignItems:'center'},
+ signatureGridCard:{width:'48%',minHeight:108,borderWidth:1,borderColor:P.border,borderRadius:15,padding:12,backgroundColor:'#FFFFFF',flexDirection:'row',gap:10,alignItems:'center'},
  signatureGridIcon:{fontSize:24,color:P.purple},
  signatureRow:{minHeight:75,borderWidth:1,borderColor:P.border,borderRadius:15,backgroundColor:'#FFFFFF',flexDirection:'row',gap:12,alignItems:'center',padding:13,marginBottom:3},
  signatureRowIcon:{fontSize:28,color:P.purple,width:35,textAlign:'center'},
