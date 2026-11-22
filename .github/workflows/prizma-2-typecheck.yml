@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - feature/prizma-2-full-redesign-20261122
+  pull_request:
+    branches:
+      - feature/prizma-premium-six-screen-redesign
   workflow_dispatch:
 jobs:
   typecheck:
