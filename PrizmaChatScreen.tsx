@@ -27,6 +27,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod | 'Her İkisi'>('Akşam');
+  const [routinePicker,setRoutinePicker]=useState<{messageId:number;index:number}|null>(null);
   const [archiveQuery, setArchiveQuery] = useState('');
   const [explanations, setExplanations] = useState<string[]>([]);
   const [lookIdeas, setLookIdeas] = useState<{name:string;description:string;item_ids:string[]}[]>([]);
@@ -222,8 +223,8 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
     finally{setBusyAction(null);}
   };
 
-  const saveProduct = async (message: Message, product: Product, index: number, action: 'collection' | 'routine') => {
-    const selectedPeriod = routinePeriod;
+  const saveProduct = async (message: Message, product: Product, index: number, action: 'collection' | 'routine', periodOverride?:RoutinePeriod|'Her İkisi') => {
+    const selectedPeriod = periodOverride||routinePeriod;
     const targetPeriods:RoutinePeriod[] = selectedPeriod === 'Her İkisi' ? ['Sabah','Akşam'] : [selectedPeriod];
     const alreadySaved = action === 'collection'
       ? message.savedCollection?.includes(index)
@@ -323,7 +324,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         {messages.map(m => (
           <View key={m.id} style={[s.bubble, m.role === 'user' ? s.userBubble : s.aiBubble]}>
             <Text style={[s.role, m.role === 'user' && s.userRole]}>{m.role === 'user' ? 'SEN' : 'PRİZMA '}</Text>
-            <Text style={[s.messageText, m.role === 'user' && s.userText]}>{m.text}</Text>
+            <Text numberOfLines={m.products?.length?4:undefined} style={[s.messageText, m.role === 'user' && s.userText]}>{m.text}</Text>
             {m.products?.map((p, index) => {
               const isCollected = m.savedCollection?.includes(index) === true;
               const isRoutineSaved = (routinePeriod === 'Her İkisi' ? (['Sabah','Akşam'] as const) : [routinePeriod]).every(period => m.savedRoutines?.includes(index+':'+period));
@@ -334,20 +335,12 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
                   <TouchableOpacity accessibilityRole="button" onPress={()=>setExplanations(old=>old.includes(m.id+':'+index)?old.filter(k=>k!==m.id+':'+index):[...old,m.id+':'+index])}>
                     <Text style={s.explainAction}>Neden önerildi? {explanations.includes(m.id+':'+index)?'⌃':'⌄'}</Text>
                   </TouchableOpacity>
-                  {explanations.includes(m.id+':'+index)&&<Text style={s.productInfo}>{p.reason}</Text>}
-                  <Text style={s.caution}>Dikkat: {p.caution}</Text>
+                  {explanations.includes(m.id+':'+index)&&<View><Text style={s.productInfo}>{p.reason}</Text>{!!p.caution&&<Text style={s.caution}>{p.caution}</Text>}</View>}
                   <TouchableOpacity style={s.save} disabled={!!busyAction || isCollected} onPress={() => saveProduct(m, p, index, 'collection')}>
                     <Text style={s.saveText}>{isCollected ? '✓ Koleksiyonda' : '+ Koleksiyona Ekle'}</Text>
                   </TouchableOpacity>
-                  <View style={s.routineRow}>
-                    {(['Sabah', 'Akşam','Her İkisi'] as const).map(period => (
-                      <TouchableOpacity key={period} onPress={() => setRoutinePeriod(period)} style={[s.period, period === routinePeriod && s.periodSelected]}>
-                        <Text style={[s.periodText, period === routinePeriod && s.periodTextSelected]}>{period}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <TouchableOpacity style={s.routineSave} disabled={!!busyAction || isRoutineSaved} onPress={() => saveProduct(m, p, index, 'routine')}>
-                    <Text style={s.routineSaveText}>{isRoutineSaved ? '✓ Rutine eklendi' : '+ Rutine Ekle'}</Text>
+                  <TouchableOpacity style={s.routineSave} disabled={!!busyAction} onPress={()=>setRoutinePicker({messageId:m.id,index})}>
+                    <Text style={s.routineSaveText}>{m.savedRoutines?.some(x=>x.startsWith(index+':'))?'✓ Rutine Eklendi / Düzenle':'+ Rutine Ekle'}</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -356,6 +349,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         ))}
         {loading && <View style={s.loading}><ActivityIndicator color={C.lavender}/><Text style={s.loadingText}>PRİZMA düşünüyor...</Text></View>}
         {!!feedback && <Text style={s.feedback}>{feedback}</Text>}
+        <Text style={s.aiSmallDisclaimer}>ⓘ AI hata yapabilir. Ürün içeriğini ve kullanım talimatlarını kontrol et.</Text>
       </ScrollView>
 
       <View style={s.composer}>
@@ -366,6 +360,18 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         </TouchableOpacity>
       </View>
 
+      <Modal transparent animationType="slide" visible={routinePicker!==null} onRequestClose={()=>setRoutinePicker(null)}>
+        <View style={s.lookOverlay}><View style={s.routinePickerSheet}>
+          <Text style={s.routinePickerTitle}>Hangi bakım rutinine ekleyelim?</Text>
+          <Text style={s.routinePickerHint}>Ürüne özel kullanım talimatlarını kontrol et.</Text>
+          {(['Sabah','Akşam','Her İkisi'] as const).map(period=><TouchableOpacity key={period} disabled={!!busyAction} style={s.routinePickerOption} onPress={()=>{
+            const item=routinePicker;if(!item)return;
+            const m=messages.find(x=>x.id===item.messageId);const product=m?.products?.[item.index];
+            setRoutinePicker(null);if(m&&product)void saveProduct(m,product,item.index,'routine',period);
+          }}><Text style={s.routinePickerOptionText}>{period}</Text><Text style={s.routinePickerOptionText}>›</Text></TouchableOpacity>)}
+          <TouchableOpacity style={s.routinePickerCancel} onPress={()=>setRoutinePicker(null)}><Text style={s.routinePickerHint}>Vazgeç</Text></TouchableOpacity>
+        </View></View>
+      </Modal>
       <Modal visible={lookIdeas.length>0} transparent animationType="slide" onRequestClose={()=>setLookIdeas([])}>
         <View style={s.lookOverlay}>
           <View style={s.lookSheet}>
@@ -448,6 +454,13 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 }
 
 const s = StyleSheet.create({
+ routinePickerSheet:{backgroundColor:'#FFFFFF',paddingHorizontal:20,paddingTop:21,paddingBottom:33,borderTopLeftRadius:23,borderTopRightRadius:23},
+ routinePickerTitle:{fontSize:18,fontWeight:'700',color:C.ink},
+ routinePickerHint:{fontSize:12,color:C.muted,marginTop:9},
+ routinePickerOption:{minHeight:49,marginTop:11,borderColor:C.border,borderWidth:1,borderRadius:13,paddingHorizontal:16,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
+ routinePickerOptionText:{fontSize:14,fontWeight:'700',color:C.lavender},
+ routinePickerCancel:{minHeight:45,alignItems:'center',justifyContent:'center'},
+
   aiPageHeading:{alignItems:'center',backgroundColor:'#FFFFFF',paddingTop:3,paddingBottom:12},
   aiTopRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',width:'100%',marginBottom:15},
   aiHistoryIcon:{width:36,height:42,alignItems:'center',justifyContent:'center'},
