@@ -70,3 +70,9 @@ export async function renameRoutineItem(userId:string,id:string,title:string):Pr
   const list=await getRoutineItems(userId);
   await AsyncStorage.setItem(storageKey(userId),JSON.stringify(list.map(x=>x.id===id?{...x,title:trimmed}:x)));
 }
+
+export async function changeRoutinePhoto(userId:string,id:string,imagePath?:string):Promise<void>{
+ const list=await getRoutineItems(userId);
+ if(!list.some(item=>item.id===id))throw new Error('Rutin adımı bulunamadı.');
+ await AsyncStorage.setItem(storageKey(userId),JSON.stringify(list.map(item=>item.id===id?{...item,imagePath}:item)));
+}
