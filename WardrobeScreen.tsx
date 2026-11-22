@@ -1,3 +1,4 @@
+import PrizmaLineIcon from './PrizmaLineIcon';
 import PrizmaOutfitEditor, { type OutfitLayout } from './PrizmaOutfitEditor';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 import { PRIZMA_COLORS as C } from './theme';
@@ -1149,7 +1150,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, onOpenTryOn,
             </View>
             <TouchableOpacity style={styles.savedPrimary} onPress={()=>{
               setOutfitSelected([savedPiece.id]);setOutfitName(savedPiece.name+' ile Kombin');setOutfitLayout({});setSavedPiece(null);selectWardrobeTab('outfits');setShowOutfitBuilder(true);
-            }}><Text style={styles.savedPrimaryText}>♧  Bu Parçayla Kombin Oluştur</Text></TouchableOpacity>
+            }}><PrizmaLineIcon name="hanger" size={24} color="#FFFFFF"/><Text style={styles.savedPrimaryText}>Bu Parçayla Kombin Oluştur</Text></TouchableOpacity>
             {!!pendingBatch.length&&<TouchableOpacity style={styles.savedOutline} onPress={nextBatchImage}><Text style={styles.savedOutlineText}>Sıradaki Parça ({pendingBatch.length} kaldı) ›</Text></TouchableOpacity>}
             <TouchableOpacity style={styles.savedOutline} onPress={()=>{setSavedPiece(null);startAdding();}}><Text style={styles.savedOutlineText}>＋  Yeni Parça Ekle</Text></TouchableOpacity>
             <TouchableOpacity style={styles.savedOutline} onPress={()=>{setSavedPiece(null);selectWardrobeTab('clothes');}}><Text style={styles.savedOutlineText}>▦  Gardıroba Dön</Text></TouchableOpacity>
@@ -1196,7 +1197,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, onOpenTryOn,
           />
           <View style={styles.prizmaSheet}>
             <View style={styles.prizmaSheetHandle} />
-            <Text style={styles.prizmaSheetSparkle}>▢</Text>
+            
             <Text style={styles.prizmaSheetTitle}>
               Parça Ekle
             </Text>
@@ -1211,7 +1212,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, onOpenTryOn,
                 setTimeout(() => { void openGallery(); }, 350);
               }}
             >
-              <Text style={styles.prizmaSheetOptionIcon}>▧</Text>
+              <PrizmaLineIcon name="image" size={32}/>
               <View style={{ flex: 1 }}>
                 <Text style={styles.prizmaSheetOptionTitle}>
                   Galeriden Seç
@@ -1230,7 +1231,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, onOpenTryOn,
                 setTimeout(() => { void openCamera(); }, 350);
               }}
             >
-              <Text style={styles.prizmaSheetOptionIcon}>◉</Text>
+              <PrizmaLineIcon name="camera" size={32}/>
               <View style={{ flex: 1 }}>
                 <Text style={styles.prizmaSheetOptionTitle}>
                   Kamera
@@ -1243,7 +1244,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, onOpenTryOn,
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.prizmaSheetOption} onPress={()=>{setPhotoSheetVisible(false);void openBulkGallery();}}>
-              <Text style={styles.prizmaSheetOptionIcon}>▣</Text>
+              <PrizmaLineIcon name="images" size={32}/>
               <View style={{flex:1}}><Text style={styles.prizmaSheetOptionTitle}>Birden Fazla Fotoğraf Seç</Text><Text style={styles.prizmaSheetOptionDetail}>Aynı anda birden çok parça ekle</Text></View>
               <Text style={styles.prizmaSheetArrow}>›</Text>
             </TouchableOpacity>
@@ -1891,9 +1892,9 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, onOpenTryOn,
                     <Text style={styles.itemCategory} numberOfLines={1}>{item.category} · {item.color||'Renk belirtilmedi'}</Text>
                     <View style={styles.catalogActionRow}>
                       <TouchableOpacity style={styles.catalogSmallAction} onPress={()=>startEditing(item)}><Text style={styles.catalogSmallText}>✎ Düzenle</Text></TouchableOpacity>
-                      <TouchableOpacity style={styles.catalogSmallAction} onPress={()=>deleteItem(item)}><Text style={styles.catalogSmallText}>♙ Sil</Text></TouchableOpacity>
+                      <TouchableOpacity style={styles.catalogSmallAction} onPress={()=>deleteItem(item)}><Text style={styles.catalogSmallText}>Sil</Text></TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.catalogTryOn} onPress={()=>setTryOnItem(item)}><Text style={styles.catalogTryText}>▢  Üzerimde Dene</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.catalogTryOn} onPress={()=>setTryOnItem(item)}><Text style={styles.catalogTryText}>Üzerimde Dene</Text></TouchableOpacity>
                   </View>
                 </View>
               ))}
@@ -1936,7 +1937,7 @@ const styles = StyleSheet.create({
   savedMetadata:{flexDirection:'row',gap:8,marginBottom:21},
   savedMetaCell:{flex:1,borderWidth:1,borderColor:C.border,borderRadius:14,minHeight:68,padding:9,justifyContent:'center'},
   savedMetaLabel:{fontSize:11,color:C.muted},savedMetaValue:{fontSize:12,color:C.navy,fontWeight:'700',marginTop:6},
-  savedPrimary:{minHeight:52,backgroundColor:C.lavender,borderRadius:17,alignItems:'center',justifyContent:'center'},
+  savedPrimary:{minHeight:52,backgroundColor:C.lavender,borderRadius:17,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:11},
   savedPrimaryText:{fontSize:14,color:'#FFFFFF',fontWeight:'700'},
   savedOutline:{minHeight:50,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:C.border,borderRadius:17,alignItems:'center',justifyContent:'center'},
   savedOutlineText:{color:C.lavender,fontSize:14,fontWeight:'700'},
