@@ -31,6 +31,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [outfitIndex,setOutfitIndex] = useState(0);
   const [previewReady,setPreviewReady] = useState(false);
+  const [brokenPhotos,setBrokenPhotos]=useState<Record<string,boolean>>({});
   const [garments, setGarments] = useState<Garment[]>([]);
   const [outfitBusy, setOutfitBusy] = useState(false);
   const [outfitError, setOutfitError] = useState('');
@@ -114,6 +115,20 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
     setCompleted(next);
     await AsyncStorage.setItem('prizma-routine-progress:' + userId + ':' + today(),JSON.stringify(next));
   };
+  const fetchOutfitImages=useCallback(async(
+    rows:{id:string;name:string;image_path:string|null}[],looks:Outfit[]
+  )=>{
+    const ids=new Set(looks.flatMap(look=>look.item_ids));
+    const needed=rows.filter(row=>ids.has(row.id)&&row.image_path);
+    const resolved=await Promise.all(needed.map(async row=>{
+      try{const {data}=await supabase.storage.from('wardrobe').createSignedUrl(row.image_path!,3600);
+        return {id:row.id,url:data?.signedUrl||null};
+      }catch{return {id:row.id,url:null};}
+    }));
+    const urls=new Map(resolved.map(x=>[x.id,x.url]));
+    setGarments(current=>current.map(g=>urls.has(g.id)?{...g,imageUrl:urls.get(g.id)||null}:g));
+  },[]);
+
   const generateOutfits=useCallback(async(force=false)=>{
     setOutfitBusy(true);setOutfitError('');
     // Show cached looks immediately: never reserve a giant blank canvas for a network request.
@@ -126,12 +141,8 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
       const {data,error}=await supabase.from('wardrobe_items').select('id,name,image_path').eq('user_id',userId);
       if(error)throw error;
       const rows=(data||[]) as {id:string;name:string;image_path:string|null}[];
-      const urls=await Promise.all(rows.map(async g=>{
-        if(!g.image_path)return {...g,imageUrl:null};
-        const {data:image}=await supabase.storage.from('wardrobe').createSignedUrl(g.image_path,3600);
-        return {...g,imageUrl:image?.signedUrl||null};
-      }));
-      setGarments(urls);
+      setGarments(rows.map(g=>({...g,imageUrl:null})));
+      setBrokenPhotos({});
       setPreviewReady(true);
       if(rows.length<2){setOutfits([]);setOutfitError('Öneri için gardırobunda en az iki parça olmalı.');return;}
       const cacheKey=getKey(userId,'outfits:'+today());
@@ -139,7 +150,8 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
         const cached=await AsyncStorage.getItem(cacheKey);
         if(cached){
           const parsed=JSON.parse(cached);
-          if(Array.isArray(parsed)&&parsed.length){setOutfits(parsed);return;}
+          if(Array.isArray(parsed)&&parsed.length){const valid=parsed.filter((look:any)=>Array.isArray(look?.item_ids)&&look.item_ids.every((id:string)=>rows.some(row=>row.id===id)));
+            if(valid.length){setOutfits(valid);void fetchOutfitImages(rows,valid);return;}}
         }
       }
       const agendaText=agenda[today()]?.trim();
@@ -151,10 +163,11 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
       const safe=(Array.isArray(result?.outfits)?result.outfits:[]).filter((x:any)=>typeof x?.name==='string'&&typeof x?.description==='string'&&Array.isArray(x?.item_ids)&&x.item_ids.length>=2&&x.item_ids.every((id:any)=>typeof id==='string'&&validIds.has(id))).slice(0,3) as Outfit[];
       if(!safe.length)throw new Error('Gardırobundaki parçalarla henüz kombin oluşturulamadı.');
       setOutfits(safe);
+      void fetchOutfitImages(rows,safe);
       await Promise.all([AsyncStorage.setItem(cacheKey,JSON.stringify(safe)),AsyncStorage.setItem(getKey(userId,'outfits:last-success'),JSON.stringify(safe))]);
     } catch(e){setOutfitError(e instanceof Error?e.message:'Öneriler yüklenemedi.');}
     finally{setOutfitBusy(false);}
-  },[userId,agenda,weather]);
+  },[userId,agenda,weather,fetchOutfitImages]);
   useEffect(()=>{if(hydrated)void generateOutfits(false);},[hydrated,userId]); // wait for saved agenda/weather to load
   const saveOutfit=async(outfit:Outfit)=>{
     const {error}=await supabase.from('wardrobe_outfits').insert({user_id:userId,name:outfit.name.slice(0,100),item_ids:outfit.item_ids});
@@ -205,11 +218,11 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
         focus?<View style={s.heroLook}>
           {photoPieces.slice(0,6).map((item,i)=><View key={item.id}
               style={[s.collageItem,{left:((i%3)*31)+4+'%',top:(Math.floor(i/3)*50)+4+'%',width:'30%',height:'45%'}]}>
-            {item.imageUrl?<Image source={{uri:item.imageUrl}} resizeMode="contain" style={s.collageImage}/>:
+            {item.imageUrl&&!brokenPhotos[item.id]?<Image source={{uri:item.imageUrl}} onError={()=>setBrokenPhotos(old=>({...old,[item.id]:true}))} resizeMode="contain" style={s.collageImage}/>:
             <View style={s.collagePlaceholder}><Text style={s.collagePlaceholderText}>{item.name}</Text></View>}
           </View>)}
         </View>:<TouchableOpacity style={s.heroPending} onPress={()=>onOpen('Gardırop')}><Text style={s.muted}>{outfitError||'Kombinlerini görmek için gardırobuna parça ekle.'}</Text><Text style={s.heroLink}>Gardırobuma git ›</Text></TouchableOpacity>}
-      {focus && photoPieces.length===0 && <Text style={s.photoLoadHint}>Kombin görselleri yükleniyor veya fotoğraflara erişilemiyor.</Text>}
+      {focus && photoPieces.length===0 && <Text style={s.photoLoadHint}>Fotoğraf önizlemeleri hazırlanıyor. Kombin kaydın korunuyor.</Text>}
       {focus&&<><View style={s.dots}>{outfits.map((o,i)=><TouchableOpacity key={o.name+i} accessibilityLabel={(i+1)+'. kombini göster'} onPress={()=>setOutfitIndex(i)} style={[s.dot,outfitIndex===i&&s.dotOn]}/>)}</View>
         <Text style={s.focusLabel} numberOfLines={1}>{focus.name} · {focus.description}</Text>
         <View style={s.carouselArrows}>
