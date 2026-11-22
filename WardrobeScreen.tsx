@@ -1727,61 +1727,12 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
               maxLength={100}
             />
 
-            <Text style={styles.boardHint}>Parça ekle; tuval üzerinde sürükleyerek yerleştir.</Text>
-
-            <View style={styles.boardPicker}>
-              {items.map((item) => {
-                const chosen = outfitSelected.includes(
-                  item.id
-                );
-
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.boardPickCard,
-                      chosen && styles.boardPickSelected,
-                    ]}
-                    onPress={() =>
-                      setOutfitSelected((current) =>
-                        current.includes(item.id)
-                          ? current.filter(
-                              (id) => id !== item.id
-                            )
-                          : [...current, item.id]
-                      )
-                    }
-                  >
-                    {item.imageUrl ? (
-                      <Image
-                        source={{ uri: item.imageUrl }}
-                        style={styles.boardPickImage}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <Text style={styles.boardPlaceholder}>
-                        ◇
-                      </Text>
-                    )}
-
-                    <Text
-                      style={styles.boardPieceName}
-                      numberOfLines={2}
-                    >
-                      {item.name}
-                    </Text>
-
-                    <Text style={styles.boardCheck}>
-                      {chosen ? '✓ Seçildi' : '+ Seç'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {outfitSelected.length >= 1 && <PrizmaOutfitEditor
+            {<PrizmaOutfitEditor
               items={outfitSelected.map(id => items.find(item => item.id === id)).filter((item): item is WardrobeItemWithImage => Boolean(item))}
               positions={outfitLayout}
+              availableItems={items}
+              onAddItem={id=>setOutfitSelected(old=>old.includes(id)?old:[...old,id])}
+              onRemoveItem={id=>setOutfitSelected(old=>old.filter(x=>x!==id))}
               onChange={setOutfitLayout}
               onAiComplete={(focus)=>{void completeOutfitWithAI(focus);}}
               aiBusy={aiMatchingBusy}
