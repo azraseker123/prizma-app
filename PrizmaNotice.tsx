@@ -12,11 +12,12 @@ type Props = {
   onClose: () => void;
   actionLabel?: string;
   onAction?: () => void;
+  bottomOffset?: number;
 };
 
 /** Lightweight inline toast: never blocks the screen like a native Alert or Modal. */
 export default function PrizmaNotice({
-  visible, type, title, message, onClose, actionLabel, onAction,
+  visible, type, title, message, onClose, actionLabel, onAction, bottomOffset = 12,
 }: Props) {
   useEffect(() => {
     if (!visible) return;
@@ -26,7 +27,7 @@ export default function PrizmaNotice({
 
   if (!visible) return null;
   return (
-    <View pointerEvents="box-none" style={styles.anchor}>
+    <View pointerEvents="box-none" style={[styles.anchor, { bottom: bottomOffset }]}>
       <View style={[styles.toast, type === 'error' && styles.error]} accessibilityRole="alert">
         <Text style={[styles.symbol, type === 'error' && styles.errorText]}>
           {type === 'success' ? '✓' : type === 'error' ? '!' : 'i'}
