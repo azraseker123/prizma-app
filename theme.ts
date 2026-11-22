@@ -9,6 +9,6 @@ export const PRIZMA_COLORS = {
   white: '#FFFFFF',
   muted: '#6E6872',
   border: '#D8D6DC',
-  pale: '#F3EAF8',
+  pale: '#FFFFFF',
   rose: '#B33F54',
 } as const;
