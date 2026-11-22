@@ -102,6 +102,8 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
   const [confirmBusy, setConfirmBusy] = useState(false);
 
   const [photoSheetVisible, setPhotoSheetVisible] = useState(false);
+  const [pendingBatch,setPendingBatch]=useState<ImagePicker.ImagePickerAsset[]>([]);
+  const [savedPiece,setSavedPiece]=useState<{id:string;name:string;category:string;color:string;season:string;preview:string|null}|null>(null);
   const [items, setItems] = useState<WardrobeItemWithImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -298,6 +300,32 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
     }finally{if(requestId===analysisSequence.current)setAnalyzingGarment(false);}
   };
 
+  const openBulkGallery = async () => {
+    try{
+      const result=await ImagePicker.launchImageLibraryAsync({
+        mediaTypes:['images'],allowsEditing:false,quality:0.8,selectionLimit:10,allowsMultipleSelection:true,
+      });
+      if(result.canceled||!result.assets?.length)return;
+      const [first,...rest]=result.assets;
+      resetForm();
+      setPendingBatch(rest);
+      setSelectedImage(first);
+      setShowForm(true);
+      void analyzeGarmentPhoto(first);
+    }catch(error){
+      showNotice('error','Fotoğraflar alınamadı',error instanceof Error?error.message:'Tekrar deneyebilirsin.');
+    }
+  };
+  const nextBatchImage = () => {
+    const [first,...rest]=pendingBatch;
+    setSavedPiece(null);
+    if(!first){setPendingBatch([]);return;}
+    setPendingBatch(rest);
+    resetForm();
+    setSelectedImage(first);
+    setShowForm(true);
+    void analyzeGarmentPhoto(first);
+  };
   const openGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -440,6 +468,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 
     let newUploadedPath: string | null = null;
     let databaseSaved = false;
+    let createdId:string|null=null;
 
     try {
       let imagePath = editingItem?.image_path || '';
@@ -486,7 +515,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
           }
         }
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('wardrobe_items')
           .insert({
             user_id: userId,
@@ -503,11 +532,13 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         if (error) throw error;
 
         databaseSaved = true;
+        createdId=inserted?.id||null;
       }
 
       const wasEditing = Boolean(editingItem);
-
+      const snapshot={id:createdId||'',name:name.trim(),category,color:color.trim()||'Belirtilmedi',season,preview:selectedImage?.uri||existingImageUrl};
       resetForm();
+      if(!wasEditing&&createdId)setSavedPiece(snapshot);
 
       showNotice('success',
         wasEditing
@@ -1101,6 +1132,27 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
       {/* ============================================= */}
 
 
+      <Modal visible={!!savedPiece} animationType="slide" onRequestClose={()=>setSavedPiece(null)}>
+        <SafeAreaView style={styles.savedScreen}>
+          {savedPiece&&<ScrollView contentContainerStyle={styles.savedContent}>
+            <View style={styles.savedHeader}><Text style={styles.savedLogo}>PRİZMA</Text></View>
+            <View style={styles.savedResultTitle}><Text style={styles.savedCheck}>✓</Text><Text style={styles.savedTitle}>Kıyafet gardırobuna eklendi.</Text></View>
+            {savedPiece.preview?<Image source={{uri:savedPiece.preview}} resizeMode="contain" style={styles.savedPhoto}/>:<View style={styles.savedPhoto}><Text style={styles.savedPhotoMissing}>▢</Text></View>}
+            <Text style={styles.savedPieceName}>{savedPiece.name}</Text>
+            <View style={styles.savedMetadata}>
+              {([['Kategori',savedPiece.category],['Renk',savedPiece.color],['Mevsim',savedPiece.season]] as const).map(([label,value])=>
+                <View style={styles.savedMetaCell} key={label}><Text style={styles.savedMetaLabel}>{label}</Text><Text style={styles.savedMetaValue}>{value}</Text></View>)}
+            </View>
+            <TouchableOpacity style={styles.savedPrimary} onPress={()=>{
+              setOutfitSelected([savedPiece.id]);setOutfitName(savedPiece.name+' ile Kombin');setOutfitLayout({});setSavedPiece(null);selectWardrobeTab('outfits');setShowOutfitBuilder(true);
+            }}><Text style={styles.savedPrimaryText}>♧  Bu Parçayla Kombin Oluştur</Text></TouchableOpacity>
+            {!!pendingBatch.length&&<TouchableOpacity style={styles.savedOutline} onPress={nextBatchImage}><Text style={styles.savedOutlineText}>Sıradaki Parça ({pendingBatch.length} kaldı) ›</Text></TouchableOpacity>}
+            <TouchableOpacity style={styles.savedOutline} onPress={()=>{setSavedPiece(null);startAdding();}}><Text style={styles.savedOutlineText}>＋  Yeni Parça Ekle</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.savedOutline} onPress={()=>{setSavedPiece(null);selectWardrobeTab('clothes');}}><Text style={styles.savedOutlineText}>▦  Gardıroba Dön</Text></TouchableOpacity>
+          </ScrollView>}
+        </SafeAreaView>
+      </Modal>
+
       <Modal transparent visible={filterSheetVisible} animationType="slide" onRequestClose={()=>setFilterSheetVisible(false)}>
         <View style={styles.prizmaSheetOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={()=>setFilterSheetVisible(false)}/>
@@ -1183,6 +1235,12 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
                   Şimdi fotoğraf çek
                 </Text>
               </View>
+              <Text style={styles.prizmaSheetArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.prizmaSheetOption} onPress={()=>{setPhotoSheetVisible(false);void openBulkGallery();}}>
+              <Text style={styles.prizmaSheetOptionIcon}>▣</Text>
+              <View style={{flex:1}}><Text style={styles.prizmaSheetOptionTitle}>Birden Fazla Fotoğraf Seç</Text><Text style={styles.prizmaSheetOptionDetail}>Aynı anda birden çok parça ekle</Text></View>
               <Text style={styles.prizmaSheetArrow}>›</Text>
             </TouchableOpacity>
 
@@ -1901,6 +1959,24 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 // ====================================================
 
 const styles = StyleSheet.create({
+  savedScreen:{flex:1,backgroundColor:'#FFFFFF'},
+  savedContent:{paddingHorizontal:19,paddingVertical:14,backgroundColor:'#FFFFFF',paddingBottom:40,gap:11},
+  savedHeader:{minHeight:58,alignItems:'center',justifyContent:'center'},
+  savedLogo:{color:C.lavender,fontFamily:Platform.OS==='ios'?'Georgia':'serif',fontSize:22,letterSpacing:4},
+  savedResultTitle:{flexDirection:'row',gap:9,alignItems:'center',justifyContent:'center',marginVertical:14},
+  savedCheck:{width:34,height:34,textAlign:'center',textAlignVertical:'center',borderRadius:17,backgroundColor:C.lavender,color:'#FFFFFF',fontSize:21},
+  savedTitle:{color:C.navy,fontSize:17,fontFamily:Platform.OS==='ios'?'Georgia':'serif'},
+  savedPhoto:{height:295,width:'100%',borderRadius:16,backgroundColor:'#FFFFFF'},
+  savedPhotoMissing:{color:C.lavender,fontSize:45,textAlign:'center'},
+  savedPieceName:{fontFamily:Platform.OS==='ios'?'Georgia':'serif',color:C.navy,fontSize:26,marginVertical:6},
+  savedMetadata:{flexDirection:'row',gap:8,marginBottom:21},
+  savedMetaCell:{flex:1,borderWidth:1,borderColor:C.border,borderRadius:14,minHeight:68,padding:9,justifyContent:'center'},
+  savedMetaLabel:{fontSize:11,color:C.muted},savedMetaValue:{fontSize:12,color:C.navy,fontWeight:'700',marginTop:6},
+  savedPrimary:{minHeight:52,backgroundColor:C.lavender,borderRadius:17,alignItems:'center',justifyContent:'center'},
+  savedPrimaryText:{fontSize:14,color:'#FFFFFF',fontWeight:'700'},
+  savedOutline:{minHeight:50,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:C.border,borderRadius:17,alignItems:'center',justifyContent:'center'},
+  savedOutlineText:{color:C.lavender,fontSize:14,fontWeight:'700'},
+
   aiAlternatives:{marginTop:15,gap:8},
   aiAlternativesTitle:{fontSize:17,color:C.navy,fontWeight:'700'},
   aiAlternativesSubtitle:{fontSize:12,color:C.muted},
