@@ -21,6 +21,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   const [cityEdit, setCityEdit] = useState(false);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [weatherBusy, setWeatherBusy] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [weatherError, setWeatherError] = useState('');
   const [selectedDay, setSelectedDay] = useState(today);
   const [agenda, setAgenda] = useState<Record<string,string>>({});
@@ -67,12 +68,13 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
           AsyncStorage.getItem(getKey(userId,'agenda')),
         ]);
         if (!active) return;
-        if (savedCity) { setCity(savedCity); setCityDraft(savedCity); void fetchWeather(savedCity); }
+        if (savedCity) { setCity(savedCity); setCityDraft(savedCity); await fetchWeather(savedCity); }
         if (savedAgenda) {
           const raw = JSON.parse(savedAgenda);
           if(raw && typeof raw==='object' && !Array.isArray(raw))setAgenda(raw);
         }
       } catch { /* keep editable empty state */ }
+      finally { if(active)setHydrated(true); }
     })();
     return ()=>{active=false;};
   },[userId,fetchWeather]);
@@ -136,7 +138,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
     } catch(e){setOutfitError(e instanceof Error?e.message:'Öneriler yüklenemedi.');}
     finally{setOutfitBusy(false);}
   },[userId,agenda,weather]);
-  useEffect(()=>{void generateOutfits(false);},[userId]); // cache is reused; avoid repeated paid AI requests
+  useEffect(()=>{if(hydrated)void generateOutfits(false);},[hydrated,userId]); // wait for saved agenda/weather to load
   const saveOutfit=async(outfit:Outfit)=>{
     const {error}=await supabase.from('wardrobe_outfits').insert({user_id:userId,name:outfit.name.slice(0,100),item_ids:outfit.item_ids});
     setOutfitError(error?'Kombin kaydedilemedi: '+error.message:'Kombin gardırobuna kaydedildi.');
