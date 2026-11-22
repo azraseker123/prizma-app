@@ -1727,9 +1727,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
               maxLength={100}
             />
 
-            <Text style={styles.boardHint}>
-              Parçaları fotoğraflarına dokunarak seç:
-            </Text>
+            <Text style={styles.boardHint}>Parça ekle; tuval üzerinde sürükleyerek yerleştir.</Text>
 
             <View style={styles.boardPicker}>
               {items.map((item) => {
@@ -1795,6 +1793,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:9}}>
                 {aiAlternativeLooks.map((look,index)=><TouchableOpacity key={index} style={styles.aiAlternativeCard}
                     onPress={()=>useAlternativeLook(look)}>
+                  <View style={styles.aiPreviewThumbs}>{look.item_ids.slice(0,4).map(id=>{const item=items.find(x=>x.id===id);return <View key={id} style={styles.aiPreviewCell}>{item?.imageUrl?<Image source={{uri:item.imageUrl}} style={styles.aiPreviewImage} resizeMode="contain"/>:<Text>▢</Text>}</View>;})}</View>
                   <Text style={styles.aiAlternativeName} numberOfLines={2}>{look.name}</Text>
                   <Text style={styles.aiAlternativeDescription} numberOfLines={3}>{look.description}</Text>
                   <Text style={styles.aiAlternativeButton}>Bu Kombini Kullan ›</Text>
@@ -1817,16 +1816,19 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 
         {/* KAYITLI KOMBİNLER */}
 
-        {outfits.map((outfit) => (
+        {!showOutfitBuilder && <View style={styles.outfitCompactGrid}>{outfits.map((outfit) => (
           <View
             key={outfit.id}
-            style={styles.outfitCard}
+            style={styles.outfitCompactCard}
           >
             <Text style={styles.boardOutfitTitle}>
               {outfit.name}
             </Text>
 
-            {renderBoard(outfit.item_ids)}
+            <View style={styles.outfitCompactPreview}>{outfit.item_ids.slice(0,4).map((id,index)=>{
+              const item=items.find(x=>x.id===id);
+              return <View key={id+index} style={styles.outfitThumbCell}>{item?.imageUrl?<Image source={{uri:item.imageUrl}} resizeMode="contain" style={styles.outfitThumbImage}/>:<Text style={styles.outfitThumbFallback}>▢</Text>}</View>;
+            })}</View>
 
             <View style={styles.boardActions}>
               <TouchableOpacity
@@ -1848,7 +1850,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
               </TouchableOpacity>
             </View>
           </View>
-        ))}
+        ))}</View>}
       </View>
 
         </>
@@ -1959,6 +1961,12 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 // ====================================================
 
 const styles = StyleSheet.create({
+  outfitCompactGrid:{flexDirection:'row',flexWrap:'wrap',gap:9,marginTop:13},
+  outfitCompactCard:{width:'48%',borderWidth:1,borderColor:C.border,borderRadius:16,padding:9,backgroundColor:'#FFFFFF',marginBottom:7},
+  outfitCompactPreview:{height:137,width:'100%',flexDirection:'row',flexWrap:'wrap',alignContent:'center',gap:2},
+  outfitThumbCell:{width:'48%',height:65,alignItems:'center',justifyContent:'center'},outfitThumbImage:{height:'100%',width:'100%'},outfitThumbFallback:{color:C.muted},
+  aiPreviewThumbs:{height:110,flexDirection:'row',flexWrap:'wrap',gap:3,alignContent:'center'},aiPreviewCell:{width:'48%',height:52},aiPreviewImage:{height:'100%',width:'100%'},
+
   savedScreen:{flex:1,backgroundColor:'#FFFFFF'},
   savedContent:{paddingHorizontal:19,paddingVertical:14,backgroundColor:'#FFFFFF',paddingBottom:40,gap:11},
   savedHeader:{minHeight:58,alignItems:'center',justifyContent:'center'},
