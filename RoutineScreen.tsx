@@ -4,7 +4,7 @@ import { addRoutineItem, getRoutineItems, removeRoutineItem, type RoutineItem, t
 import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
 type Props = { userId: string; onAIRequest: () => void };
-const PURPLE = '#79569A';
+const PURPLE = '#69318A';
 const categories: { key: RoutineCategory; label: string }[] = [{key:'skin',label:'Cilt'},{key:'hair',label:'Saç'},{key:'makeup',label:'Makyaj'}];
 
 export default function RoutineScreen({ userId, onAIRequest }: Props) {
@@ -73,7 +73,7 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
       setTitle('');
       setPhoto(null);
       await refresh();
-      setFeedback('Rutin adımı eklendi ✦');
+      setFeedback('Rutin adımı eklendi ');
     } catch (error) {
       if (uploadedPath) void deleteBeautyPhoto(uploadedPath).catch(() => {});
       setFeedback(error instanceof Error ? error.message : 'Kaydedilemedi. Tekrar dene.');
@@ -96,7 +96,7 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
   return (
     <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
       <Text style={s.eyebrow}>PRİZMA BEAUTY STUDIO</Text>
-      <Text style={s.title}>Bakım Rutinim ✦</Text>
+      <Text style={s.title}>Bakım Rutinim </Text>
       <Text style={s.desc}>Cilt, saç ve makyaj ürünlerini sabah ve akşam rutinlerine ekle.</Text>
       <View style={s.row}>
         {categories.map(c => (
@@ -128,7 +128,7 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
         {!!photo && (
           <View style={s.photoButtonRow}>
             <TouchableOpacity onPress={() => void makeTransparent()} disabled={busy || photoBusy} style={s.backgroundButton}>
-              <Text style={s.backgroundButtonText}>✦ Arka Planı Kaldır</Text>
+              <Text style={s.backgroundButtonText}> Arka Planı Kaldır</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={clearPhoto} disabled={busy || photoBusy} style={s.photoButton}>
               <Text style={s.photoButtonText}>Fotoğrafı Kaldır</Text>
@@ -141,7 +141,7 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
         </TouchableOpacity>
       </View>
       <TouchableOpacity onPress={onAIRequest} style={s.aiCard}>
-        <Text style={s.aiTitle}>✦ AI ile Ürün Önerisi Al</Text>
+        <Text style={s.aiTitle}> AI ile Ürün Önerisi Al</Text>
         <Text style={s.aiText}>Cilt, saç ve makyaj için ürün önerisi al, incele ve onaylayarak rutinine ekle.</Text>
         <Text style={s.aiLink}>Önerileri keşfet →</Text>
       </TouchableOpacity>
@@ -193,7 +193,7 @@ const s = StyleSheet.create({
   itemInfo: { flex: 1, minWidth: 0 },
   page:{padding:17,paddingBottom:55},eyebrow:{fontSize:10,letterSpacing:2,color:PURPLE,fontWeight:'800',marginBottom:9},
   title:{color:'#271936',fontSize:25,fontWeight:'800',marginBottom:7},desc:{color:'#61556A',fontSize:13,lineHeight:20,marginBottom:19},
-  panel:{borderRadius:20,padding:17,backgroundColor:'#FFFCFF',borderWidth:1,borderColor:'#E6D9EC',marginBottom:13},
+  panel:{borderRadius:20,padding:17,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#D8D6DC',marginBottom:13},
   panelTitle:{fontSize:16,color:'#281C36',fontWeight:'800',marginBottom:12},row:{flexDirection:'row',gap:9,marginBottom:13},
   chip:{borderRadius:100,backgroundColor:'#EFE2F5',paddingVertical:10,paddingHorizontal:24},chipSelected:{backgroundColor:PURPLE},
   chipText:{color:'#554365',fontWeight:'700'},chipTextSelected:{color:'#FFFFFF'},
