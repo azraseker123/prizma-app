@@ -127,6 +127,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [seasonFilter, setSeasonFilter] = useState('Tüm Mevsimler');
   const [colorFilter, setColorFilter] = useState('');
+  const [filterSheetVisible,setFilterSheetVisible] = useState(false);
 
   const [detailItem, setDetailItem] =
     useState<WardrobeItemWithImage | null>(null);
@@ -975,6 +976,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         onSetupPhoto={() => { setTryOnItem(null); if (onSetupTryOnPhoto) onSetupTryOnPhoto(); else showNotice('info', 'Fotoğrafını profilinden ekle ', 'Profil → Sanal Deneme Fotoğrafım bölümünden boydan fotoğraf yükleyebilirsin.'); }}
       />
       <PrizmaNotice
+        bottomOffset={80}
         visible={Boolean(notice)}
         type={notice?.type || 'info'}
         title={notice?.title || ''}
@@ -1007,27 +1009,16 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         }}
       />
 
-      <View style={styles.wardrobeCompactHeading}>
-        <View style={{flex:1}}>
-          <Text style={styles.wardrobeCompactTitle}>Gardırobum</Text>
-          <Text style={styles.wardrobeCompactDescription}>Kıyafetlerini düzenle, stilini oluştur.</Text>
-        </View>
-        <TouchableOpacity style={styles.wardrobeAddCircle} onPress={startAdding} accessibilityLabel="Gardıroba kıyafet ekle" accessibilityRole="button"><Text style={styles.wardrobeAddPlus}>+</Text></TouchableOpacity>
+      <View style={styles.catalogHeading}><Text style={styles.catalogTitle}>Gardırop</Text><Text style={styles.catalogSubtitle}>Tüm kıyafetlerin, kombinlerin ve stilin tek yerde.</Text></View>
+      <View style={styles.catalogStats}>
+        <Text style={styles.catalogStat}>♧  {items.length} Parça</Text>
+        <View style={styles.catalogDivider}/>
+        <Text style={styles.catalogStat}>▱  {outfits.length} Kombin</Text>
       </View>
-      <View style={styles.wardrobeCategoryPreview}>
-        {(['Üst Giyim','Alt Giyim','Dış Giyim','Ayakkabı','Çanta','Aksesuar'] as const).map((categoryName,idx)=>(
-          <TouchableOpacity key={categoryName} style={styles.wardrobeCategoryTile} onPress={()=>{setActiveWardrobeTab('clothes');setActiveFilter(categoryName);}}>
-            <Text style={styles.wardrobeCategorySymbol}>{['♧','▥','▤','⌁','▢','○'][idx]}</Text>
-            <Text style={styles.wardrobeCategoryName} numberOfLines={1}>{categoryName}</Text>
-            <Text style={styles.wardrobeCategoryCount}>{items.filter(x=>x.category===categoryName).length}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* GARDIROP SEKME NAVIGASYONU */}
       <View style={styles.wardrobeTabRow} accessibilityRole="tablist">
         {([
-          ['clothes', 'Kıyafetler'],
+          ['clothes', 'Parçalar'],
           ['outfits', 'Kombinler'],
         ] as const).map(([key, label]) => (
           <TouchableOpacity
@@ -1060,21 +1051,40 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
         </TouchableOpacity>
       )}
 
-      {activeWardrobeTab === 'clothes' && (
-        <>
-      <View style={styles.compactWardrobeTools}>
-        <Text style={styles.compactCount}>{items.length} parça</Text>
-        <TouchableOpacity style={styles.compactAdd} onPress={startAdding}>
-          <Text style={styles.compactAddText}>+ Parça Ekle</Text>
-        </TouchableOpacity>
-      </View>
-        </>
-      )}
-
+      {activeWardrobeTab === 'clothes' && <View style={styles.catalogSearchRow}>
+        <View style={styles.catalogSearch}><Text style={styles.catalogSearchSymbol}>⌕</Text><TextInput style={styles.catalogSearchInput} value={search} onChangeText={setSearch} placeholder="Gardırobunda ara..." placeholderTextColor={C.muted}/></View>
+        <TouchableOpacity style={styles.catalogFilterButton} onPress={()=>setFilterSheetVisible(true)}><Text style={styles.catalogFilterText}>☷  Filtrele</Text></TouchableOpacity>
+      </View>}
+      <TouchableOpacity style={styles.floatingAdd} onPress={startAdding} accessibilityRole="button" accessibilityLabel="Yeni parça ekle"><Text style={styles.floatingAddText}>＋</Text></TouchableOpacity>
       {/* ============================================= */}
       {/* KIYAFET EKLEME / DÜZENLEME TAM EKRAN MODALI */}
       {/* ============================================= */}
 
+
+      <Modal transparent visible={filterSheetVisible} animationType="slide" onRequestClose={()=>setFilterSheetVisible(false)}>
+        <View style={styles.prizmaSheetOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={()=>setFilterSheetVisible(false)}/>
+          <View style={styles.filterSheet}><View style={styles.prizmaSheetHandle}/>
+            <View style={styles.filterSheetHeading}><Text style={styles.filterSheetTitle}>Filtrele</Text><TouchableOpacity onPress={()=>setFilterSheetVisible(false)}><Text style={styles.filterClose}>×</Text></TouchableOpacity></View>
+            <ScrollView style={{maxHeight:440}} showsVerticalScrollIndicator={false}>
+              <Text style={styles.filterGroupTitle}>Kategori</Text>
+              <View style={styles.filterChoices}>{CATEGORIES.map(value=><TouchableOpacity key={value} onPress={()=>setActiveFilter(value)} style={[styles.filterOption,activeFilter===value&&styles.filterOptionActive]}><Text style={[styles.filterOptionLabel,activeFilter===value&&styles.filterOptionLabelActive]}>{value}</Text></TouchableOpacity>)}</View>
+              <View style={styles.filterSeparator}/>
+              <Text style={styles.filterGroupTitle}>Renk</Text>
+              <View style={styles.filterChoices}>{(['','Siyah','Beyaz','Bej','Kahverengi','Gri','Mavi','Yeşil','Kırmızı','Mor'] as const).map(value=><TouchableOpacity key={value} onPress={()=>setColorFilter(value)} style={[styles.colorOption,colorFilter===value&&styles.colorOptionActive]}><View style={[styles.colorCircle,{backgroundColor:({'':'#FFFFFF','Siyah':'#222222','Beyaz':'#FFFFFF','Bej':'#DCC5AA','Kahverengi':'#7B553C','Gri':'#B6B6B6','Mavi':'#4266A2','Yeşil':'#78945E','Kırmızı':'#C85E69','Mor':'#775493'} as Record<string,string>)[value]}]}/><Text style={styles.filterColorLabel}>{value||'Tümü'}</Text></TouchableOpacity>)}</View>
+              <View style={styles.filterSeparator}/>
+              <Text style={styles.filterGroupTitle}>Mevsim</Text>
+              <View style={styles.filterChoices}>{SEASONS.filter(x=>x!=='Dört Mevsim').map(value=><TouchableOpacity key={value} onPress={()=>setSeasonFilter(value)} style={[styles.filterOption,seasonFilter===value&&styles.filterOptionActive]}><Text style={[styles.filterOptionLabel,seasonFilter===value&&styles.filterOptionLabelActive]}>{value}</Text></TouchableOpacity>)}</View>
+              <View style={styles.filterSeparator}/>
+              <TouchableOpacity style={styles.onlyFavorites} onPress={()=>setFavoriteOnly(!favoriteOnly)}><Text style={styles.onlyFavoritesLabel}>{favoriteOnly?'☑':'□'}  Yalnızca favorilerimi göster</Text></TouchableOpacity>
+            </ScrollView>
+            <View style={styles.filterFooter}>
+              <TouchableOpacity style={styles.filterReset} onPress={()=>{setActiveFilter('Tümü');setColorFilter('');setSeasonFilter('Tüm Mevsimler');setFavoriteOnly(false);}}><Text style={styles.filterResetText}>Temizle</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.filterApply} onPress={()=>setFilterSheetVisible(false)}><Text style={styles.filterApplyText}>Sonuçları Göster</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={photoSheetVisible}
@@ -1092,7 +1102,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
             <View style={styles.prizmaSheetHandle} />
             <Text style={styles.prizmaSheetSparkle}>▢</Text>
             <Text style={styles.prizmaSheetTitle}>
-              Bir parça ekleyelim
+              Parça Ekle
             </Text>
             <Text style={styles.prizmaSheetSubtitle}>
               Yeni parçanı nasıl eklemek istersin?
@@ -1108,10 +1118,10 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
               <Text style={styles.prizmaSheetOptionIcon}>▧</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.prizmaSheetOptionTitle}>
-                  Galeriden seç
+                  Galeriden Seç
                 </Text>
                 <Text style={styles.prizmaSheetOptionDetail}>
-                  Fotoğraflarından bir parça seç
+                  Tek bir kıyafet ekle
                 </Text>
               </View>
               <Text style={styles.prizmaSheetArrow}>›</Text>
@@ -1127,10 +1137,10 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
               <Text style={styles.prizmaSheetOptionIcon}>◉</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.prizmaSheetOptionTitle}>
-                  Fotoğraf çek
+                  Kamera
                 </Text>
                 <Text style={styles.prizmaSheetOptionDetail}>
-                  Kameranla yeni bir fotoğraf oluştur
+                  Şimdi fotoğraf çek
                 </Text>
               </View>
               <Text style={styles.prizmaSheetArrow}>›</Text>
@@ -1787,99 +1797,6 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
             </TouchableOpacity>
           </View>
 
-          {/* ARAMA */}
-
-          <TextInput
-            style={styles.input}
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Kıyafet ara..."
-            placeholderTextColor={C.muted}
-          />
-
-          {/* FAVORİ FİLTRESİ */}
-
-          <TouchableOpacity
-            style={styles.outlineButton}
-            onPress={() => setFavoriteOnly(!favoriteOnly)}
-          >
-            <Text style={styles.outlineText}>
-              {favoriteOnly
-                ? '❤️ Sadece favoriler ✓'
-                : '♡ Sadece favoriler'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* RENK FİLTRESİ */}
-
-          <TextInput
-            style={[styles.input, { marginTop: 12 }]}
-            value={colorFilter}
-            onChangeText={setColorFilter}
-            placeholder="Renge göre filtrele..."
-            placeholderTextColor={C.muted}
-          />
-
-          {/* MEVSİM FİLTRELERİ */}
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterRow}
-          >
-            {SEASONS.map((item) => (
-              <TouchableOpacity
-                key={item}
-                onPress={() => setSeasonFilter(item)}
-                style={[
-                  styles.filterChip,
-                  seasonFilter === item &&
-                    styles.filterChipActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    seasonFilter === item &&
-                      styles.filterTextActive,
-                  ]}
-                >
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* KATEGORİ FİLTRELERİ */}
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterRow}
-          >
-            {CATEGORIES.map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={[
-                  styles.filterChip,
-                  activeFilter === item &&
-                    styles.filterChipActive,
-                ]}
-                onPress={() => setActiveFilter(item)}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    activeFilter === item &&
-                      styles.filterTextActive,
-                  ]}
-                >
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
           {/* FİLTRE SONUÇLARI */}
 
           {filteredItems.length === 0 ? (
@@ -1891,123 +1808,22 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
           ) : (
             <View style={styles.grid}>
               {filteredItems.map((item) => (
-                <View
-                  key={item.id}
-                  style={styles.itemCard}
-                >
-                  {/* KIYAFET FOTOĞRAFI */}
-
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => setDetailItem(item)}
-                    style={styles.itemImageContainer}
-                  >
-                    {item.imageUrl ? (
-                      <Image
-                        source={{ uri: item.imageUrl }}
-                        style={styles.itemImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={styles.imagePlaceholder}>
-                        <Text style={styles.placeholderIcon}>
-                          ◇
-                        </Text>
-
-                        <Text style={styles.placeholderText}>
-                          Görsel yüklenemedi
-                        </Text>
-                      </View>
-                    )}
+                <View key={item.id} style={styles.itemCard}>
+                  <TouchableOpacity style={styles.itemImageContainer} onPress={()=>setDetailItem(item)} accessibilityRole="button">
+                    {item.imageUrl?<Image source={{uri:item.imageUrl}} style={styles.itemImage} resizeMode="contain"/>:
+                      <View style={styles.imagePlaceholder}><Text style={styles.placeholderIcon}>♧</Text><Text style={styles.placeholderText}>Görsel ekle</Text></View>}
                   </TouchableOpacity>
-
-                  {/* KIYAFET BİLGİLERİ */}
-
+                  <TouchableOpacity onPress={()=>{void toggleFavorite(item);}} style={styles.catalogFavorite} accessibilityRole="button" accessibilityLabel={item.favorite?'Favorilerden çıkar':'Favorilere ekle'}>
+                    <Text style={styles.catalogHeart}>{item.favorite?'♥':'♡'}</Text>
+                  </TouchableOpacity>
                   <View style={styles.itemInfo}>
-                    <Text
-                      style={styles.itemName}
-                      numberOfLines={2}
-                    >
-                      {item.name}
-                    </Text>
-
-                    <Text style={styles.itemCategory}>
-                      {item.category}
-                    </Text>
-
-                    {item.color ? (
-                      <Text style={styles.itemColor}>
-                        {item.color}
-                      </Text>
-                    ) : null}
-
-                    {/* DETAY BUTONU */}
-
-                    <TouchableOpacity
-                      onPress={() => setDetailItem(item)}
-                      style={styles.outlineButton}
-                    >
-                      <Text style={styles.outlineText}>
-                        Detayları Gör
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => setTryOnItem(item)}
-                      style={[styles.outlineButton, { backgroundColor: '#F0EAF6', borderColor: '#DCC7EB' }]}
-                    >
-                      <Text style={[styles.outlineText, { color: '#68419A', fontWeight: '800' }]}>Üzerimde Dene</Text>
-                    </TouchableOpacity>
-
-                    {/* FAVORİ BUTONU */}
-
-                    <TouchableOpacity
-                      onPress={() =>
-                        void toggleFavorite(item)
-                      }
-                      style={styles.outlineButton}
-                    >
-                      <Text style={styles.outlineText}>
-                        {item.favorite
-                          ? '❤️ Favoride'
-                          : '♡ Favorile'}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* DÜZENLE VE SİL */}
-
-                    <View style={styles.actionRow}>
-                      <TouchableOpacity
-                        style={styles.editButton}
-                        onPress={() => startEditing(item)}
-                        disabled={
-                          saving || Boolean(deletingId)
-                        }
-                      >
-                        <Text style={styles.editText}>
-                          ✎ Düzenle
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => deleteItem(item)}
-                        disabled={
-                          saving || Boolean(deletingId)
-                        }
-                      >
-                        {deletingId === item.id ? (
-                          <ActivityIndicator
-                            size="small"
-                            color={C.rose}
-                          />
-                        ) : (
-                          <Text style={styles.deleteText}>
-                            Sil
-                          </Text>
-                        )}
-                      </TouchableOpacity>
+                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.itemCategory} numberOfLines={1}>{item.category} · {item.color||'Renk belirtilmedi'}</Text>
+                    <View style={styles.catalogActionRow}>
+                      <TouchableOpacity style={styles.catalogSmallAction} onPress={()=>startEditing(item)}><Text style={styles.catalogSmallText}>✎ Düzenle</Text></TouchableOpacity>
+                      <TouchableOpacity style={styles.catalogSmallAction} onPress={()=>deleteItem(item)}><Text style={styles.catalogSmallText}>♙ Sil</Text></TouchableOpacity>
                     </View>
+                    <TouchableOpacity style={styles.catalogTryOn} onPress={()=>setTryOnItem(item)}><Text style={styles.catalogTryText}>▢  Üzerimde Dene</Text></TouchableOpacity>
                   </View>
                 </View>
               ))}
@@ -2030,6 +1846,44 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
 // ====================================================
 
 const styles = StyleSheet.create({
+  catalogHeading:{alignItems:'center',paddingTop:6,paddingBottom:12},
+  catalogTitle:{fontFamily:Platform.OS==='ios'?'Georgia':'serif',fontSize:30,fontWeight:'600',color:C.navy},
+  catalogSubtitle:{fontSize:12,color:C.muted,textAlign:'center',marginTop:5},
+  catalogStats:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:22,marginBottom:19},
+  catalogStat:{fontSize:15,color:C.navy,fontWeight:'700'},
+  catalogDivider:{height:25,width:1,backgroundColor:C.border},
+  catalogSearchRow:{flexDirection:'row',gap:9,marginBottom:15},
+  catalogSearch:{flex:1,minHeight:47,borderWidth:1,borderColor:C.border,borderRadius:25,flexDirection:'row',alignItems:'center',paddingHorizontal:12,backgroundColor:'#FFFFFF'},
+  catalogSearchSymbol:{color:C.lavender,fontSize:25,marginRight:8},
+  catalogSearchInput:{flex:1,fontSize:13,color:C.navy,paddingVertical:4},
+  catalogFilterButton:{minHeight:47,paddingHorizontal:12,borderColor:C.border,borderWidth:1,borderRadius:25,justifyContent:'center'},
+  catalogFilterText:{fontSize:12,fontWeight:'700',color:C.lavender},
+  floatingAdd:{position:'absolute',bottom:24,right:6,zIndex:35,elevation:12,width:58,height:58,borderRadius:29,backgroundColor:C.lavender,alignItems:'center',justifyContent:'center'},
+  floatingAddText:{fontSize:34,color:'#FFFFFF',fontWeight:'300',marginTop:-4},
+  catalogFavorite:{position:'absolute',top:9,right:9,width:35,height:35,borderRadius:18,backgroundColor:'#FFFFFF',justifyContent:'center',alignItems:'center',elevation:2},
+  catalogHeart:{fontSize:23,color:C.lavender},
+  catalogActionRow:{flexDirection:'row',borderTopWidth:1,borderColor:C.border,marginTop:8,paddingTop:8},
+  catalogSmallAction:{flex:1,alignItems:'center',justifyContent:'center',minHeight:38},
+  catalogSmallText:{color:C.lavender,fontSize:11,fontWeight:'700'},
+  catalogTryOn:{marginTop:7,minHeight:39,backgroundColor:C.lavender,borderRadius:12,alignItems:'center',justifyContent:'center'},
+  catalogTryText:{fontSize:12,color:'#FFFFFF',fontWeight:'700'},
+  filterSheet:{backgroundColor:'#FFFFFF',borderTopLeftRadius:29,borderTopRightRadius:29,padding:19,paddingBottom:30},
+  filterSheetHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:11},
+  filterSheetTitle:{fontFamily:Platform.OS==='ios'?'Georgia':'serif',fontSize:28,color:C.navy},
+  filterClose:{fontSize:28,color:C.navy},
+  filterGroupTitle:{fontFamily:Platform.OS==='ios'?'Georgia':'serif',fontSize:19,color:C.navy,marginBottom:13},
+  filterChoices:{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:12},
+  filterOption:{minHeight:39,paddingHorizontal:13,borderRadius:21,borderWidth:1,borderColor:C.border,justifyContent:'center',backgroundColor:'#FFFFFF'},
+  filterOptionActive:{backgroundColor:C.lavender,borderColor:C.lavender},
+  filterOptionLabel:{fontSize:12,color:C.lavender},filterOptionLabelActive:{color:'#FFFFFF',fontWeight:'700'},
+  filterSeparator:{height:1,backgroundColor:C.border,marginVertical:17},
+  colorOption:{width:'18%',alignItems:'center',paddingVertical:3,gap:5},
+  colorOptionActive:{borderWidth:1,borderColor:C.lavender,borderRadius:11},
+  colorCircle:{height:35,width:35,borderRadius:18,borderWidth:1,borderColor:C.border},
+  filterColorLabel:{fontSize:10,color:C.navy},
+  onlyFavorites:{minHeight:46,justifyContent:'center'},onlyFavoritesLabel:{fontSize:14,color:C.navy},
+  filterFooter:{flexDirection:'row',gap:10,paddingTop:15},filterReset:{flex:1,minHeight:48,alignItems:'center',justifyContent:'center',borderColor:C.lavender,borderWidth:1,borderRadius:12},filterResetText:{color:C.lavender,fontWeight:'700'},filterApply:{flex:2,minHeight:48,alignItems:'center',justifyContent:'center',backgroundColor:C.lavender,borderRadius:12},filterApplyText:{color:'#FFFFFF',fontWeight:'700'},
+
   analysisInfo:{flexDirection:'row',alignItems:'center',gap:9,padding:13,borderRadius:14,backgroundColor:'#F3EAF8',marginBottom:13},
   analysisInfoText:{flex:1,fontSize:12,color:'#6E6872',lineHeight:18},
   aiRetry:{borderColor:C.border,borderWidth:1,borderRadius:12,minHeight:44,alignItems:'center',justifyContent:'center',marginBottom:13},
@@ -2827,8 +2681,8 @@ const styles = StyleSheet.create({
 
   itemCard: {
     width: '48%',
-    backgroundColor: C.white,
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: C.border,
@@ -2837,8 +2691,8 @@ const styles = StyleSheet.create({
 
   itemImageContainer: {
     width: '100%',
-    height: 145,
-    backgroundColor: C.pale,
+    height: 180,
+    backgroundColor: '#FFFFFF',
   },
 
   itemImage: {
@@ -2865,12 +2719,12 @@ const styles = StyleSheet.create({
   },
 
   itemInfo: {
-    padding: 13,
+    padding: 9,
   },
 
   itemName: {
     color: C.navy,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
     marginBottom: 5,
   },
