@@ -267,7 +267,6 @@ export default function BeautyCollectionScreen({ userId }: Props) {
         image_license_name:candidate.license_name,
         image_license_url:candidate.license_url,
         image_license_verified_at:new Date().toISOString(),
-        ...(candidate.inci?{inci_ingredients:candidate.inci}:{}),
       }).eq('id',lookupProduct.id).eq('user_id',userId);
       if(error)throw error;
       setLookupProduct(null);setImageOptions([]);
