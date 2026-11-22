@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { addRoutineItem, getRoutineItems, removeRoutineItem, moveRoutineItem, renameRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
+import { addRoutineItem, getRoutineItems, removeRoutineItem, moveRoutineItem, renameRoutineItem, changeRoutinePhoto, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
 import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
 type Props = { userId: string; onAIRequest: () => void };
@@ -18,6 +18,8 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
   const [feedback, setFeedback] = useState('');
   const [photo, setPhoto] = useState<BeautyPhoto | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [editingImageId,setEditingImageId]=useState<string|null>(null);
+  const [editingPhoto,setEditingPhoto]=useState<BeautyPhoto|null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [editingSteps, setEditingSteps] = useState(false);
@@ -88,6 +90,46 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Arka plan kaldırılamadı.');
     } finally { setPhotoBusy(false); }
+  };
+
+  const selectEditedPhoto=async(source:'gallery'|'camera')=>{
+    if(busy||photoBusy)return;
+    setPhotoBusy(true);setFeedback('');
+    try{const result=source==='gallery'?await selectBeautyPhoto():await captureBeautyPhoto();if(result)setEditingPhoto(result);}
+    catch(error){setFeedback(error instanceof Error?error.message:'Fotoğraf seçilemedi.');}
+    finally{setPhotoBusy(false);}
+  };
+  const clearEditedImage=async()=>{
+    if(!editingImageId||busy||photoBusy)return;
+    setBusy(true);
+    try{
+      const current=items.find(x=>x.id===editingImageId);
+      await changeRoutinePhoto(userId,editingImageId,undefined);
+      if(current?.imagePath)void deleteBeautyPhoto(current.imagePath).catch(()=>{});
+      setEditingImageId(null);setEditingPhoto(null);await refresh();
+      setFeedback('Ürün fotoğrafı kaldırıldı.');
+    }catch{setFeedback('Fotoğraf kaldırılamadı.');}
+    finally{setBusy(false);}
+  };
+  const saveEditedImage=async()=>{
+    if(!editingImageId||!editingPhoto||busy||photoBusy)return;
+    setBusy(true);let newPath:string|undefined;
+    try{
+      const current=items.find(x=>x.id===editingImageId);
+      newPath=await uploadBeautyPhoto(userId,editingPhoto);
+      await changeRoutinePhoto(userId,editingImageId,newPath);
+      if(current?.imagePath&&current.imagePath!==newPath)void deleteBeautyPhoto(current.imagePath).catch(()=>{});
+      setEditingImageId(null);setEditingPhoto(null);await refresh();
+      setFeedback('Ürün fotoğrafı güncellendi.');
+    }catch(error){if(newPath)void deleteBeautyPhoto(newPath).catch(()=>{});setFeedback(error instanceof Error?error.message:'Fotoğraf kaydedilemedi.');}
+    finally{setBusy(false);}
+  };
+  const removeEditedBackground=async()=>{
+    if(!editingPhoto||photoBusy||busy)return;
+    setPhotoBusy(true);
+    try{const result=await removeBeautyBackground(editingPhoto);setEditingPhoto(result);}
+    catch(error){setFeedback(error instanceof Error?error.message:'Arka plan kaldırma başarısız.');}
+    finally{setPhotoBusy(false);}
   };
 
   const add = async () => {
@@ -202,11 +244,22 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
             <TouchableOpacity disabled={index===0||busy} onPress={()=>{void shiftStep(item.id,-1);}} accessibilityLabel="Yukarı taşı"><Text style={s2.sortArrow}>↑</Text></TouchableOpacity>
             <TouchableOpacity disabled={index===visibleItems.length-1||busy} onPress={()=>{void shiftStep(item.id,1);}} accessibilityLabel="Aşağı taşı"><Text style={s2.sortArrow}>↓</Text></TouchableOpacity>
           </View>
-          {preview(item)}
+          <TouchableOpacity onPress={()=>{setEditingImageId(item.id);setEditingPhoto(null);}} accessibilityLabel="Ürün fotoğrafını düzenle">{preview(item)}<Text style={s2.photoEditLabel}>Fotoğraf</Text></TouchableOpacity>
           <TouchableOpacity style={{flex:1}} onPress={()=>{setRenameStepId(item.id);setRenameDraft(item.title);}}><Text style={s2.stepName} numberOfLines={2}>{item.title}</Text><Text style={s2.stepDetail}>Adını düzenle ›</Text></TouchableOpacity>
           <TouchableOpacity onPress={()=>{void remove(item.id);}} accessibilityLabel="Ürünü kaldır"><Text style={s2.removeIcon}>×</Text></TouchableOpacity>
         </View>)}
       </View>
+      {editingImageId&&<View style={s2.editorBox}>
+        <Text style={s2.boxTitle}>Ürün Fotoğrafını Düzenle</Text>
+        {(editingPhoto?.uri||photoUrls[editingImageId])?<Image source={{uri:editingPhoto?.uri||photoUrls[editingImageId]}} resizeMode="contain" style={s2.editImagePreview}/>:<Text style={s2.muted}>Bu ürün için henüz fotoğraf yok.</Text>}
+        <View style={s2.photoActions}><TouchableOpacity style={s2.photoAction} onPress={()=>{void selectEditedPhoto('gallery');}}><Text style={s2.actionLabel}>Galeriden Seç</Text></TouchableOpacity>
+          <TouchableOpacity style={s2.photoAction} onPress={()=>{void selectEditedPhoto('camera');}}><Text style={s2.actionLabel}>Kamera</Text></TouchableOpacity>
+          {!!editingPhoto&&<TouchableOpacity style={s2.photoAction} disabled={photoBusy} onPress={()=>{void removeEditedBackground();}}><Text style={s2.actionLabel}>Arka Planı Kaldır</Text></TouchableOpacity>}
+        </View>
+        {!!editingPhoto&&<TouchableOpacity style={s2.secondary} disabled={busy||photoBusy} onPress={()=>{void saveEditedImage();}}><Text style={s2.secondaryLabel}>Fotoğrafı Kaydet</Text></TouchableOpacity>}
+        {!!items.find(x=>x.id===editingImageId)?.imagePath&&<TouchableOpacity style={s2.outline} disabled={busy||photoBusy} onPress={()=>{void clearEditedImage();}}><Text style={s2.outlineText}>Fotoğrafı Kaldır</Text></TouchableOpacity>}
+        <TouchableOpacity style={s2.cancel} onPress={()=>{setEditingImageId(null);setEditingPhoto(null);}}><Text style={s2.muted}>Vazgeç</Text></TouchableOpacity>
+      </View>}
       {renameStepId&&<View style={s2.editorBox}><Text style={s2.boxTitle}>Adımın Adı</Text><TextInput style={s2.input} value={renameDraft} onChangeText={setRenameDraft} maxLength={100}/><TouchableOpacity style={s2.outline} onPress={()=>{void saveStepTitle();}}><Text style={s2.outlineText}>Adı Kaydet</Text></TouchableOpacity><TouchableOpacity onPress={()=>setRenameStepId(null)} style={s2.cancel}><Text style={s2.muted}>Vazgeç</Text></TouchableOpacity></View>}
       <View style={s2.editorBox}>
         <Text style={s2.boxTitle}>+ Ürün Ekle</Text>
@@ -293,6 +346,8 @@ const s = StyleSheet.create({
 });
 
 const s2=StyleSheet.create({
+ photoEditLabel:{fontSize:10,color:'#69318A',textAlign:'center',marginTop:4},editImagePreview:{width:'100%',height:160,backgroundColor:'#FFFFFF'},
+
  page:{backgroundColor:'#FFFFFF',padding:14,paddingBottom:42,gap:13},title:{fontSize:23,fontWeight:'800',color:'#242124',textAlign:'center',marginVertical:12},
  periodBar:{flexDirection:'row',borderWidth:1,borderColor:'#D8D6DC',borderRadius:17,overflow:'hidden',marginBottom:5},
  periodButton:{flex:1,alignItems:'center',justifyContent:'center',minHeight:49,backgroundColor:'#FFFFFF'},
