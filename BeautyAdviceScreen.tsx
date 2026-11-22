@@ -140,7 +140,7 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.eyebrow}>THE BEAUTY ADVISOR</Text>
-      <Text style={styles.title}>PRİZMA Cilt Danışmanı ✦</Text>
+      <Text style={styles.title}>PRİZMA Cilt Danışmanı </Text>
 
       <Text style={styles.description}>
         Cilt profilini dikkate alarak ürünler hakkında
@@ -195,7 +195,7 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
         {loading ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
-          <Text style={styles.buttonText}>Önerilerimi Oluştur ✦</Text>
+          <Text style={styles.buttonText}>Önerilerimi Oluştur </Text>
         )}
       </TouchableOpacity>
 
@@ -203,7 +203,7 @@ export default function BeautyAdviceScreen({ userId, initialCategory = 'skin' }:
 
       {advice && (
         <View style={styles.results}>
-          <Text style={styles.sectionTitle}>Sana özel öneriler ✦</Text>
+          <Text style={styles.sectionTitle}>Sana özel öneriler </Text>
           <Text style={styles.description}>{advice.introduction}</Text>
 
           {advice.products.map((product, index) => (
@@ -268,10 +268,10 @@ const styles = StyleSheet.create({
   },
   categoryButton: {
     flex: 1, paddingVertical: 13, borderRadius: 12,
-    backgroundColor: '#F5EFF8', alignItems: 'center',
+    backgroundColor: '#FFFFFF', alignItems: 'center',
   },
   categorySelected: {
-    backgroundColor: '#805C9F',
+    backgroundColor: '#69318A',
   },
   categoryText: {
     color: '#6F6479', fontWeight: '700', fontSize: 14,
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 45 },
   eyebrow: {
     fontSize: 11, letterSpacing: 2,
-    color: '#805C9F', fontWeight: '700', marginBottom: 9,
+    color: '#69318A', fontWeight: '700', marginBottom: 9,
   },
   title: {
     fontSize: 26, fontWeight: '800',
@@ -299,19 +299,19 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 105, borderWidth: 1,
-    borderColor: '#E5D8EA', borderRadius: 16,
+    borderColor: '#D8D6DC', borderRadius: 16,
     padding: 14, textAlignVertical: 'top',
     color: '#352943', fontSize: 14,
     backgroundColor: '#FFFFFF', marginBottom: 14,
   },
   button: {
-    backgroundColor: '#805C9F',
+    backgroundColor: '#69318A',
     borderRadius: 15, padding: 16, alignItems: 'center',
   },
   disabled: { opacity: 0.6 },
   buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   message: {
-    color: '#73549A', fontSize: 13,
+    color: '#69318A', fontSize: 13,
     lineHeight: 20, marginTop: 14,
   },
   results: { marginTop: 26 },
@@ -323,10 +323,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18, padding: 18,
     marginBottom: 14, borderWidth: 1,
-    borderColor: '#F0E5F5',
+    borderColor: '#F3EAF8',
   },
   brand: {
-    fontSize: 12, color: '#805C9F',
+    fontSize: 12, color: '#69318A',
     fontWeight: '700', marginBottom: 5,
   },
   productName: {
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     color: '#6F6479', marginBottom: 13,
   },
   saveButton: {
-    backgroundColor: '#805C9F',
+    backgroundColor: '#69318A',
     borderRadius: 12, padding: 13,
     alignItems: 'center', marginTop: 4,
   },
@@ -351,12 +351,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', fontSize: 13, fontWeight: '700',
   },
   periodRow: { flexDirection: 'row', gap: 7, marginTop: 11, marginBottom: 8 },
-  periodChip: { borderRadius: 100, backgroundColor: '#F0E6F6', paddingVertical: 7, paddingHorizontal: 15 },
-  periodChipSelected: { backgroundColor: '#79559A' },
+  periodChip: { borderRadius: 100, backgroundColor: '#F3EAF8', paddingVertical: 7, paddingHorizontal: 15 },
+  periodChipSelected: { backgroundColor: '#69318A' },
   periodText: { color: '#5F4C6F', fontWeight: '700', fontSize: 12 },
   periodTextSelected: { color: '#FFFFFF' },
   routineButton: { borderWidth: 1, borderColor: '#AF8AC6', borderRadius: 12, padding: 12, alignItems: 'center' },
-  routineButtonText: { color: '#785397', fontSize: 13, fontWeight: '800' },
+  routineButtonText: { color: '#69318A', fontSize: 13, fontWeight: '800' },
   disclaimer: {
     fontSize: 12, lineHeight: 19,
     color: '#82778C', marginTop: 12,
