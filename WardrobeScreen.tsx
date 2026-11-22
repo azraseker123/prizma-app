@@ -1,3 +1,4 @@
+import { PRIZMA } from './prizmaTheme';
 import PrizmaNotice, { type NoticeType } from './PrizmaNotice';
 import PrizmaConfirm from './PrizmaConfirm';
 import OutfitAIScreen from './OutfitAIScreen';
@@ -51,15 +52,15 @@ type Outfit = {
 };
 
 const C = {
-  navy: '#0B1436',
-  lavender: '#9372B5',
-  lilac: '#E7D9F0',
-  background: '#FAF8FC',
-  white: '#FFFFFF',
-  muted: '#777B94',
-  border: '#E9E0EF',
-  pale: '#F4EDF9',
-  rose: '#C05D78',
+  navy: PRIZMA.ink,
+  lavender: PRIZMA.purple,
+  lilac: PRIZMA.purpleLight,
+  background: PRIZMA.background,
+  white: PRIZMA.white,
+  muted: PRIZMA.muted,
+  border: PRIZMA.border,
+  pale: PRIZMA.purpleLight,
+  rose: PRIZMA.danger,
 };
 
 const SEASONS = [
@@ -476,8 +477,8 @@ export default function WardrobeScreen({ userId }: Props) {
 
       showNotice('success',
         wasEditing
-          ? 'Kıyafet güncellendi ✦'
-          : 'Kıyafetin eklendi ✦',
+          ? 'Kıyafet güncellendi '
+          : 'Kıyafetin eklendi ',
         wasEditing
           ? 'Değişikliklerin kaydedildi.'
           : 'Yeni parçan PRİZMA gardırobunda!'
@@ -866,7 +867,7 @@ export default function WardrobeScreen({ userId }: Props) {
         mimeType: 'image/png',
       });
 
-      showNotice('success', 'Arka plan hazır ✨',
+      showNotice('success', 'Arka plan hazır ',
         'Arka plan kaldırıldı. Değişikliği saklamak için Kaydet butonuna bas.');
     } catch (error: any) {
       showNotice('error', 'Arka plan kaldırılamadı',
@@ -978,7 +979,7 @@ export default function WardrobeScreen({ userId }: Props) {
         {([
           ['clothes', 'Kıyafetler'],
           ['outfits', 'Kombinler'],
-          ['ai', 'AI Öneri ✦'],
+          ['ai', 'AI Öneri'],
         ] as const).map(([key, label]) => (
           <TouchableOpacity
             key={key}
@@ -1028,7 +1029,7 @@ export default function WardrobeScreen({ userId }: Props) {
           />
           <View style={styles.prizmaSheet}>
             <View style={styles.prizmaSheetHandle} />
-            <Text style={styles.prizmaSheetSparkle}>✦</Text>
+            <Text style={styles.prizmaSheetSparkle}></Text>
             <Text style={styles.prizmaSheetTitle}>
               Bir parça ekleyelim
             </Text>
@@ -1131,8 +1132,8 @@ export default function WardrobeScreen({ userId }: Props) {
             >
               <Text style={styles.formTitle}>
                 {editingItem
-                  ? 'Parçanı düzenle ✦'
-                  : 'Yeni bir parça ✦'}
+                  ? 'Parçanı düzenle '
+                  : 'Yeni bir parça '}
               </Text>
 
               <Text style={styles.formSubtitle}>
@@ -1172,7 +1173,7 @@ export default function WardrobeScreen({ userId }: Props) {
                     <ActivityIndicator color={C.navy} />
                   ) : (
                     <Text style={styles.outlineText}>
-                      ✨ Arka Planı Kaldır
+                       Arka Planı Kaldır
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -1458,7 +1459,7 @@ export default function WardrobeScreen({ userId }: Props) {
 
                 <View style={styles.detailNotesCard}>
                   <Text style={styles.detailNotesTitle}>
-                    NOTLAR ✦
+                    NOTLAR 
                   </Text>
 
                   <Text style={styles.detailNotesText}>
@@ -1496,7 +1497,7 @@ export default function WardrobeScreen({ userId }: Props) {
 
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>
-          Kombinlerim ✦
+          Kombinlerim 
         </Text>
 
         <Text style={styles.formSubtitle}>
@@ -1667,15 +1668,14 @@ export default function WardrobeScreen({ userId }: Props) {
         </View>
       ) : items.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>◇</Text>
+          <Text style={styles.emptyIcon}>♧</Text>
 
           <Text style={styles.emptyTitle}>
-            Gardırobunu oluşturalım
+            Gardırobun henüz boş
           </Text>
 
           <Text style={styles.emptyDescription}>
-            İlk kıyafetini ekle, kendi stil koleksiyonunu
-            oluşturmaya başla.
+            Kıyafetlerini ekleyerek kendi stil koleksiyonunu oluşturmaya başla.
           </Text>
 
           <TouchableOpacity
@@ -1683,7 +1683,7 @@ export default function WardrobeScreen({ userId }: Props) {
             onPress={startAdding}
           >
             <Text style={styles.emptyButtonText}>
-              İlk Parçamı Ekle +
+              İlk Parçanı Ekle
             </Text>
           </TouchableOpacity>
         </View>
@@ -1930,7 +1930,7 @@ export default function WardrobeScreen({ userId }: Props) {
       )}
 
       {activeWardrobeTab === 'ai' && (
-        <OutfitAIScreen userId={userId} onSaved={() => { void reloadOutfits(); setActiveWardrobeTab('outfits'); showNotice('success', 'Kombin kaydedildi ✦', 'AI kombinin Kombinler sekmesine eklendi.'); }} />
+        <OutfitAIScreen userId={userId} onSaved={() => { void reloadOutfits(); setActiveWardrobeTab('outfits'); showNotice('success', 'Kombin kaydedildi ', 'AI kombinin Kombinler sekmesine eklendi.'); }} />
       )}
     </View>
   );
@@ -1942,12 +1942,12 @@ export default function WardrobeScreen({ userId }: Props) {
 
 const styles = StyleSheet.create({
   wardrobeCompactHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 },
-  wardrobeCompactIcon: { color: '#785597', fontSize: 29, lineHeight: 34 },
+  wardrobeCompactIcon: { color: '#69318A', fontSize: 29, lineHeight: 34 },
   wardrobeCompactTitle: { color: '#221637', fontSize: 22, fontWeight: '800', marginBottom: 4 },
   wardrobeCompactDescription: { color: '#645777', fontSize: 12, lineHeight: 18 },
   compactWardrobeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 10 },
   compactCount: { color: '#59466D', fontSize: 13, fontWeight: '700' },
-  compactAdd: { backgroundColor: '#7A5799', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
+  compactAdd: { backgroundColor: '#69318A', paddingHorizontal: 17, paddingVertical: 11, borderRadius: 20 },
   compactAddText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
   wardrobeTabRow: {
     flexDirection: 'row',
@@ -1966,8 +1966,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   wardrobeTabActive: {
-    backgroundColor: '#7A5799',
-    borderColor: '#7A5799',
+    backgroundColor: '#69318A',
+    borderColor: '#69318A',
   },
   wardrobeTabText: {
     color: '#31254C',
@@ -1983,7 +1983,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(11,20,54,0.45)',
   },
   prizmaSheet: {
-    backgroundColor: '#FAF8FC',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 24,
@@ -1999,7 +1999,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   prizmaSheetSparkle: {
-    color: '#9372B5',
+    color: '#69318A',
     fontSize: 34,
     marginBottom: 8,
   },
@@ -2602,7 +2602,7 @@ const styles = StyleSheet.create({
 
   emptyCard: {
     backgroundColor: C.white,
-    borderRadius: 27,
+    borderRadius: 18,
     padding: 25,
     minHeight: 280,
     alignItems: 'center',
@@ -2634,7 +2634,7 @@ const styles = StyleSheet.create({
   },
 
   emptyButton: {
-    backgroundColor: C.navy,
+    backgroundColor: C.lavender,
     borderRadius: 25,
     paddingHorizontal: 25,
     paddingVertical: 15,
