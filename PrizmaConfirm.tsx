@@ -40,7 +40,7 @@ export default function PrizmaConfirm({
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.iconCircle}>
-            <Text style={styles.icon}>✦</Text>
+            <Text style={styles.icon}></Text>
           </View>
 
           <Text style={styles.eyebrow}>PRİZMA · ONAY</Text>
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(11,20,54,0.48)',
   },
   card: {
-    backgroundColor: '#FAF9FC',
+    backgroundColor: '#FFFFFF',
     borderRadius: 28,
     padding: 27,
     alignItems: 'center',
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   icon: {
-    color: '#8050B5',
+    color: '#69318A',
     fontSize: 34,
   },
   eyebrow: {
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   title: {
-    color: '#0B1436',
+    color: '#242124',
     fontSize: 23,
     fontWeight: '800',
     textAlign: 'center',
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   },
   confirm: {
     width: '100%',
-    backgroundColor: '#8050B5',
+    backgroundColor: '#69318A',
     padding: 17,
     borderRadius: 16,
     alignItems: 'center',
