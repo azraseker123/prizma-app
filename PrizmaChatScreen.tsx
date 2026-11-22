@@ -219,7 +219,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         </ScrollView>
       ) : (<>
       <View style={s.heading}>
-        <Text style={s.eyebrow}>PRİZMA ✦ KİŞİSEL ASİSTAN</Text>
+        <Text style={s.eyebrow}>PRİZMA  KİŞİSEL ASİSTAN</Text>
         <Text style={s.title}>Sana nasıl yardımcı olayım?</Text>
         <Text style={s.hint}>Cilt, saç ve makyaj önerileri için yaz. Kombin önerileri Gardırop AI'da.</Text>
         <View style={s.categories}>
@@ -229,7 +229,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={s.outfitChip} onPress={onOutfit}>
-            <Text style={s.outfitChipText}>✦ Kombin AI</Text>
+            <Text style={s.outfitChipText}> Kombin AI</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -244,7 +244,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
       >
         {messages.length === 0 && (
           <View style={s.empty}>
-            <Text style={s.emptyIcon}>✦</Text>
+            <Text style={s.emptyIcon}></Text>
             <Text style={s.emptyTitle}>PRİZMA'ya sor</Text>
             <Text style={s.emptyText}>Örneğin: “Hassas cildim için hafif bir nemlendirici önerir misin?”</Text>
             <Text style={s.emptyNotice}>AI hata yapabilir. Önerileri ve ürün talimatlarını kontrol et.</Text>
@@ -252,7 +252,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         )}
         {messages.map(m => (
           <View key={m.id} style={[s.bubble, m.role === 'user' ? s.userBubble : s.aiBubble]}>
-            <Text style={[s.role, m.role === 'user' && s.userRole]}>{m.role === 'user' ? 'SEN' : 'PRİZMA ✦'}</Text>
+            <Text style={[s.role, m.role === 'user' && s.userRole]}>{m.role === 'user' ? 'SEN' : 'PRİZMA '}</Text>
             <Text style={[s.messageText, m.role === 'user' && s.userText]}>{m.text}</Text>
             {m.products?.map((p, index) => {
               const isCollected = m.savedCollection?.includes(index) === true;
