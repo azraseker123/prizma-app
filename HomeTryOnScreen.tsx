@@ -203,7 +203,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
       </View>
      </View>:
      <View style={s.lookModalCard}>
-      <View style={s.cardHeading}><Text style={s.cardTitle}>✦ Denemem</Text><TouchableOpacity onPress={()=>setSelectedLook(null)}><Text style={s.link}>Kapat ✕</Text></TouchableOpacity></View>
+      <View style={s.cardHeading}><Text style={s.cardTitle}> Denemem</Text><TouchableOpacity onPress={()=>setSelectedLook(null)}><Text style={s.link}>Kapat ✕</Text></TouchableOpacity></View>
       {selectedLook&&<Image source={{uri:selectedLook.url}} resizeMode="contain" style={s.lookLarge}/>}
       <Text style={s.small}>AI ile oluşturulmuş bir görseldir.</Text>
       <TouchableOpacity style={s.removeLookButton} onPress={()=>setDeleteTarget(selectedLook?.id||null)}><Text style={s.removeLookText}>Denemeyi sil</Text></TouchableOpacity>
@@ -232,7 +232,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
    <View style={s.card}>
     <Text style={s.cardTitle}>Denemek istediğim kıyafet</Text>
     {garment?<View style={s.chosen}><Image source={{uri:garment.uri}} style={s.garmentImage} resizeMode="contain"/><Text style={s.chosenName}>{garment.name}</Text></View>:
-     <View style={s.emptyGarment}><Text style={s.emptyIcon}>✦</Text><Text style={s.emptyText}>Henüz kıyafet seçilmedi</Text></View>}
+     <View style={s.emptyGarment}><Text style={s.emptyIcon}></Text><Text style={s.emptyText}>Henüz kıyafet seçilmedi</Text></View>}
     <TouchableOpacity onPress={()=>setConsent(!consent)} style={s.consent}>
      <Text style={s.consentText}>{consent?'☑':'☐'} Yeni fotoğrafımı AI uygunluk kontrolüne göndermeyi kabul ediyorum.</Text>
     </TouchableOpacity>
@@ -245,7 +245,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     {pendingGarment&&<View style={s.pendingCard}>
       <Image source={{uri:pendingGarment.uri}} style={s.pendingPhoto} resizeMode="contain"/>
       <Text style={s.small}>Fotoğrafın hazır ancak henüz doğrulanmadı; yeniden çekmen gerekmiyor.</Text>
-      <TouchableOpacity style={s.wardrobeButton} disabled={busy} onPress={()=>void verifyRecoveredPhoto()}><Text style={s.wardrobeText}>✦ Fotoğrafı kontrol et</Text></TouchableOpacity>
+      <TouchableOpacity style={s.wardrobeButton} disabled={busy} onPress={()=>void verifyRecoveredPhoto()}><Text style={s.wardrobeText}> Fotoğrafı kontrol et</Text></TouchableOpacity>
     </View>}
     {busy&&<ActivityIndicator style={{marginTop:12}} color="#8050B5"/>}
     {showWardrobe&&<View style={s.wardrobeList}>
@@ -266,7 +266,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     {resultUrl?<View style={s.resultCard}><Text style={s.resultTitle}>Sanal denemen hazır</Text><Image source={{uri:resultUrl}} style={s.resultImage} resizeMode="contain"/><Text style={s.small}>Bu bir AI görselleştirmesidir; gerçek kalıp veya beden uyumunu garanti etmez.</Text></View>:null}
     <TouchableOpacity onPress={()=>setOwnsPhoto(!ownsPhoto)} style={s.consent}><Text style={s.consentText}>{ownsPhoto?'☑':'☐'} Bu fotoğraf bana ait veya fotoğraftaki kişinin kullanım izni var.</Text></TouchableOpacity>
     <TouchableOpacity onPress={()=>setTryOnConsent(!tryOnConsent)} style={s.consent}><Text style={s.consentText}>{tryOnConsent?'☑':'☐'} Fotoğraflarımın kıyafet denemesi için harici AI hizmetinde işlenmesini kabul ediyorum.</Text></TouchableOpacity>
-    <TouchableOpacity style={[s.primaryTryon,(!premium?.active||!premium.providerReady||!person||!garment||tryOnStatus==='starting'||tryOnStatus==='processing')&&s.disabledButton]} disabled={!person||!garment||!premium?.active||!premium.providerReady||premium.remaining<=0||busy||tryOnStatus==='starting'||tryOnStatus==='processing'} onPress={()=>void startTryOn()}><Text style={s.primaryTryonText}>{tryOnStatus==='starting'||tryOnStatus==='processing'?'Sanal denemen hazırlanıyor…':premium?.active?(premium.providerReady?'Üzerimde Dene':'✦ AI bağlantısı hazırlanıyor'):'Sanal Deneme · Premium'}</Text></TouchableOpacity>
+    <TouchableOpacity style={[s.primaryTryon,(!premium?.active||!premium.providerReady||!person||!garment||tryOnStatus==='starting'||tryOnStatus==='processing')&&s.disabledButton]} disabled={!person||!garment||!premium?.active||!premium.providerReady||premium.remaining<=0||busy||tryOnStatus==='starting'||tryOnStatus==='processing'} onPress={()=>void startTryOn()}><Text style={s.primaryTryonText}>{tryOnStatus==='starting'||tryOnStatus==='processing'?'Sanal denemen hazırlanıyor…':premium?.active?(premium.providerReady?'Üzerimde Dene':' AI bağlantısı hazırlanıyor'):'Sanal Deneme · Premium'}</Text></TouchableOpacity>
     {tryOnStatus==='processing'&&<ActivityIndicator style={{marginTop:12}} color="#8050B5"/>}
     <Text style={s.small}>{premium?.active?`${premium.testAccess?'Geliştirme testi':'Premium'} · Kalan deneme: ${premium.remaining} / ${premium.monthlyLimit}${premium.providerReady?'':' · API anahtarı eksik'}`:'Gerçek sanal deneme Premium üyelikte kullanılabilir. Test yetkisi ödeme gerektirmez.'}</Text>
     <TouchableOpacity style={s.wardrobeButton} onPress={()=>void refreshTryOnAccess()}><Text style={s.wardrobeText}>↻ Erişimi yeniden kontrol et</Text></TouchableOpacity>
@@ -312,7 +312,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
     <View style={s.cardHeading}><Text style={s.cardTitle}>Denemelerim</Text><TouchableOpacity disabled={looksLoading} onPress={()=>void loadMyLooks()}><Text style={s.link}>Yenile ↻</Text></TouchableOpacity></View>
     <Text style={s.small}>Oluşturduğun kıyafet denemeleri burada saklanır. Tekrar görüntülemek için AI hakkı harcamazsın.</Text>
     {looksLoading?<ActivityIndicator style={{marginTop:20}} color="#8050B5"/>:myLooks.length===0?
-     <View style={s.looksEmpty}><Text style={s.emptyIcon}>✦</Text><Text style={s.emptyText}>Henüz kayıtlı denemen yok</Text></View>:
+     <View style={s.looksEmpty}><Text style={s.emptyIcon}></Text><Text style={s.emptyText}>Henüz kayıtlı denemen yok</Text></View>:
      <View style={s.lookGrid}>{myLooks.map(item=><TouchableOpacity key={item.id} style={s.lookTile} onPress={()=>setSelectedLook(item)}>
       <Image style={s.lookThumb} source={{uri:item.url}} resizeMode="cover"/>
       <Text style={s.lookDate}>{new Date(item.createdAt).toLocaleDateString('tr-TR')}</Text>
