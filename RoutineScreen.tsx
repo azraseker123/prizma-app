@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { addRoutineItem, getRoutineItems, removeRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
@@ -17,6 +18,26 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
   const [photo, setPhoto] = useState<BeautyPhoto | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [completedIds, setCompletedIds] = useState<string[]>([]);
+  const [editingSteps, setEditingSteps] = useState(false);
+  const date = new Date();
+  const todayKey = [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-');
+  const progressKey = 'prizma-routine-progress:' + userId + ':' + todayKey;
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem(progressKey).then(saved => {
+      if (active) setCompletedIds(saved ? JSON.parse(saved) as string[] : []);
+    }).catch(() => { if (active) setCompletedIds([]); });
+    return () => { active = false; };
+  }, [progressKey]);
+  const toggleCompleted = (id: string) => {
+    const next = completedIds.includes(id) ? completedIds.filter(x => x !== id) : [...completedIds, id];
+    setCompletedIds(next);
+    void AsyncStorage.setItem(progressKey, JSON.stringify(next)).catch(() => setFeedback('İlerleme kaydedilemedi.'));
+  };
+  const visibleItems = items.filter(x => x.period === period && (x.category || 'skin') === category);
+  const completedCount = visibleItems.filter(x => completedIds.includes(x.id)).length;
+  const completionPercent = visibleItems.length ? Math.round(completedCount / visibleItems.length * 100) : 0;
 
   const refresh = useCallback(async () => {
     try {
@@ -98,6 +119,24 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
       <Text style={s.eyebrow}>PRİZMA BEAUTY STUDIO</Text>
       <Text style={s.title}>Bakım Rutinim </Text>
       <Text style={s.desc}>Cilt, saç ve makyaj ürünlerini sabah ve akşam rutinlerine ekle.</Text>
+      <View style={s.periodTabs} accessibilityRole="tablist">
+        {(['Sabah', 'Akşam'] as const).map(p => (
+          <TouchableOpacity key={p} accessibilityRole="tab" accessibilityState={{selected:period===p}}
+            onPress={() => setPeriod(p)}
+            style={[s.periodTab, period===p && s.periodTabActive]}>
+            <Text style={[s.periodTabText,period===p&&s.periodTabTextActive]}>{p === 'Sabah' ? '☀ ' : '☾ '}{p}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <View style={s.progressPanel}>
+        <View style={s.progressHeading}>
+          <Text style={s.progressLabel}>Günlük ilerleme</Text>
+          <Text style={s.progressAmount}>{completedCount} / {visibleItems.length} adım</Text>
+        </View>
+        <View style={s.progressTrack}>
+          <View style={[s.progressFill,{width: `${completionPercent}%` as `${number}%`}]}/>
+        </View>
+      </View>
       <View style={s.row}>
         {categories.map(c => (
           <TouchableOpacity key={c.key} accessibilityRole="button" onPress={() => setCategory(c.key)} style={[s.chip, category === c.key && s.chipSelected]}>
@@ -107,13 +146,6 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
       </View>
       <View style={s.panel}>
         <Text style={s.panelTitle}>{categories.find(c => c.key === category)?.label} Rutinine Ürün Ekle</Text>
-        <View style={s.row}>
-          {(['Sabah', 'Akşam'] as const).map(p => (
-            <TouchableOpacity key={p} accessibilityRole="button" onPress={() => setPeriod(p)} style={[s.chip, period === p && s.chipSelected]}>
-              <Text style={[s.chipText, period === p && s.chipTextSelected]}>{p}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
         <TextInput value={title} onChangeText={setTitle} maxLength={100} style={s.input} placeholder="Örn. Saç kremi, maskara veya nemlendirici" placeholderTextColor="#90849B" />
         <Text style={s.photoLabel}>Ürün fotoğrafı (isteğe bağlı)</Text>
         {photo && <Image source={{ uri: photo.uri }} style={s.photoPreview} resizeMode="contain" />}
@@ -147,40 +179,65 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
       </TouchableOpacity>
       <View style={s.info}><Text style={s.infoText}>ⓘ AI hata yapabilir. Ürün talimatları ve içeriklerini doğrula; yeni aktifleri kullanmadan önce uyumluluğunu kontrol et.</Text></View>
       {!!feedback && <Text accessibilityRole="alert" style={s.feedback}>{feedback}</Text>}
-      {(['Sabah', 'Akşam'] as const).map(p => (
-        <View key={p} style={s.listSection}>
-          <Text style={s.sectionTitle}>{p === 'Sabah' ? '☀' : '☾'}  {p} Rutinim</Text>
-          {items.filter(x => x.period === p && (x.category || 'skin') === category).length === 0 && <Text style={s.empty}>Bu kategoride henüz bir ürün eklenmedi.</Text>}
-          {items.filter(x => x.period === p && (x.category || 'skin') === category).map((item, index) => (
-            <View key={item.id} style={s.item}>
-              {photoUrls[item.id] && (
-                <Image
-                  source={{ uri: photoUrls[item.id] }}
-                  resizeMode="contain"
-                  style={s.itemPhoto}
-                  accessibilityLabel={`${item.title} ürün fotoğrafı`}
-                />
-              )}
-              <View style={s.itemDetails}>
-                <View style={s.number}><Text style={s.numberText}>{index + 1}</Text></View>
-                <View style={s.itemInfo}>
-                  <Text style={s.itemTitle}>{item.title}</Text>
-                  <Text style={s.itemCaption}>{item.source === 'manual' ? 'Sen ekledin' : 'AI önerisi • senin onayınla eklendi'}</Text>
-                </View>
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${item.title} adımını kaldır`} onPress={() => void remove(item.id)}>
+      <View style={s.listSection}>
+        <View style={s.listHeadingRow}>
+          <Text style={s.sectionTitle}>{period === 'Sabah' ? '☀' : '☾'}  {period} Rutinim</Text>
+          <TouchableOpacity onPress={()=>setEditingSteps(!editingSteps)} accessibilityRole="button">
+            <Text style={s.editAction}>{editingSteps?'Bitti':'Düzenle'}</Text>
+          </TouchableOpacity>
+        </View>
+        {visibleItems.length === 0 && <Text style={s.empty}>Bu kategoride henüz bir adım eklenmedi.</Text>}
+        {visibleItems.map((item,index)=>(
+          <View key={item.id} style={s.item}>
+            {photoUrls[item.id] && <Image source={{uri:photoUrls[item.id]}} resizeMode="contain" style={s.itemPhoto} accessibilityLabel={item.title+' ürün fotoğrafı'}/>}
+            <View style={s.itemDetails}>
+              <TouchableOpacity
+                onPress={()=>toggleCompleted(item.id)}
+                style={[s.checkBox,completedIds.includes(item.id)&&s.checkBoxDone]}
+                accessibilityRole="checkbox"
+                accessibilityState={{checked:completedIds.includes(item.id)}}
+                accessibilityLabel={item.title+' tamamlandı'}
+              >
+                <Text style={[s.checkText,completedIds.includes(item.id)&&s.checkTextDone]}>{completedIds.includes(item.id)?'✓':''}</Text>
+              </TouchableOpacity>
+              <View style={s.itemInfo}>
+                <Text style={[s.itemTitle,completedIds.includes(item.id)&&s.itemCompleted]}>{item.title}</Text>
+                <Text style={s.itemCaption}>{item.source === 'manual'?'Sen ekledin':'AI önerisi • senin onayınla eklendi'}</Text>
+              </View>
+              {editingSteps && (
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.title+' adımını kaldır'} onPress={()=>{void remove(item.id);}}>
                   <Text style={s.remove}>Kaldır</Text>
                 </TouchableOpacity>
-              </View>
+              )}
             </View>
-          ))}
-        </View>
-      ))}
+          </View>
+        ))}
+      </View>
       <Text style={s.footnote}>Bu sürümde rutinler bu cihazda hesabına özel saklanır; başka cihaza otomatik aktarılmaz. Uygulamayı silersen bu kayıtlar kaybolabilir.</Text>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
+  periodTabs: { flexDirection: 'row', gap: 9, marginBottom: 13 },
+  periodTab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 48, borderRadius: 14, backgroundColor: '#FFFFFF', borderColor: '#D8D6DC', borderWidth: 1 },
+  periodTabActive: { backgroundColor: '#F3EAF8', borderColor: '#69318A' },
+  periodTabText: { color: '#6E6872', fontSize: 14, fontWeight: '700' },
+  periodTabTextActive: { color: '#69318A' },
+  progressPanel: { padding: 14, backgroundColor: '#FFFFFF', borderColor: '#D8D6DC', borderWidth: 1, borderRadius: 15, marginBottom: 15 },
+  progressHeading: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 11 },
+  progressLabel: { color: '#242124', fontSize: 13, fontWeight: '700' },
+  progressAmount: { color: '#69318A', fontSize: 12, fontWeight: '700' },
+  progressTrack: { height: 7, borderRadius: 5, backgroundColor: '#F3EAF8', overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#69318A', borderRadius: 5 },
+  listHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  editAction: { color: '#69318A', fontSize: 12, fontWeight: '700', minHeight: 40, textAlignVertical: 'center' },
+  checkBox: { width: 38, height: 38, borderRadius: 12, borderWidth: 1, borderColor: '#69318A', backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  checkBoxDone: { backgroundColor: '#69318A' },
+  checkText: { fontSize: 19, color: '#69318A', fontWeight: '700' },
+  checkTextDone: { color: '#FFFFFF' },
+  itemCompleted: { color: '#6E6872', textDecorationLine: 'line-through' },
+
   photoLabel: { color: '#30203F', fontSize: 13, fontWeight: '700', marginBottom: 10 },
   photoPreview: { width: '100%', height: 165, borderRadius: 14, backgroundColor: '#F3E9F7', marginBottom: 12 },
   photoButtonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
