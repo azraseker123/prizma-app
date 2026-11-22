@@ -1,11 +1,11 @@
 import React,{useState} from 'react';
-import {Image,ScrollView,StyleSheet,Text,TouchableOpacity,View} from 'react-native';
+import {Image,Linking,ScrollView,StyleSheet,Text,TouchableOpacity,View} from 'react-native';
 import LicensedProductImage from './LicensedProductImage';
 import {PRIZMA} from './prizmaTheme';
 
 export type ProductDetailsInfo={
  id:string;brand:string;product_name:string;notes?:string|null;image_source_url?:string|null;
- image_license_name?:string|null;image_license_url?:string|null;image_license_verified_at?:string|null;
+ image_license_name?:string|null;image_license_url?:string|null;image_license_verified_at?:string|null;image_source_page?:string|null;
  inci_ingredients?:string|null;product_benefits?:string|null;usage_instructions?:string|null;product_cautions?:string|null;
 };
 type Props={product:ProductDetailsInfo;photoUrl?:string|null;onBack:()=>void;onAddCollection?:()=>void;onAddRoutine:()=>void;onEdit?:()=>void};
@@ -30,6 +30,18 @@ export default function PrizmaProductDetail({product,photoUrl,onBack,onAddCollec
     </TouchableOpacity>
     {open===section&&<Text style={s.sectionBody}>{values[section]}</Text>}
   </View>)}</View>
+  {approved&&<View style={s.creditBox}>
+    <Text style={s.creditTitle}>Görsel Kaynağı ve Lisans</Text>
+    <Text style={s.creditText}>{product.image_license_name}</Text>
+    {product.image_source_page?.startsWith('https://world.openbeautyfacts.org/product/')&&
+      <TouchableOpacity style={s.creditLink} accessibilityRole="link" onPress={()=>{void Linking.openURL(product.image_source_page!);}}>
+        <Text style={s.creditLinkText}>Open Beauty Facts ürün sayfasını gör ›</Text>
+      </TouchableOpacity>}
+    {product.image_license_url?.startsWith('https://creativecommons.org/licenses/')&&
+      <TouchableOpacity style={s.creditLink} accessibilityRole="link" onPress={()=>{void Linking.openURL(product.image_license_url!);}}>
+        <Text style={s.creditLinkText}>Görsel lisansının koşullarını gör ›</Text>
+      </TouchableOpacity>}
+  </View>}
   {!!product.product_cautions&&<View style={s.cautionBox}><Text style={s.sectionTitle}>Dikkat Edilecekler</Text><Text style={s.sectionBody}>{product.product_cautions}</Text></View>}
   <View style={s.buttons}>
     <TouchableOpacity style={s.outline} onPress={onAddCollection||onBack}><Text style={s.outlineText}>Koleksiyonuma Git</Text></TouchableOpacity>
@@ -39,6 +51,12 @@ export default function PrizmaProductDetail({product,photoUrl,onBack,onAddCollec
  </ScrollView>;
 }
 const s=StyleSheet.create({
+ creditBox:{marginTop:13,borderWidth:1,borderColor:PRIZMA.border,borderRadius:14,padding:13,gap:7},
+ creditTitle:{color:PRIZMA.ink,fontSize:13,fontWeight:'700'},
+ creditText:{fontSize:11,lineHeight:17,color:PRIZMA.muted},
+ creditLink:{minHeight:37,justifyContent:'center'},
+ creditLinkText:{fontSize:11,fontWeight:'700',color:PRIZMA.purple},
+
  page:{paddingHorizontal:17,paddingBottom:40,backgroundColor:'#FFFFFF'},header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:62},
  back:{width:40,height:44,alignItems:'center',justifyContent:'center'},backText:{fontSize:30,color:PRIZMA.ink},edit:{fontSize:23,color:PRIZMA.purple},
  logo:{fontFamily:'serif',color:PRIZMA.purple,fontSize:23,letterSpacing:4},photoBox:{height:288,borderRadius:18,borderColor:PRIZMA.border,borderWidth:1,alignItems:'center',justifyContent:'center',backgroundColor:'#FFFFFF',marginTop:12},
