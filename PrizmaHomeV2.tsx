@@ -42,6 +42,13 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   },[selectedDay]);
   const fetchWeather = useCallback(async (place: string) => {
     if (!place.trim()) return;
+    // Free Open-Meteo API is limited to noncommercial use.
+    // Commercial builds require a licensed provider before sending requests.
+    if (!__DEV__) {
+      setWeather(null);
+      setWeatherError('Ticari hava durumu lisansı doğrulanana kadar bu özellik kullanılamıyor.');
+      return;
+    }
     setWeatherBusy(true);
     setWeatherError('');
     try {
