@@ -1,3 +1,4 @@
+import PrizmaNavIcon from './PrizmaNavIcon';
 import PrizmaHomeV2 from './PrizmaHomeV2';
 import PrizmaProfileScreen from './PrizmaProfileScreen';
 import RoutineScreen from './RoutineScreen';
@@ -780,15 +781,7 @@ export default function App() {
                   isAI && styles.aiTabIconWrap,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.tabIcon,
-                    active && styles.tabIconActive,
-                    isAI && styles.aiTabIcon,
-                  ]}
-                >
-                  {item.icon}
-                </Text>
+                <PrizmaNavIcon name={item.name} color={active ? C.lavender : C.navy}/>
               </View>
 
               <Text
@@ -961,7 +954,7 @@ const styles = StyleSheet.create({
 
   safe: {
     flex: 1,
-    backgroundColor: '#FDFBFE',
+    backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? 4 : 0,
   },
 
@@ -971,8 +964,8 @@ const styles = StyleSheet.create({
   chatPage: {
     flex: 1,
     minHeight: 0,
-    paddingHorizontal: 23,
-    paddingTop: 18,
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
 
   loadingScreen: {
@@ -989,10 +982,10 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    backgroundColor: C.background,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 15,
+    paddingTop: Platform.OS === 'android' ? 20 : 17,
+    paddingBottom: 11,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1009,10 +1002,10 @@ const styles = StyleSheet.create({
   },
 
   brandText: {
-    color: C.navy,
-    fontSize: 22,
+    color: C.lavender,
+    fontSize: 24,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    letterSpacing: 3,
+    letterSpacing: 4,
     fontWeight: '600',
   },
 
@@ -1037,8 +1030,8 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    paddingHorizontal: 23,
-    paddingTop: 14,
+    paddingHorizontal: 15,
+    paddingTop: 12,
     paddingBottom: 45,
   },
 
@@ -1558,8 +1551,8 @@ const styles = StyleSheet.create({
 
   aiTabIconWrap: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#A054D3',
-    borderWidth: 3,
+    borderColor: 'transparent',
+    borderWidth: 0,
     width: 45,
     height: 45,
     borderRadius: 24,
