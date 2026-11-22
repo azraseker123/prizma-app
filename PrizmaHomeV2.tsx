@@ -1,3 +1,4 @@
+import PrizmaLineIcon from './PrizmaLineIcon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -216,17 +217,17 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
           <TouchableOpacity accessibilityRole="button" style={s.navArrow} onPress={()=>setOutfitIndex((outfitIndex+1)%outfits.length)}><Text style={s.navArrowText}>Sonraki ›</Text></TouchableOpacity>
         </View></>}
       <TouchableOpacity style={s.tryOnButton} accessibilityRole="button" onPress={()=>onOpen('Sanal Deneme')}>
-        <Text style={s.tryOnText}>⌗   Üzerimde Dene</Text>
+        <PrizmaLineIcon name="scan" size={23} color="#FFFFFF"/><Text style={s.tryOnText}>Üzerimde Dene</Text>
       </TouchableOpacity>
     </View>
     <View style={s.quickRow}>
       <TouchableOpacity style={s.quickCard} accessibilityRole="button" onPress={()=>onOpen('Bakım Rutini')}>
-        <Text style={s.quickIcon}>☼</Text><Text style={s.quickTitle}>Bugünkü Rutinim  ›</Text>
+        <PrizmaLineIcon name="calendar" size={27}/><Text style={s.quickTitle}>Bugünkü Rutinim  ›</Text>
         <Text style={s.quickInfo}>{doneCount}/{currentSteps.length} adım tamamlandı</Text>
         <View style={s.quickTrack}><View style={[s.quickFill,{width:(currentSteps.length?doneCount/currentSteps.length*100:0)+'%'}]}/></View>
       </TouchableOpacity>
       <TouchableOpacity style={s.quickCard} accessibilityRole="button" onPress={()=>onOpen('Güzellik')}>
-        <Text style={s.quickIcon}>♧</Text><Text style={s.quickTitle}>Güzellik Danışmanı  ›</Text>
+        <PrizmaLineIcon name="brush" size={27}/><Text style={s.quickTitle}>Güzellik Danışmanı  ›</Text>
         <Text style={s.quickInfo}>Bugün neye ihtiyacın var?</Text>
         <View style={s.categoryRow}><Text style={s.categoryChip}>Cilt</Text><Text style={s.categoryChip}>Saç</Text><Text style={s.categoryChip}>Makyaj</Text></View>
       </TouchableOpacity>
@@ -243,7 +244,7 @@ const s=StyleSheet.create({
  inlineEditor:{flexDirection:'row',gap:8,marginBottom:12},inlineInput:{flex:1,minHeight:44,borderWidth:1,borderColor:PRIZMA.border,borderRadius:12,paddingHorizontal:10,color:PRIZMA.ink},inlineSave:{minHeight:44,borderRadius:12,backgroundColor:PRIZMA.purple,justifyContent:'center',paddingHorizontal:12},inlineSaveText:{color:'#FFFFFF',fontWeight:'700'},
  hero:{borderWidth:1,borderColor:PRIZMA.border,borderRadius:21,backgroundColor:'#FFFFFF',padding:14},heroHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},heroTitle:{fontSize:21,color:PRIZMA.ink,fontWeight:'800'},heroControls:{flexDirection:'row',alignItems:'center',gap:14},heroCount:{color:PRIZMA.purple,fontWeight:'700',fontSize:14},heroHeart:{fontSize:30,color:PRIZMA.purple},heroCaption:{fontSize:12,color:PRIZMA.muted,marginTop:3},heroLook:{height:245,marginTop:9,position:'relative',backgroundColor:'#FFFFFF'},
  collageItem:{position:'absolute',alignItems:'center',justifyContent:'center'},collageImage:{width:'100%',height:'100%'},collagePlaceholder:{borderWidth:1,borderColor:PRIZMA.border,borderRadius:9,padding:5,justifyContent:'center',height:'100%'},collagePlaceholderText:{fontSize:10,color:PRIZMA.muted,textAlign:'center'},heroPending:{minHeight:235,alignItems:'center',justifyContent:'center',gap:12,padding:16},heroLink:{color:PRIZMA.purple,fontWeight:'700'},
- dots:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9,marginTop:2},dot:{height:8,width:8,backgroundColor:'#D8D6DC',borderRadius:4},dotOn:{backgroundColor:PRIZMA.purple},focusLabel:{fontSize:11,color:PRIZMA.muted,textAlign:'center',marginTop:7},carouselArrows:{flexDirection:'row',justifyContent:'space-between',marginTop:5},navArrow:{minHeight:35,justifyContent:'center'},navArrowText:{fontSize:11,color:PRIZMA.purple},tryOnButton:{backgroundColor:PRIZMA.purple,borderRadius:14,minHeight:49,alignItems:'center',justifyContent:'center',marginTop:8},tryOnText:{fontSize:15,color:'#FFFFFF',fontWeight:'700'},
+ dots:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9,marginTop:2},dot:{height:8,width:8,backgroundColor:'#D8D6DC',borderRadius:4},dotOn:{backgroundColor:PRIZMA.purple},focusLabel:{fontSize:11,color:PRIZMA.muted,textAlign:'center',marginTop:7},carouselArrows:{flexDirection:'row',justifyContent:'space-between',marginTop:5},navArrow:{minHeight:35,justifyContent:'center'},navArrowText:{fontSize:11,color:PRIZMA.purple},tryOnButton:{backgroundColor:PRIZMA.purple,borderRadius:14,minHeight:49,alignItems:'center',justifyContent:'center',marginTop:8,flexDirection:'row',gap:11},tryOnText:{fontSize:15,color:'#FFFFFF',fontWeight:'700'},
  quickRow:{flexDirection:'row',gap:9,marginTop:14},quickCard:{flex:1,borderWidth:1,borderColor:PRIZMA.border,borderRadius:18,padding:12,backgroundColor:'#FFFFFF',minHeight:155},quickIcon:{fontSize:25,color:PRIZMA.purple},quickTitle:{fontSize:15,fontWeight:'700',color:PRIZMA.ink,marginTop:9},quickInfo:{fontSize:11,color:PRIZMA.muted,marginTop:8},quickTrack:{height:7,borderRadius:5,backgroundColor:'#E7E7E7',marginTop:13,overflow:'hidden'},quickFill:{height:'100%',borderRadius:5,backgroundColor:PRIZMA.purple},categoryRow:{flexDirection:'row',gap:3,marginTop:12},categoryChip:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:PRIZMA.border,borderRadius:20,paddingHorizontal:5,paddingVertical:5,fontSize:10,color:PRIZMA.purple},dayFooter:{flexDirection:'row',justifyContent:'space-between',marginTop:13},footerLink:{fontSize:12,fontWeight:'700',color:PRIZMA.purple},weekSummary:{marginTop:24},
 
  page:{paddingBottom:38,backgroundColor:'#FFFFFF'}, greeting:{fontSize:24,fontWeight:'700',color:PRIZMA.ink,marginTop:4},sub:{color:PRIZMA.muted,fontSize:13,marginTop:5,marginBottom:18},
