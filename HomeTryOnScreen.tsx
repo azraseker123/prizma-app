@@ -299,7 +299,7 @@ export default function HomeTryOnScreen({userId,onBack,onManagePhoto,recoveredCa
       </View>)}
      <Text style={s.small}>Başarısız işlemlerde hak kullanılmaz. İşlemi başlatılan ve henüz sonuçlanmayan denemeler geçici olarak kullanım sınırına dahil edilir.</Text>
     </View>}
-   </View>
+   </View>}
    {section==='galeri'&&supportIsAdmin&&<View style={s.looksCard}>
     <View style={s.cardHeading}><Text style={s.cardTitle}>Yönetici İşlem Geçmişi</Text>
      <TouchableOpacity onPress={()=>{setSupportOpen(!supportOpen);if(!supportOpen)void loadSupportRecords();}}><Text style={s.link}>{supportOpen?'Gizle':'Görüntüle ›'}</Text></TouchableOpacity>
