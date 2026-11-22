@@ -702,6 +702,7 @@ export default function App() {
       ) : tab === 'Sanal Deneme' ? (
         <HomeTryOnScreen userId={session.user.id} onBack={() => open('Ana Sayfa')} onManagePhoto={() => open('Deneme Fotoğrafım')} recoveredCameraUri={recoveredCameraPurpose === 'garment' ? recoveredCameraUri : null} onRecoveredCameraHandled={() => setRecoveredCameraUri(null)} />
       ) : (
+      <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':'height'}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -725,7 +726,7 @@ export default function App() {
 
         {/* GARDIROP */}
         {(tab === 'Gardırop' || tab === 'Kombin Oluştur') && (
-          <WardrobeScreen userId={session.user.id} initialTab={tab === 'Kombin Oluştur' ? 'ai' : 'clothes'} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} />
+          <WardrobeScreen userId={session.user.id} initialTab={tab === 'Kombin Oluştur' ? 'ai' : 'clothes'} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} onOpenTryOn={() => open('Sanal Deneme')} />
         )}
 
         {/* CİLT ANALİZİ */}
@@ -759,10 +760,11 @@ export default function App() {
           />
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
       )}
 
       {/* ALT MENÜ: klavye açıkken sohbet yazma alanına yer bırak */}
-      {!(tab === 'PRİZMA AI' && keyboardVisible) && <View style={styles.tabBar}>
+      {!keyboardVisible && <View style={styles.tabBar}>
         {tabs.map((item) => {
           const active = tab === item.name || (tab === 'Kombin Oluştur' && item.name === 'Gardırop');
           const isAI = item.name === 'PRİZMA AI';
