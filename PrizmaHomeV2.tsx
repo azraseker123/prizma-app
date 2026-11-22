@@ -91,7 +91,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   const refreshRoutine=useCallback(async()=>{
     const [r,c]=await Promise.all([
       getRoutineItems(userId),
-      AsyncStorage.getItem(getKey(userId,'routine:'+today())),
+      AsyncStorage.getItem('prizma-routine-progress:' + userId + ':' + today()),
     ]);
     setRoutine(r);
     try{setCompleted(c?JSON.parse(c):[]);}catch{setCompleted([]);}
@@ -100,7 +100,7 @@ export default function PrizmaHomeV2({ userId, displayName, onOpen }: Props) {
   const toggleStep=async(id:string)=>{
     const next=completed.includes(id)?completed.filter(x=>x!==id):[...completed,id];
     setCompleted(next);
-    await AsyncStorage.setItem(getKey(userId,'routine:'+today()),JSON.stringify(next));
+    await AsyncStorage.setItem('prizma-routine-progress:' + userId + ':' + today(),JSON.stringify(next));
   };
   const generateOutfits=useCallback(async(force=false)=>{
     setOutfitBusy(true);setOutfitError('');
