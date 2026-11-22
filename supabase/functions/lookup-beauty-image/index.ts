@@ -25,7 +25,10 @@ Deno.serve(async(request)=>{
   if((count||0)>=12)return reply({error:"Bugün için görsel arama sınırı doldu."},429);
   const {error:usageError}=await admin.from("beauty_photo_lookup_usage").insert({user_id:data.user.id});
   if(usageError)return reply({error:"Arama başlatılamadı."},503);
-  const query=new URL("https://world.openbeautyfacts.org/api/v2/search");
+  const query=new URL("https://world.openbeautyfacts.org/cgi/search.pl");
+  query.searchParams.set("search_simple","1");
+  query.searchParams.set("action","process");
+  query.searchParams.set("json","1");
   query.searchParams.set("search_terms",brand+" "+name);
   query.searchParams.set("page_size","10");
   query.searchParams.set("fields","code,product_name,brands,image_front_url,image_url,ingredients_text");
