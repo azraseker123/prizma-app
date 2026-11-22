@@ -1,3 +1,4 @@
+import PrizmaProductDetail from './PrizmaProductDetail';
 import LicensedProductImage from './LicensedProductImage';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -45,6 +46,8 @@ const categories: { key: Category; label: string }[] = [
 
 export default function BeautyCollectionScreen({ userId }: Props) {
   const [category, setCategory] = useState<Category>('skin');
+  const [categoryFilter,setCategoryFilter] = useState<Category|'all'>('all');
+  const [detailProduct,setDetailProduct]=useState<Product|null>(null);
   const [shelf, setShelf] = useState<'owned' | 'wishlist'>('owned');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,7 +263,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     } finally { setRoutineBusy(null); }
   };
 
-  const visible = products.filter(p => p.category === category && (shelf === 'owned' ? p.status === 'owned' : p.status !== 'owned'));
+  const visible = products.filter(p => (categoryFilter === 'all' || p.category === categoryFilter) && (shelf === 'owned' ? p.status === 'owned' : p.status !== 'owned'));
   const shelfCount = (next: 'owned' | 'wishlist') => products.filter(p => next === 'owned' ? p.status === 'owned' : p.status !== 'owned').length;
 
   return (
@@ -270,11 +273,16 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.eyebrow}>PRİZMA BEAUTY </Text>
-      <Text style={styles.title}>Bakım Koleksiyonum</Text>
+      <Text style={styles.title}>Ürün Koleksiyonum</Text>
       <Text style={styles.description}>
         Sahip olduğun ve almak istediğin güzellik ürünlerini düzenle.
       </Text>
 
+      <Modal visible={!!detailProduct} animationType="slide" onRequestClose={()=>setDetailProduct(null)}>
+        {detailProduct&&<PrizmaProductDetail product={detailProduct} photoUrl={photoUrls[detailProduct.id]}
+          onBack={()=>setDetailProduct(null)} onAddRoutine={()=>{void addCollectionToRoutine(detailProduct);}}
+          onAddCollection={()=>setDetailProduct(null)} onEdit={()=>{const p=detailProduct;setDetailProduct(null);startEdit(p);}}/>}
+      </Modal>
       <View style={styles.shelfTabs}>
         {([['owned','Sahip Olduklarım'],['wishlist','İstek Listem']] as const).map(([key,label])=>(
           <TouchableOpacity key={key} accessibilityRole="tab" accessibilityState={{selected:shelf===key}}
@@ -284,28 +292,12 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           </TouchableOpacity>
         ))}
       </View>
-      <View style={styles.tabs}>
-        {categories.map(item => (
-          <TouchableOpacity
-            key={item.key}
-            style={[
-              styles.tab,
-              category === item.key && styles.activeTab,
-            ]}
-            onPress={() => {
-              if (formOpen) resetForm();
-              setCategory(item.key);
-            }}
-          >
-            <Text style={[
-              styles.tabText,
-              category === item.key && styles.activeTabText,
-            ]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryFilterRow}>
+        {([{key:'all',label:'Tümü'},...categories] as {key:Category|'all';label:string}[]).map(item=>(
+          <TouchableOpacity key={item.key} style={[styles.filterChip,categoryFilter===item.key&&styles.filterChipActive]} onPress={()=>setCategoryFilter(item.key)}>
+           <Text style={[styles.filterChipText,categoryFilter===item.key&&styles.filterChipTextActive]}>{item.label}</Text>
+          </TouchableOpacity>))}
+      </ScrollView>
 
       <View style={styles.routinePeriodRow}>
         {(['Sabah', 'Akşam'] as const).map(p => (
@@ -432,42 +424,23 @@ export default function BeautyCollectionScreen({ userId }: Props) {
         <View style={styles.productGrid}>
           {visible.map(product => (
             <View key={product.id} style={styles.productCard}>
-              {photoUrls[product.id] ? (
-                <Image source={{ uri: photoUrls[product.id] }} style={styles.productPhoto} resizeMode="contain" accessibilityLabel={product.product_name + ' için eklenen fotoğraf'} />
-              ) : (
-                <LicensedProductImage
-                  alt={product.product_name}
-                  height={115}
-                  url={product.image_source_url}
-                  licenseStatus={product.image_source_url && product.image_license_verified_at && product.image_license_name && product.image_license_url ? 'approved' : 'unknown'}
-                />
-              )}
-              <Text style={styles.productName} numberOfLines={2}>{product.product_name}</Text>
-              {!!product.brand && <Text style={styles.productBrand} numberOfLines={1}>{product.brand}</Text>}
-              <Text style={styles.tag}>{product.status === 'owned' ? '✓ Sahip Olduklarım' : product.status === 'want' ? '♡ İstek Listemde' : 'Düşünüyorum'}</Text>
-              <Text style={styles.source}>{product.source === 'ai' ? 'PRİZMA önerisi' : 'Kendim ekledim'}</Text>
-              {!!product.notes && <Text style={styles.productNote} numberOfLines={2}>{product.notes}</Text>}
-              <TouchableOpacity style={styles.expandButton} accessibilityRole="button" accessibilityState={{expanded:expandedProductId===product.id}}
-                onPress={()=>setExpandedProductId(current=>current===product.id?null:product.id)}>
-                <Text style={styles.expandText}>{expandedProductId===product.id?'Detayları Gizle':'Ürün Detayları'} ⌄</Text>
+              <View style={styles.cardTop}>
+                <Text style={styles.ownedBadge}>{product.status==='owned'?'✓ Sahip':'♡ İstek'}</Text>
+                <TouchableOpacity onPress={()=>setDetailProduct(product)} accessibilityLabel="Ürün detaylarını aç"><Text style={styles.cardHeart}>♡</Text></TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.productImageArea} onPress={()=>setDetailProduct(product)}>
+                {photoUrls[product.id]?<Image source={{uri:photoUrls[product.id]}} style={styles.productPhoto} resizeMode="contain"/>:
+                <LicensedProductImage alt={product.product_name} height={135} url={product.image_source_url}
+                  licenseStatus={product.image_source_url&&product.image_license_verified_at&&product.image_license_name&&product.image_license_url?'approved':'unknown'}/>}
               </TouchableOpacity>
-              {expandedProductId===product.id && <View style={styles.detailsPanel}>
-                <Text style={styles.detailsTitle}>İçerik (INCI)</Text>
-                <Text style={styles.detailsText}>{product.inci_ingredients||'Doğrulanmış INCI listesi henüz bulunmuyor.'}</Text>
-                <Text style={styles.detailsTitle}>Faydalar</Text>
-                <Text style={styles.detailsText}>{product.product_benefits||'Ürün faydaları doğrulanmadı.'}</Text>
-                <Text style={styles.detailsTitle}>Nasıl Kullanılır?</Text>
-                <Text style={styles.detailsText}>{product.usage_instructions||'Ürün ambalajındaki talimatları kontrol et.'}</Text>
-                <Text style={styles.detailsTitle}>Dikkat Edilecekler</Text>
-                <Text style={styles.detailsText}>{product.product_cautions||'Yeni ürünleri kullanmadan önce içeriklerini ve cilt uyumluluğunu kontrol et.'}</Text>
-                {!!product.image_source_url&&!!product.image_license_name&&<Text style={styles.detailsText}>Görsel kaynağı: {product.image_license_name}</Text>}
-              </View>}
-              <TouchableOpacity style={styles.routineAddButton} disabled={!!routineBusy || routineSaved.includes(product.id + ':' + routinePeriod)} onPress={() => void addCollectionToRoutine(product)}>
-                <Text style={styles.routineAddText} numberOfLines={2}>{routineSaved.includes(product.id + ':' + routinePeriod) ? '✓ Rutinime Eklendi' : routineBusy === product.id + ':' + routinePeriod ? 'Ekleniyor...' : '+ Rutinime Ekle'}</Text>
+              <Text style={styles.productBrand} numberOfLines={1}>{product.brand||'Ürün'}</Text>
+              <Text style={styles.productName} numberOfLines={2}>{product.product_name}</Text>
+              <TouchableOpacity style={styles.routineTileAction} disabled={!!routineBusy} onPress={()=>{void addCollectionToRoutine(product);}}>
+                <Text style={styles.routineTileText}>{routineSaved.includes(product.id+':'+routinePeriod)?'✓ Eklendi':'+ Rutine Ekle'}</Text>
               </TouchableOpacity>
               <View style={styles.productActions}>
-                <TouchableOpacity accessibilityRole="button" style={styles.productAction} onPress={() => startEdit(product)}><Text style={styles.actionText}>Düzenle</Text></TouchableOpacity>
-                <TouchableOpacity accessibilityRole="button" style={styles.productAction} onPress={() => deleteProduct(product)}><Text style={styles.deleteText}>Sil</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.productAction} onPress={()=>startEdit(product)}><Text style={styles.actionText}>Düzenle</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.productAction} onPress={()=>deleteProduct(product)}><Text style={styles.deleteText}>Sil</Text></TouchableOpacity>
               </View>
             </View>
           ))}
@@ -521,24 +494,33 @@ export default function BeautyCollectionScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
+  categoryFilterRow:{flexDirection:'row',gap:8,paddingBottom:11},
+  filterChip:{minHeight:39,paddingHorizontal:16,borderRadius:21,borderWidth:1,borderColor:'#D8D6DC',alignItems:'center',justifyContent:'center',backgroundColor:'#FFFFFF'},
+  filterChipActive:{borderColor:'#69318A'},filterChipText:{fontSize:12,color:'#242124'},filterChipTextActive:{color:'#69318A',fontWeight:'700'},
+  cardTop:{minHeight:27,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  ownedBadge:{fontSize:10,color:'#69318A',fontWeight:'700'},cardHeart:{fontSize:23,color:'#69318A'},
+  productImageArea:{width:'100%',height:139,alignItems:'center',justifyContent:'center',backgroundColor:'#FFFFFF'},
+  routineTileAction:{marginTop:10,minHeight:41,borderRadius:11,backgroundColor:'#69318A',alignItems:'center',justifyContent:'center'},
+  routineTileText:{fontSize:12,color:'#FFFFFF',fontWeight:'700'},
+
   shelfTabs: { flexDirection:'row', gap:8, marginBottom:13 },
   shelfTab: { flex:1,minHeight:48,backgroundColor:'#FFFFFF',borderRadius:13,borderWidth:1,borderColor:'#D8D6DC',alignItems:'center',justifyContent:'center' },
-  shelfTabActive: { backgroundColor:'#F3EAF8',borderColor:'#69318A' },
+  shelfTabActive: { backgroundColor:'#69318A',borderColor:'#69318A' },
   shelfLabel: { fontSize:12,fontWeight:'700',color:'#6E6872' },
-  shelfLabelActive: { color:'#69318A' },
+  shelfLabelActive: { color:'#FFFFFF' },
   expandButton:{minHeight:42,justifyContent:'center',marginTop:6},
   expandText:{color:'#69318A',fontSize:11,fontWeight:'700'},
   detailsPanel:{marginTop:5,paddingTop:9,borderTopWidth:1,borderColor:'#D8D6DC'},
   detailsTitle:{fontSize:11,color:'#242124',fontWeight:'700',marginTop:8},
   detailsText:{fontSize:11,color:'#6E6872',lineHeight:16,marginTop:4},
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
-  productCard: { width: '48%', minHeight: 265, borderWidth: 1, borderColor: '#D8D6DC', borderRadius: 15, padding: 10, backgroundColor: '#FFFFFF', marginBottom: 4 },
+  productCard: { width: '48%', minHeight: 285, borderWidth: 1, borderColor: '#D8D6DC', borderRadius: 15, padding: 10, backgroundColor: '#FFFFFF', marginBottom: 4 },
   productBrand: { color: '#6E6872', fontSize: 11, marginTop: 4 },
   productNote: { color: '#6E6872', fontSize: 11, marginTop: 6 },
   productActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   productAction: { minHeight: 44, justifyContent: 'center' },
 
-  productPhoto: { width: '100%', height: 115, borderRadius: 12, backgroundColor: '#F3EAF8', marginBottom: 13 },
+  productPhoto: { width: '100%', height: 135, borderRadius: 12, backgroundColor: '#F3EAF8', marginBottom: 13 },
   photoPreview: { width: '100%', height: 180, backgroundColor: '#F3EAF8', borderRadius: 14, marginBottom: 10 },
   photoPlaceholder: { backgroundColor: '#F3EAF8', height: 88, justifyContent: 'center', alignItems: 'center', borderRadius: 14, marginBottom: 9 },
   photoPlaceholderText: { color: '#857A91', fontSize: 12 },
