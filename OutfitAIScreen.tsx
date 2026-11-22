@@ -273,13 +273,13 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.eyebrow}>YOUR PERSONAL STYLIST</Text>
-        <Text style={styles.title}>PRİZMA AI ✦</Text>
+        <Text style={styles.title}>PRİZMA AI </Text>
         <Text style={styles.subtitle}>
           Kendi gardırobundan sana özel kombinler oluştur.
         </Text>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>✦ Bugün ne giyiyoruz?</Text>
+          <Text style={styles.cardTitle}> Bugün ne giyiyoruz?</Text>
           <Text style={styles.cardDescription}>
             Planını ve istediğin tarzı anlat. PRİZMA
             gardırobundaki parçaları değerlendirsin.
@@ -316,7 +316,7 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>
-                ✦ Kombinlerimi Oluştur
+                 Kombinlerimi Oluştur
               </Text>
             )}
           </TouchableOpacity>
@@ -329,7 +329,7 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
         {outfits.length > 0 && (
           <View style={{ marginBottom: 8 }}>
             <Text style={styles.cardTitle}>
-              Senin için kombinler ✦
+              Senin için kombinler 
             </Text>
 
             {outfits.map((outfit, index) => (
@@ -337,7 +337,7 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
                 <Text style={{
                   fontSize: 17,
                   fontWeight: '800',
-                  color: '#39235F',
+                  color: '#242124',
                   marginBottom: 10,
                 }}>
                   {index + 1}. {outfit.name}
@@ -357,7 +357,7 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F8F3FA',
+                        backgroundColor: '#FFFFFF',
                         borderRadius: 15,
                         padding: 10,
                         marginBottom: 10,
@@ -389,7 +389,7 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
 
                       <View style={{ flex: 1, marginLeft: 14 }}>
                         <Text style={{
-                          color: '#39235F',
+                          color: '#242124',
                           fontWeight: '700',
                           fontSize: 14,
                         }}>
@@ -450,8 +450,8 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
                   }
                   style={{
                     backgroundColor: savedOutfits.includes(index)
-                      ? '#E4D3EC'
-                      : '#79539A',
+                      ? '#D8D6DC'
+                      : '#69318A',
                     paddingVertical: 14,
                     borderRadius: 14,
                     alignItems: 'center',
@@ -484,7 +484,7 @@ export default function OutfitAIScreen({ userId, onSaved }: Props) {
           <Text style={styles.cardTitle}>Gardırobun ♡</Text>
 
           {loading ? (
-            <ActivityIndicator color="#9272B5" />
+            <ActivityIndicator color="#69318A" />
           ) : (
             <>
               <Text style={styles.wardrobeCount}>
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   preferenceHint: { marginTop: 8, marginBottom: 3, fontSize: 11, lineHeight: 16, color: '#847890' },
   container: {
     flex: 1,
-    backgroundColor: '#FAF7FC',
+    backgroundColor: '#FFFFFF',
   },
   content: {
     padding: 20,
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#E8DDF8',
-    backgroundColor: '#FFFCFF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 15,
     padding: 14,
     color: '#281B46',
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   disabledButton: {
-    backgroundColor: '#79539A',
+    backgroundColor: '#69318A',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
