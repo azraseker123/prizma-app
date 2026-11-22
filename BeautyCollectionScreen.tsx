@@ -28,6 +28,7 @@ type Product = {
   image_license_name?: string | null;
   image_license_url?: string | null;
   image_license_verified_at?: string | null;
+  image_source_page?: string | null;
   inci_ingredients?: string | null;
   usage_instructions?: string | null;
   product_benefits?: string | null;
@@ -48,6 +49,10 @@ export default function BeautyCollectionScreen({ userId }: Props) {
   const [category, setCategory] = useState<Category>('skin');
   const [categoryFilter,setCategoryFilter] = useState<Category|'all'>('all');
   const [detailProduct,setDetailProduct]=useState<Product|null>(null);
+  const [lookupProduct,setLookupProduct]=useState<Product|null>(null);
+  const [lookupLoading,setLookupLoading]=useState(false);
+  const [lookupMessage,setLookupMessage]=useState('');
+  const [imageOptions,setImageOptions]=useState<{name:string;brand:string;image:string;source_page:string;license_name:string;license_url:string;inci:string}[]>([]);
   const [shelf, setShelf] = useState<'owned' | 'wishlist'>('owned');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,6 +238,44 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     await loadProducts();
   };
 
+  const findLicensedImage = async(product:Product)=>{
+    if(lookupLoading)return;
+    setLookupProduct(product);setLookupLoading(true);setLookupMessage('');setImageOptions([]);
+    try{
+      if(!product.brand.trim())throw new Error('Önce ürünün markasını düzenleyip kaydet.');
+      const {data,error}=await supabase.functions.invoke('lookup-beauty-image',{
+        body:{name:product.product_name,brand:product.brand},
+      });
+      if(error)throw new Error('Ürün görseli kataloğuna erişilemedi.');
+      if(data?.error)throw new Error(String(data.error));
+      const candidates=Array.isArray(data?.candidates)?data.candidates:[];
+      const safe=candidates.filter((item:any)=>item&&typeof item.name==='string'&&typeof item.image==='string'&&
+        /^https:\/\/images\.openbeautyfacts\.org\//.test(item.image)&&
+        typeof item.source_page==='string'&&item.source_page.startsWith('https://world.openbeautyfacts.org/product/'));
+      setImageOptions(safe);
+      if(!safe.length)setLookupMessage('Bu ürün için yeterince güvenilir eşleşme bulunamadı. Farklı bir ürün fotoğrafı kullanmak yerine boş bırakıyoruz.');
+    }catch(error){setLookupMessage(error instanceof Error?error.message:'Ürün görseli bulunamadı.');}
+    finally{setLookupLoading(false);}
+  };
+  const attachLicensedImage=async(candidate:{name:string;brand:string;image:string;source_page:string;license_name:string;license_url:string;inci:string})=>{
+    if(!lookupProduct||lookupLoading)return;
+    setLookupLoading(true);setLookupMessage('');
+    try{
+      const {error}=await supabase.from('beauty_collection').update({
+        image_source_url:candidate.image,
+        image_source_page:candidate.source_page,
+        image_license_name:candidate.license_name,
+        image_license_url:candidate.license_url,
+        image_license_verified_at:new Date().toISOString(),
+        ...(candidate.inci?{inci_ingredients:candidate.inci}:{}),
+      }).eq('id',lookupProduct.id).eq('user_id',userId);
+      if(error)throw error;
+      setLookupProduct(null);setImageOptions([]);
+      await loadProducts();
+      setMessage('Kaynak bilgili ürün fotoğrafı kaydedildi. Görseldeki ambalajın aynı ürün olduğundan emin ol.');
+    }catch(error){setLookupMessage(error instanceof Error?error.message:'Görsel kaydedilemedi.');}
+    finally{setLookupLoading(false);}
+  };
   const addCollectionToRoutine = async (product: Product) => {
     const key = product.id + ':' + routinePeriod;
     if (routineBusy || routineSaved.includes(key)) return;
@@ -278,6 +321,29 @@ export default function BeautyCollectionScreen({ userId }: Props) {
         Sahip olduğun ve almak istediğin güzellik ürünlerini düzenle.
       </Text>
 
+      <Modal visible={!!lookupProduct} transparent animationType="slide" onRequestClose={()=>setLookupProduct(null)}>
+        <View style={styles.lookupOverlay}>
+          <View style={styles.lookupSheet}>
+            <View style={styles.lookupHeading}>
+              <Text style={styles.lookupTitle}>Ürün Görseli Bul</Text>
+              <TouchableOpacity onPress={()=>setLookupProduct(null)} accessibilityRole="button"><Text style={styles.lookupClose}>×</Text></TouchableOpacity>
+            </View>
+            <Text style={styles.lookupInfo}>Yalnızca Open Beauty Facts kaynağından gelen görseller. Ürün ve ambalajın tam eşleştiğini kontrol et.</Text>
+            {lookupLoading&&<ActivityIndicator color="#69318A" style={{margin:16}}/>}
+            {!!lookupMessage&&<Text style={styles.lookupMessage}>{lookupMessage}</Text>}
+            <ScrollView style={{maxHeight:470}}>
+              {imageOptions.map((item,index)=><TouchableOpacity key={index} disabled={lookupLoading} onPress={()=>{void attachLicensedImage(item);}} style={styles.lookupCandidate}>
+                <Image source={{uri:item.image}} resizeMode="contain" style={styles.lookupPhoto}/>
+                <View style={{flex:1}}><Text style={styles.lookupCandidateTitle}>{item.brand}</Text>
+                  <Text style={styles.lookupCandidateSub} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.lookupCredit}>Open Beauty Facts · CC BY-SA 3.0</Text>
+                  <Text style={styles.lookupSelect}>Bu Görseli Kullan ›</Text></View>
+              </TouchableOpacity>)}
+            </ScrollView>
+            <Text style={styles.lookupTerms}>Kaynağı ve lisansı ürün detayında gösterilir. Görseldeki marka ambalajına ilişkin başka haklar bulunabilir.</Text>
+          </View>
+        </View>
+      </Modal>
       <Modal visible={!!detailProduct} animationType="slide" onRequestClose={()=>setDetailProduct(null)}>
         {detailProduct&&<PrizmaProductDetail product={detailProduct} photoUrl={photoUrls[detailProduct.id]}
           onBack={()=>setDetailProduct(null)} onAddRoutine={()=>{void addCollectionToRoutine(detailProduct);}}
@@ -438,6 +504,9 @@ export default function BeautyCollectionScreen({ userId }: Props) {
               <TouchableOpacity style={styles.routineTileAction} disabled={!!routineBusy} onPress={()=>{void addCollectionToRoutine(product);}}>
                 <Text style={styles.routineTileText}>{routineSaved.includes(product.id+':'+routinePeriod)?'✓ Eklendi':'+ Rutine Ekle'}</Text>
               </TouchableOpacity>
+              {!photoUrls[product.id]&&!product.image_source_url&&<TouchableOpacity onPress={()=>{void findLicensedImage(product);}} style={styles.findImageAction}>
+                <Text style={styles.findImageText}>▧  Ürün Görseli Bul</Text>
+              </TouchableOpacity>}
               <View style={styles.productActions}>
                 <TouchableOpacity style={styles.productAction} onPress={()=>startEdit(product)}><Text style={styles.actionText}>Düzenle</Text></TouchableOpacity>
                 <TouchableOpacity style={styles.productAction} onPress={()=>deleteProduct(product)}><Text style={styles.deleteText}>Sil</Text></TouchableOpacity>
@@ -494,6 +563,19 @@ export default function BeautyCollectionScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
+  findImageAction:{minHeight:39,justifyContent:'center',marginTop:6},findImageText:{fontSize:11,color:'#69318A',fontWeight:'700',textAlign:'center'},
+  lookupOverlay:{flex:1,justifyContent:'flex-end',backgroundColor:'rgba(36,33,36,.35)'},
+  lookupSheet:{backgroundColor:'#FFFFFF',borderTopLeftRadius:25,borderTopRightRadius:25,padding:18,paddingBottom:30},
+  lookupHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  lookupTitle:{fontSize:20,fontWeight:'700',color:'#242124'},lookupClose:{fontSize:28,color:'#242124'},
+  lookupInfo:{fontSize:12,color:'#6E6872',lineHeight:19,marginVertical:13},
+  lookupMessage:{fontSize:12,color:'#69318A',paddingVertical:12},
+  lookupCandidate:{flexDirection:'row',gap:14,minHeight:123,borderWidth:1,borderColor:'#D8D6DC',borderRadius:15,marginBottom:9,padding:11,alignItems:'center'},
+  lookupPhoto:{height:105,width:93},lookupCandidateTitle:{fontSize:13,color:'#242124',fontWeight:'700'},
+  lookupCandidateSub:{fontSize:12,color:'#6E6872',marginTop:4},lookupCredit:{fontSize:10,color:'#6E6872',marginTop:6},
+  lookupSelect:{fontSize:12,fontWeight:'700',color:'#69318A',marginTop:8},
+  lookupTerms:{fontSize:10,lineHeight:17,color:'#6E6872',marginTop:10},
+
   categoryFilterRow:{flexDirection:'row',gap:8,paddingBottom:11},
   filterChip:{minHeight:39,paddingHorizontal:16,borderRadius:21,borderWidth:1,borderColor:'#D8D6DC',alignItems:'center',justifyContent:'center',backgroundColor:'#FFFFFF'},
   filterChipActive:{borderColor:'#69318A'},filterChipText:{fontSize:12,color:'#242124'},filterChipTextActive:{color:'#69318A',fontWeight:'700'},
