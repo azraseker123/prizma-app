@@ -1570,7 +1570,7 @@ export default function WardrobeScreen({ userId, onSetupTryOnPhoto, initialTab =
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.outlineButton, { marginTop: 14, backgroundColor: '#EDE5F5', borderColor: '#DCC7EB' }]}
+                  style={[styles.outlineButton, { marginTop: 14, backgroundColor: '#FFFFFF', borderColor: '#DCC7EB' }]}
                   onPress={() => { const chosen = detailItem; setDetailItem(null); setTimeout(() => setTryOnItem(chosen), 360); }}
                 >
                   <Text style={[styles.outlineText, { color: '#68419A', fontWeight: '800' }]}>Üzerimde Dene</Text>
@@ -2037,7 +2037,7 @@ const styles = StyleSheet.create({
   wardrobeAddCircle:{width:42,height:42,borderRadius:21,alignItems:'center',justifyContent:'center',backgroundColor:'#69318A'},
   wardrobeAddPlus:{color:'#FFFFFF',fontSize:27,lineHeight:32},
   wardrobeCategoryPreview:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:7,marginBottom:17},
-  wardrobeCategoryTile:{width:'31.5%',minHeight:78,borderRadius:13,backgroundColor:'#F6F0F8',padding:8,alignItems:'center',justifyContent:'center'},
+  wardrobeCategoryTile:{width:'31.5%',minHeight:78,borderRadius:13,backgroundColor:'#FFFFFF',padding:8,alignItems:'center',justifyContent:'center'},
   wardrobeCategorySymbol:{fontSize:20,color:'#623078'},
   wardrobeCategoryName:{fontSize:10,fontWeight:'800',color:'#271E3C',marginTop:3},
   wardrobeCategoryCount:{fontSize:10,color:'#85748A',marginTop:2},
@@ -2116,7 +2116,7 @@ const styles = StyleSheet.create({
   prizmaSheetOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0E5F6',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
@@ -2579,7 +2579,7 @@ const styles = StyleSheet.create({
   },
 
   boardCanvas: {
-    backgroundColor: '#FAF7FC',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 10,
     flexDirection: 'row',
