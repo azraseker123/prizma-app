@@ -1,16 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PRIZMA } from './prizmaTheme';
 
 export type OutfitPosition = { x:number; y:number; scale:number; locked?:boolean };
 export type OutfitLayout = Record<string,OutfitPosition>;
 type Garment = { id:string;name:string;category:string;imageUrl?:string|null };
-type Props = { items:Garment[]; positions:OutfitLayout; onChange:(next:OutfitLayout)=>void; onAiComplete?:()=>void; aiBusy?:boolean };
-const stageWidth=320;
+type Props = { items:Garment[]; positions:OutfitLayout; onChange:(next:OutfitLayout)=>void; onAiComplete?:(focus?:string)=>void; aiBusy?:boolean };
+const stageWidth=Math.max(195,Math.min(320,Dimensions.get('window').width-120));
 const stageHeight=380;
-const baseSize=100;
+const baseSize=Math.min(100,Math.floor((stageWidth-16)/3));
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
-const initial=(index:number):OutfitPosition=>({x:8+(index%3)*103,y:12+Math.floor(index/3)*143,scale:1,locked:false});
+const initial=(index:number):OutfitPosition=>({x:7+(index%3)*(baseSize+2),y:12+Math.floor(index/3)*143,scale:1,locked:false});
 
 function DraggablePiece({item,position,onPositionChange,active,onActivate}:{
  item:Garment;position:OutfitPosition;onPositionChange:(pos:OutfitPosition)=>void;active:boolean;onActivate:()=>void;
@@ -83,7 +83,7 @@ export default function PrizmaOutfitEditor({items,positions,onChange,onAiComplet
     </View>
   </View>:null}
   <View style={s.featureRow}>
-    {(['Renk Uyumu','Stil Filtresi','Alternatifler','Hava Durumu','Ortam Seç'] as const).map((label,index)=><TouchableOpacity key={label} style={s.featureButton} accessibilityRole="button" onPress={()=>{if(onAiComplete)onAiComplete();}}>
+    {(['Renk Uyumu','Stil Filtresi','Alternatifler','Hava Durumu','Ortam Seç'] as const).map((label,index)=><TouchableOpacity key={label} style={s.featureButton} accessibilityRole="button" onPress={()=>{if(onAiComplete)onAiComplete(label);}}>
       <Text style={s.featureIcon}>{['◉','☷','▱','☁','▦'][index]}</Text><Text style={s.featureText}>{label}</Text>
     </TouchableOpacity>)}
   </View>
