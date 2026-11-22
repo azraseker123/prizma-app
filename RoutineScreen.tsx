@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { addRoutineItem, getRoutineItems, removeRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
+import { addRoutineItem, getRoutineItems, removeRoutineItem, moveRoutineItem, renameRoutineItem, type RoutineItem, type RoutinePeriod, type RoutineCategory } from './RoutineStore';
 import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
 type Props = { userId: string; onAIRequest: () => void };
@@ -20,6 +20,8 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [editingSteps, setEditingSteps] = useState(false);
+  const [renameStepId, setRenameStepId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
   const date = new Date();
   const todayKey = [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-');
   const progressKey = 'prizma-routine-progress:' + userId + ':' + todayKey;
@@ -114,6 +116,21 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
     finally { setBusy(false); }
   };
 
+  const shiftStep = async(id:string,direction:-1|1) => {
+    if(busy)return;
+    setBusy(true);
+    try { await moveRoutineItem(userId,id,direction);await refresh(); }
+    catch{setFeedback('Adım sırası değiştirilemedi.');}
+    finally{setBusy(false);}
+  };
+  const saveStepTitle = async() => {
+    if(!renameStepId)return;
+    setBusy(true);
+    try { await renameRoutineItem(userId,renameStepId,renameDraft);setRenameStepId(null);await refresh(); }
+    catch{setFeedback('Adım adı kaydedilemedi.');}
+    finally{setBusy(false);}
+  };
+
   return (
     <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
       <Text style={s.eyebrow}>PRİZMA BEAUTY STUDIO</Text>
@@ -204,21 +221,41 @@ export default function RoutineScreen({ userId, onAIRequest }: Props) {
                 <Text style={[s.itemTitle,completedIds.includes(item.id)&&s.itemCompleted]}>{item.title}</Text>
                 <Text style={s.itemCaption}>{item.source === 'manual'?'Sen ekledin':'AI önerisi • senin onayınla eklendi'}</Text>
               </View>
+              {editingSteps && <View style={s.reorderColumn}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.title+' yukarı taşı'}
+                  disabled={index===0||busy} onPress={()=>{void shiftStep(item.id,-1);}}><Text style={s.reorderText}>↑</Text></TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.title+' aşağı taşı'}
+                  disabled={index===visibleItems.length-1||busy} onPress={()=>{void shiftStep(item.id,1);}}><Text style={s.reorderText}>↓</Text></TouchableOpacity>
+              </View>}
               {editingSteps && (
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.title+' adımını kaldır'} onPress={()=>{void remove(item.id);}}>
-                  <Text style={s.remove}>Kaldır</Text>
-                </TouchableOpacity>
+                <View style={s.editStepActions}>
+                  <TouchableOpacity accessibilityRole="button" onPress={()=>{setRenameStepId(item.id);setRenameDraft(item.title);}}><Text style={s.editAction}>Adlandır</Text></TouchableOpacity>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.title+' adımını kaldır'} onPress={()=>{void remove(item.id);}}>
+                    <Text style={s.remove}>Kaldır</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           </View>
         ))}
       </View>
+      {renameStepId && <View style={s.renamePanel}>
+        <Text style={s.panelTitle}>Rutin adımını düzenle</Text>
+        <TextInput style={s.input} value={renameDraft} onChangeText={setRenameDraft} maxLength={100}/>
+        <TouchableOpacity style={s.button} disabled={busy} onPress={()=>{void saveStepTitle();}}><Text style={s.buttonText}>Kaydet</Text></TouchableOpacity>
+        <TouchableOpacity style={s.renameCancel} onPress={()=>setRenameStepId(null)}><Text style={s.editAction}>Vazgeç</Text></TouchableOpacity>
+      </View>}
       <Text style={s.footnote}>Bu sürümde rutinler bu cihazda hesabına özel saklanır; başka cihaza otomatik aktarılmaz. Uygulamayı silersen bu kayıtlar kaybolabilir.</Text>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
+  reorderColumn:{gap:4,alignItems:'center'},
+  reorderText:{color:'#69318A',fontSize:21,fontWeight:'700'},
+  editStepActions:{gap:5},
+  renamePanel:{borderWidth:1,borderColor:'#D8D6DC',borderRadius:16,padding:15,marginTop:12},
+  renameCancel:{minHeight:44,alignItems:'center',justifyContent:'center'},
   periodTabs: { flexDirection: 'row', gap: 9, marginBottom: 13 },
   periodTab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 48, borderRadius: 14, backgroundColor: '#FFFFFF', borderColor: '#D8D6DC', borderWidth: 1 },
   periodTabActive: { backgroundColor: '#F3EAF8', borderColor: '#69318A' },
