@@ -1,14 +1,14 @@
-// PRİZMA onaylı modern mor görsel kimliği.
-// Mevcut davranış ve Supabase entegrasyonları renk sistemiyle değişmez.
+// PRİZMA 2.0 — approved white background, deep purple and quiet neutral strokes.
+// Brand purple follows the previously approved swatch; no random lavender changes.
 export const PRIZMA_COLORS = {
-  navy: '#231A34',
-  ink: '#231A34',
-  lavender: '#692786',
-  lilac: '#EEE3F5',
-  background: '#FDFBFE',
+  navy: '#242124',
+  ink: '#242124',
+  lavender: '#69318A',
+  lilac: '#F3EAF8',
+  background: '#FFFFFF',
   white: '#FFFFFF',
-  muted: '#746A7E',
-  border: '#EAE2ED',
-  pale: '#F6F0F9',
-  rose: '#BA5576',
+  muted: '#6E6872',
+  border: '#D8D6DC',
+  pale: '#F3EAF8',
+  rose: '#B33F54',
 } as const;
