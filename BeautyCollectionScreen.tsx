@@ -173,7 +173,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.eyebrow}>PRİZMA BEAUTY ✦</Text>
+      <Text style={styles.eyebrow}>PRİZMA BEAUTY </Text>
       <Text style={styles.title}>Bakım Koleksiyonum</Text>
       <Text style={styles.description}>
         Almak istediğin, düşündüğün ve PRİZMA'nın önerdiği
@@ -218,7 +218,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       {formOpen && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            {editing ? 'Ürünü Düzenle' : 'Yeni Ürün ✦'}
+            {editing ? 'Ürünü Düzenle' : 'Yeni Ürün '}
           </Text>
 
           <Text style={styles.label}>Ürün adı *</Text>
@@ -273,7 +273,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           >
             {saving
               ? <ActivityIndicator color="#FFFFFF" />
-              : <Text style={styles.addButtonText}>Kaydet ✦</Text>}
+              : <Text style={styles.addButtonText}>Kaydet </Text>}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={resetForm}>
@@ -306,12 +306,12 @@ export default function BeautyCollectionScreen({ userId }: Props) {
             <Text style={styles.tag}>
               {product.status === 'want'
                 ? '♡ Almak istiyorum'
-                : '✧ Almayı düşünüyorum'}
+                : ' Almayı düşünüyorum'}
             </Text>
 
             <Text style={styles.source}>
               {product.source === 'ai'
-                ? '✦ PRİZMA önerisi'
+                ? ' PRİZMA önerisi'
                 : 'Kendim ekledim'}
             </Text>
 
@@ -343,7 +343,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalSymbol}>✦</Text>
+            <Text style={styles.modalSymbol}></Text>
             <Text style={styles.modalTitle}>
               Ürünü koleksiyonundan kaldır?
             </Text>
@@ -396,14 +396,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalTitle: {
-    color: '#39235F',
+    color: '#242124',
     fontSize: 21,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 12,
   },
   modalDescription: {
-    color: '#806B9B',
+    color: '#6E6872',
     fontSize: 14,
     lineHeight: 22,
     textAlign: 'center',
@@ -418,79 +418,79 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 15,
     borderRadius: 14,
-    backgroundColor: '#F2EDFA',
+    backgroundColor: '#F3EAF8',
     alignItems: 'center',
   },
   modalCancelText: {
-    color: '#563D7C',
+    color: '#69318A',
     fontWeight: '800',
   },
   modalDelete: {
     flex: 1,
     padding: 15,
     borderRadius: 14,
-    backgroundColor: '#8060AD',
+    backgroundColor: '#69318A',
     alignItems: 'center',
   },
   modalDeleteText: {
     color: '#FFFFFF',
     fontWeight: '800',
   },
-  container: { flex: 1, backgroundColor: '#FAF8FF' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { padding: 20, paddingBottom: 45, gap: 15 },
   eyebrow: {
     color: '#9A78C5', fontSize: 11,
     fontWeight: '800', letterSpacing: 2,
   },
-  title: { color: '#39235F', fontSize: 27, fontWeight: '800' },
-  description: { color: '#806B9B', fontSize: 13, lineHeight: 21 },
+  title: { color: '#242124', fontSize: 27, fontWeight: '800' },
+  description: { color: '#6E6872', fontSize: 13, lineHeight: 21 },
   tabs: { flexDirection: 'row', gap: 7 },
   tab: {
     flex: 1, backgroundColor: '#FFFFFF',
     paddingVertical: 14, borderRadius: 14,
     alignItems: 'center',
   },
-  activeTab: { backgroundColor: '#DDD0FA' },
-  tabText: { color: '#806B9B', fontWeight: '700' },
-  activeTabText: { color: '#563D7C' },
+  activeTab: { backgroundColor: '#F3EAF8' },
+  tabText: { color: '#6E6872', fontWeight: '700' },
+  activeTabText: { color: '#69318A' },
   card: {
     backgroundColor: '#FFFFFF', borderRadius: 20,
     padding: 18, gap: 10,
   },
-  cardTitle: { color: '#39235F', fontSize: 17, fontWeight: '800' },
+  cardTitle: { color: '#242124', fontSize: 17, fontWeight: '800' },
   addButton: {
-    backgroundColor: '#8060AD', padding: 16,
+    backgroundColor: '#69318A', padding: 16,
     borderRadius: 16, alignItems: 'center',
   },
   addButtonText: { color: '#FFFFFF', fontWeight: '800' },
-  label: { color: '#563D7C', fontWeight: '700', fontSize: 13 },
+  label: { color: '#69318A', fontWeight: '700', fontSize: 13 },
   input: {
-    backgroundColor: '#F6F0FF', borderRadius: 12,
-    padding: 13, color: '#39235F',
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    padding: 13, color: '#242124',
   },
   notesInput: { minHeight: 85, textAlignVertical: 'top' },
   statusRow: { flexDirection: 'row', gap: 8 },
   statusOption: {
     flex: 1, padding: 12, borderRadius: 12,
-    backgroundColor: '#F6F0FF', alignItems: 'center',
+    backgroundColor: '#FFFFFF', alignItems: 'center',
   },
-  selectedStatus: { backgroundColor: '#DDD0FA' },
+  selectedStatus: { backgroundColor: '#F3EAF8' },
   statusText: {
-    color: '#563D7C', fontSize: 12,
+    color: '#69318A', fontSize: 12,
     fontWeight: '700', textAlign: 'center',
   },
   cancelText: {
-    textAlign: 'center', color: '#806B9B',
+    textAlign: 'center', color: '#6E6872',
     padding: 10, fontWeight: '700',
   },
   emptyIcon: { fontSize: 36, color: '#9673C2' },
-  productName: { color: '#39235F', fontSize: 17, fontWeight: '800' },
-  tag: { color: '#6941A5', fontSize: 12, fontWeight: '700' },
+  productName: { color: '#242124', fontSize: 17, fontWeight: '800' },
+  tag: { color: '#69318A', fontSize: 12, fontWeight: '700' },
   source: { color: '#9A78C5', fontSize: 12 },
   actions: {
     flexDirection: 'row', justifyContent: 'flex-end',
     gap: 25, marginTop: 8,
   },
-  actionText: { color: '#6941A5', fontWeight: '800' },
-  deleteText: { color: '#C05B73', fontWeight: '800' },
+  actionText: { color: '#69318A', fontWeight: '800' },
+  deleteText: { color: '#B33F54', fontWeight: '800' },
 });
