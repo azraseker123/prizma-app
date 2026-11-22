@@ -1,3 +1,4 @@
+import PrizmaHomeV2 from './PrizmaHomeV2';
 import PrizmaProfileScreen from './PrizmaProfileScreen';
 import RoutineScreen from './RoutineScreen';
 import { PrizmaHome, PrizmaStudio, PrizmaBeauty, PrizmaProfile, type PrizmaPage } from './PrizmaExperience';
@@ -706,7 +707,7 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === 'Ana Sayfa' && (
-          <PrizmaHome userId={session.user.id} displayName={typeof session.user.user_metadata?.full_name==='string'?session.user.user_metadata.full_name.split(' ')[0]:''} onOpen={(page:PrizmaPage)=>open(page)} onSoon={comingSoon}/>
+          <PrizmaHomeV2 userId={session.user.id} displayName={typeof session.user.user_metadata?.full_name==='string'?session.user.user_metadata.full_name.split(' ')[0]:''} onOpen={(page)=>open(page)}/>
         )}
 
         {tab === 'Stil Stüdyosu' && (
