@@ -1,10 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { ScrollViewInstance } from 'react-native';
 import { supabase } from './supabase';
 import { addRoutineItem, type RoutinePeriod } from './RoutineStore';
 import { PRIZMA_COLORS as C } from './theme';
-import { createChat, deleteChat, listChatHistory, saveChatMessages, type ChatRecord, type ChatMessage } from './ChatHistoryStore';
+import { createChat, deleteChat, renameChat, listChatHistory, saveChatMessages, type ChatRecord, type ChatMessage } from './ChatHistoryStore';
 
 type Category = 'skin' | 'hair' | 'makeup';
 type Product = { name: string; brand: string; reason: string; caution: string };
@@ -26,6 +27,35 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [routinePeriod, setRoutinePeriod] = useState<RoutinePeriod>('Akşam');
+  const [archiveQuery, setArchiveQuery] = useState('');
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  useEffect(()=>{
+    let active=true;
+    AsyncStorage.getItem('prizma-chat-pins:'+userId).then(raw=>{
+      if(active)setPinnedIds(raw?JSON.parse(raw):[]);
+    }).catch(()=>{});
+    return ()=>{active=false;};
+  },[userId]);
+  const togglePin = async (id:string) => {
+    const next=pinnedIds.includes(id)?pinnedIds.filter(x=>x!==id):[...pinnedIds,id];
+    setPinnedIds(next);
+    await AsyncStorage.setItem('prizma-chat-pins:'+userId,JSON.stringify(next));
+  };
+  const commitRename = async () => {
+    if(!renameId||!renameDraft.trim())return;
+    setBusyAction('rename');
+    try{
+      await renameChat(userId,renameId,renameDraft);
+      setChats(old=>old.map(x=>x.id===renameId?{...x,title:renameDraft.trim().slice(0,80)}:x));
+      setRenameId(null);
+      setRenameDraft('');
+    }catch{setFeedback('Sohbet adı değiştirilemedi.');}
+    finally{setBusyAction(null);}
+  };
+  const filteredChats=chats.filter(x=>x.title.toLocaleLowerCase('tr-TR').includes(archiveQuery.toLocaleLowerCase('tr-TR')))
+    .sort((a,b)=>Number(pinnedIds.includes(b.id))-Number(pinnedIds.includes(a.id)));
 
   useEffect(() => {
     let alive = true;
@@ -191,15 +221,22 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         </TouchableOpacity>
       </View>
       {showChats ? (
+        <View style={s.sidePanel}>
+        <Text style={s.archiveTitle}>Sohbet Arşivim</Text>
+        <TextInput style={s.archiveInput} placeholder="Sohbetlerde ara" placeholderTextColor={C.muted} value={archiveQuery} onChangeText={setArchiveQuery}/>
         <ScrollView style={s.chatList} contentContainerStyle={s.chatListContent} keyboardShouldPersistTaps="handled">
           {historyLoading && <ActivityIndicator color={C.lavender} />}
-          {!historyLoading && chats.length === 0 && <Text style={s.listEmpty}>Henüz kayıtlı sohbet yok.</Text>}
-          {chats.map(chat => (
+          {!historyLoading && filteredChats.length === 0 && <Text style={s.listEmpty}>Sohbet bulunamadı.</Text>}
+          {filteredChats.map(chat => (
             <View key={chat.id} style={s.chatListRow}>
               <TouchableOpacity style={s.chatListOpen} onPress={() => openChat(chat)} disabled={loading || !!busyAction}>
-                <Text style={s.chatListTitle} numberOfLines={2}>{chat.title}</Text>
+                <Text style={s.chatListTitle} numberOfLines={2}>{pinnedIds.includes(chat.id)?'●  ':''}{chat.title}</Text>
                 <Text style={s.chatListMeta}>{chat.messages.length} mesaj</Text>
               </TouchableOpacity>
+              <View style={s.archiveActions}>
+                <TouchableOpacity onPress={()=>{void togglePin(chat.id);}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>{pinnedIds.includes(chat.id)?'Sabiti kaldır':'Sabitle'}</Text></TouchableOpacity>
+                <TouchableOpacity onPress={()=>{setRenameId(chat.id);setRenameDraft(chat.title);}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>Adlandır</Text></TouchableOpacity>
+              </View>
               {confirmDelete === chat.id ? (
                 <View style={s.confirmRow}>
                   <TouchableOpacity onPress={() => void removeChat(chat.id)} disabled={!!busyAction}>
@@ -217,6 +254,14 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
             </View>
           ))}
         </ScrollView>
+        {renameId && <View style={s.renameBox}>
+          <TextInput value={renameDraft} onChangeText={setRenameDraft} maxLength={80} style={s.archiveInput} placeholder="Yeni sohbet adı"/>
+          <View style={s.renameActions}>
+            <TouchableOpacity onPress={()=>setRenameId(null)} accessibilityRole="button"><Text style={s.archiveActionText}>Vazgeç</Text></TouchableOpacity>
+            <TouchableOpacity onPress={()=>{void commitRename();}} disabled={!!busyAction} accessibilityRole="button"><Text style={s.archiveActionText}>Kaydet</Text></TouchableOpacity>
+          </View>
+        </View>}
+        </View>
       ) : (<>
       <View style={s.heading}>
         <Text style={s.eyebrow}>PRİZMA  KİŞİSEL ASİSTAN</Text>
@@ -297,6 +342,14 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 }
 
 const s = StyleSheet.create({
+  sidePanel:{flex:1,backgroundColor:C.white,borderWidth:1,borderColor:C.border,borderRadius:17,padding:11},
+  archiveTitle:{fontSize:17,fontWeight:'700',color:C.ink,marginBottom:10},
+  archiveInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.border,borderRadius:12,padding:10,minHeight:44,fontSize:13,color:C.ink,marginBottom:10},
+  archiveActions:{gap:6,justifyContent:'center'},
+  archiveActionText:{color:C.lavender,fontSize:11,fontWeight:'700'},
+  renameBox:{padding:10,borderTopWidth:1,borderTopColor:C.border},
+  renameActions:{flexDirection:'row',gap:25,justifyContent:'flex-end'},
+
   chatControls: { flexDirection: 'row', gap: 10, marginBottom: 9 },
   historyButton: { flex: 1, backgroundColor: C.lilac, borderRadius: 12, padding: 12 },
   historyButtonText: { color: C.navy, fontSize: 12, fontWeight: '800' },
