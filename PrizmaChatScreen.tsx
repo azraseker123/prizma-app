@@ -276,31 +276,16 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 
   return (
     <View style={s.root}>
-      <View style={s.chatControls}>
-        <TouchableOpacity style={s.historyButton} onPress={() => setShowChats(value => !value)} disabled={loading || !!busyAction}>
-          <Text style={s.historyButtonText}>☰ Sohbetlerim ({chats.length})</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.newChatButton} onPress={startNewChat} disabled={loading || !!busyAction}>
-          <Text style={s.newChatButtonText}>＋ Yeni</Text>
-        </TouchableOpacity>
+      <View style={s.aiPageHeading}>
+        <View style={s.aiTopRow}>
+          <TouchableOpacity accessibilityRole="button" onPress={()=>setShowChats(true)} style={s.aiHistoryIcon}><Text style={s.aiHistoryGlyph}>‹</Text></TouchableOpacity>
+          <Text style={s.aiBrand}>PRİZMA AI</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={()=>setShowChats(true)} style={s.aiHistoryIcon}><Text style={s.aiHistoryGlyph}>⋮</Text></TouchableOpacity>
+        </View>
+        <View style={s.aiCircleShell}><View style={s.aiCircleInner}/></View>
+        <Text style={s.aiSubtitle}>Stil, güzellik ve bakım danışmanın.</Text>
       </View>
       <>
-
-      <View style={s.heading}>
-        <Text style={s.eyebrow}>PRİZMA  KİŞİSEL ASİSTAN</Text>
-        <Text style={s.title}>Sana nasıl yardımcı olayım?</Text>
-        <Text style={s.hint}>Cilt, saç ve makyaj önerileri için yaz. Kombin önerileri Gardırop AI'da.</Text>
-        <View style={s.categories}>
-          {(['skin', 'hair', 'makeup'] as const).map(key => (
-            <TouchableOpacity key={key} style={[s.chip, category === key && s.chipActive]} onPress={() => setCategory(key)} disabled={loading}>
-              <Text style={[s.chipText, category === key && s.chipTextActive]}>{labels[key]}</Text>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity style={s.outfitChip} disabled={lookBusy} onPress={()=>{void suggestChatLooks();}}>
-            <Text style={s.outfitChipText}>{lookBusy?'Kombinler hazırlanıyor...':'◎ Kombin Öner'}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
       <ScrollView
         ref={historyRef}
@@ -310,14 +295,31 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         showsVerticalScrollIndicator={true}
         onContentSizeChange={() => historyRef.current?.scrollToEnd({ animated: true })}
       >
-        {messages.length === 0 && (
-          <View style={s.empty}>
-            <Text style={s.emptyIcon}></Text>
-            <Text style={s.emptyTitle}>PRİZMA'ya sor</Text>
-            <Text style={s.emptyText}>Örneğin: “Hassas cildim için hafif bir nemlendirici önerir misin?”</Text>
-            <Text style={s.emptyNotice}>AI hata yapabilir. Önerileri ve ürün talimatlarını kontrol et.</Text>
+        {messages.length === 0 && <View style={s.aiWelcome}>
+          <View style={s.aiHelloRow}><View style={s.aiMiniRing}/>
+           <View style={s.aiHelloBubble}><Text style={s.aiHelloText}>Merhaba! Bugün sana nasıl yardımcı olabilirim?</Text></View>
           </View>
-        )}
+          <View style={s.aiActionGrid}>
+            <TouchableOpacity style={[s.aiActionCard,s.aiActionPrimary]} accessibilityRole="button" onPress={()=>{void suggestChatLooks();}}>
+              <Text style={[s.aiActionGlyph,s.aiActionGlyphActive]}>♧</Text><Text style={s.aiActionActiveText}>Kombin Oluştur</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.aiActionCard} accessibilityRole="button" onPress={()=>{setCategory('skin');setDraft('Cilt tipime uygun ürün önerir misin?');}}>
+              <Text style={s.aiActionGlyph}>▢</Text><Text style={s.aiActionLabel}>Ürün Önerisi</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.aiActionCard} accessibilityRole="button" onPress={()=>setDraft('Üç günlük seyahatim için valiz planı hazırlar mısın?')}>
+              <Text style={s.aiActionGlyph}>▣</Text><Text style={s.aiActionLabel}>Valiz Planla</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.aiActionCard} accessibilityRole="button" onPress={()=>{setCategory('skin');setDraft('Cilt bakım rutinimi iyileştirmek için önerilerin neler?');}}>
+              <Text style={s.aiActionGlyph}>▱</Text><Text style={s.aiActionLabel}>Cilt Bakım Rutini</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={s.aiDiscoverTitle}>Senin İçin Öneriler</Text>
+          <View style={s.aiDiscoverRow}>
+            <TouchableOpacity style={s.aiDiscoverCard} onPress={()=>{void suggestChatLooks();}}><Text style={s.aiDiscoverSymbol}>♧</Text><Text style={s.aiDiscoverLabel}>Günlük kombin önerileri</Text></TouchableOpacity>
+            <TouchableOpacity style={s.aiDiscoverCard} onPress={()=>{setCategory('skin');setDraft('Cilt tipime göre bakım rutini önerir misin?');}}><Text style={s.aiDiscoverSymbol}>▤</Text><Text style={s.aiDiscoverLabel}>Cilt tipine göre rutin</Text></TouchableOpacity>
+          </View>
+          <Text style={s.aiSmallDisclaimer}>AI hata yapabilir. Ürün içeriklerini ve önerileri kontrol et.</Text>
+        </View>}
         {messages.map(m => (
           <View key={m.id} style={[s.bubble, m.role === 'user' ? s.userBubble : s.aiBubble]}>
             <Text style={[s.role, m.role === 'user' && s.userRole]}>{m.role === 'user' ? 'SEN' : 'PRİZMA '}</Text>
@@ -357,6 +359,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
       </ScrollView>
 
       <View style={s.composer}>
+        <TouchableOpacity style={s.aiComposerPlus} onPress={()=>setShowChats(true)} accessibilityRole="button" accessibilityLabel="Sohbet arşivi"><Text style={s.aiComposerPlusText}>＋</Text></TouchableOpacity>
         <TextInput style={s.input} multiline maxLength={300} placeholder="PRİZMA'ya yaz..." placeholderTextColor="#87839A" value={draft} onChangeText={setDraft} editable={!loading} />
         <TouchableOpacity style={[s.send, (!draft.trim() || loading || historyLoading || !!busyAction) && s.sendDisabled]} onPress={() => { void send(); }} disabled={!draft.trim() || loading || historyLoading || !!busyAction}>
           <Text style={s.sendText}>➤</Text>
@@ -395,8 +398,9 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
         <View style={s.drawerOverlay}>
           <TouchableOpacity style={s.drawerScrim} onPress={()=>setShowChats(false)} accessibilityRole="button" accessibilityLabel="Sohbet arşivini kapat"/>
         <View style={s.sidePanel}>
-        <Text style={s.archiveTitle}>Sohbet Arşivim</Text>
-        <TextInput style={s.archiveInput} placeholder="Sohbetlerde ara" placeholderTextColor={C.muted} value={archiveQuery} onChangeText={setArchiveQuery}/>
+        <View style={s.drawerHeading}><Text style={s.archiveTitle}>Sohbet Geçmişi</Text><TouchableOpacity onPress={()=>setShowChats(false)}><Text style={s.drawerClose}>×</Text></TouchableOpacity></View>
+        <TextInput style={s.archiveInput} placeholder="Sohbetlerinde ara..." placeholderTextColor={C.muted} value={archiveQuery} onChangeText={setArchiveQuery}/>
+        <TouchableOpacity style={s.drawerNewChat} onPress={startNewChat} accessibilityRole="button"><Text style={s.drawerNewText}>＋  Yeni Sohbet</Text></TouchableOpacity>
         <ScrollView style={s.chatList} contentContainerStyle={s.chatListContent} keyboardShouldPersistTaps="handled">
           {historyLoading && <ActivityIndicator color={C.lavender} />}
           {!historyLoading && filteredChats.length === 0 && <Text style={s.listEmpty}>Sohbet bulunamadı.</Text>}
@@ -444,6 +448,29 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
 }
 
 const s = StyleSheet.create({
+  aiPageHeading:{alignItems:'center',backgroundColor:'#FFFFFF',paddingTop:3,paddingBottom:12},
+  aiTopRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',width:'100%',marginBottom:15},
+  aiHistoryIcon:{width:36,height:42,alignItems:'center',justifyContent:'center'},
+  aiHistoryGlyph:{fontSize:28,color:C.ink},aiBrand:{fontFamily:'serif',fontSize:21,letterSpacing:3,color:C.ink},
+  aiCircleShell:{width:62,height:62,borderWidth:3,borderColor:'#B044F2',borderRadius:31,alignItems:'center',justifyContent:'center',backgroundColor:'#FFFFFF',shadowColor:'#A629E7',shadowOpacity:.9,shadowRadius:9,elevation:9},
+  aiCircleInner:{height:48,width:48,borderRadius:24,borderWidth:1,borderColor:'#E3B7FF'},
+  aiSubtitle:{marginTop:14,fontSize:13,color:C.ink},
+  aiWelcome:{paddingVertical:11,gap:17},aiHelloRow:{flexDirection:'row',alignItems:'center',gap:9,marginBottom:7},
+  aiMiniRing:{height:23,width:23,borderColor:'#B044F2',borderWidth:2,borderRadius:12,backgroundColor:'#FFFFFF'},
+  aiHelloBubble:{flex:1,borderWidth:1,borderColor:C.border,borderRadius:17,padding:15,backgroundColor:'#FFFFFF'},
+  aiHelloText:{fontSize:13,color:C.ink,lineHeight:20},
+  aiActionGrid:{flexDirection:'row',flexWrap:'wrap',gap:10},aiActionCard:{width:'48%',minHeight:112,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:C.border,borderRadius:17,alignItems:'center',justifyContent:'center',padding:12,gap:5},
+  aiActionPrimary:{backgroundColor:C.lavender,borderColor:C.lavender},aiActionGlyph:{fontSize:27,color:C.lavender},aiActionGlyphActive:{color:'#FFFFFF'},
+  aiActionLabel:{fontSize:13,color:C.ink,textAlign:'center'},aiActionActiveText:{fontSize:13,color:'#FFFFFF',fontWeight:'700',textAlign:'center'},
+  aiDiscoverTitle:{fontSize:16,fontWeight:'700',color:C.ink,marginTop:8},
+  aiDiscoverRow:{flexDirection:'row',gap:9},aiDiscoverCard:{flex:1,borderWidth:1,borderColor:C.border,borderRadius:15,padding:11,minHeight:77,flexDirection:'row',gap:8,alignItems:'center'},aiDiscoverSymbol:{fontSize:25,color:C.lavender},aiDiscoverLabel:{fontSize:11,color:C.ink,flex:1,fontWeight:'600'},
+  aiSmallDisclaimer:{fontSize:10,color:C.muted,textAlign:'center'},
+  aiComposerPlus:{width:41,height:43,borderRadius:22,borderWidth:1,borderColor:C.border,alignItems:'center',justifyContent:'center'},
+  aiComposerPlusText:{fontSize:22,color:C.lavender},
+  drawerHeading:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
+  drawerClose:{fontSize:28,color:C.ink},drawerNewChat:{minHeight:49,marginBottom:13,borderRadius:25,backgroundColor:C.lavender,alignItems:'center',justifyContent:'center'},
+  drawerNewText:{fontSize:13,fontWeight:'700',color:'#FFFFFF'},
+
   lookOverlay:{flex:1,justifyContent:'flex-end',backgroundColor:'rgba(36,33,36,0.33)'},
   lookSheet:{maxHeight:'83%',padding:17,paddingBottom:24,borderTopLeftRadius:24,borderTopRightRadius:24,backgroundColor:C.white},
   lookSheetHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
