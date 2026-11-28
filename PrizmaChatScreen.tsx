@@ -283,7 +283,7 @@ export default function PrizmaChatScreen({ userId, onOutfit }: Props) {
           <Text style={s.aiBrand}>PRİZMA AI</Text>
           <TouchableOpacity accessibilityRole="button" onPress={()=>setShowChats(true)} style={s.aiHistoryIcon}><Text style={s.aiHistoryGlyph}>⋮</Text></TouchableOpacity>
         </View>
-        <View style={s.aiCircleShell}><View style={s.aiCircleInner}/></View>
+        {!showChats&&<View style={s.aiCircleShell}><View style={s.aiCircleInner}/></View>}
         <Text style={s.aiSubtitle}>Stil, güzellik ve bakım danışmanın.</Text>
       </View>
       <>
@@ -502,7 +502,7 @@ const s = StyleSheet.create({
   lookStudioButton:{minHeight:48,alignItems:'center',justifyContent:'center'},
   lookStudioText:{color:C.lavender,fontWeight:'700',fontSize:13},
 
-  drawerOverlay:{position:'absolute',top:0,bottom:0,left:0,right:0,zIndex:500,flexDirection:'row',justifyContent:'flex-end'},
+  drawerOverlay:{zIndex:100,elevation:30,position:'absolute',top:0,bottom:0,left:0,right:0,zIndex:500,flexDirection:'row',justifyContent:'flex-end'},
   drawerScrim:{position:'absolute',top:0,bottom:0,left:0,right:0,backgroundColor:'rgba(36,33,36,0.27)'},
   explainAction:{fontSize:12,color:C.lavender,fontWeight:'700',marginTop:7,marginBottom:4},
   sidePanel:{height:'100%',width:'86%',maxWidth:370,backgroundColor:C.white,borderLeftWidth:1,borderColor:C.border,padding:13,elevation:10},
