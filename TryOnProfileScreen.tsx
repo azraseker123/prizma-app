@@ -64,7 +64,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
       setConsent(false);
       setVerified(false);
       await reload();
-      setNotice({ type: 'success', title: 'Fotoğrafın kaydedildi ✦', message: 'Kayıtlı fotoğrafını yeni kıyafet denemelerinde kullanabileceğiz.' });
+      setNotice({ type: 'success', title: 'Fotoğrafın kaydedildi ', message: 'Kayıtlı fotoğrafını yeni kıyafet denemelerinde kullanabileceğiz.' });
     } catch (e) {
       setNotice({ type: 'error', title: 'Fotoğraf kaydedilemedi', message: e instanceof Error ? e.message : 'Tekrar dene.' });
     } finally { setBusy(false); }
@@ -93,7 +93,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
     try {
       await removeSavedTryOnBackground(userId, photo.path);
       await reload();
-      setNotice({ type: 'success', title: 'Arka plan kaldırıldı ✦', message: 'Kayıtlı fotoğrafın güncellendi. Arka plan kaldırma hakkından 1 işlem kullanıldı.' });
+      setNotice({ type: 'success', title: 'Arka plan kaldırıldı ', message: 'Kayıtlı fotoğrafın güncellendi. Arka plan kaldırma hakkından 1 işlem kullanıldı.' });
     } catch (e) {
       setNotice({ type: 'error', title: 'Arka plan kaldırılamadı', message: e instanceof Error ? e.message : 'Tekrar deneyebilirsin.' });
     } finally { setBackgroundBusy(false); setBusy(false); }
@@ -159,7 +159,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
       </Modal>
       <ScrollView contentContainerStyle={s.content}>
         <TouchableOpacity onPress={onBack} style={s.back}><Text style={s.backText}>‹ Profilime dön</Text></TouchableOpacity>
-        <Text style={s.brand}>PRİZMA ✦ VIRTUAL TRY-ON</Text>
+        <Text style={s.brand}>PRİZMA  VIRTUAL TRY-ON</Text>
         <Text style={s.title}>Deneme Fotoğrafım</Text>
         <Text style={s.subtitle}>Kıyafetli, tek kişilik ve baştan ayağa görünen fotoğrafını kaydet. AI uygunluk kontrolü boydan olmayan veya ilgisiz fotoğrafları reddeder.</Text>
 
@@ -192,13 +192,13 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
         </View>
         {draft && (
           <TouchableOpacity style={[s.secondary, { marginTop: 10, padding: 13 }]} disabled={busy || !consent} onPress={() => void removeBackground()}>
-            <Text style={s.secondaryText}>{busy ? 'İşleniyor…' : '✦ Arka planı kaldır'}</Text>
+            <Text style={s.secondaryText}>{busy ? 'İşleniyor…' : ' Arka planı kaldır'}</Text>
           </TouchableOpacity>
         )}
         {draft && (
           <View style={s.actions}>
             <TouchableOpacity style={s.primary} disabled={busy} onPress={() => void save()}>
-              <Text style={s.primaryText}>{busy ? 'Kaydediliyor…' : 'Fotoğrafımı kaydet ✦'}</Text>
+              <Text style={s.primaryText}>{busy ? 'Kaydediliyor…' : 'Fotoğrafımı kaydet '}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.secondary} disabled={busy} onPress={() => { setDraft(null); setConsent(false); setVerified(false); }}>
               <Text style={s.secondaryText}>Vazgeç</Text>
@@ -207,7 +207,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
         )}
         {photo && !draft && (
           <TouchableOpacity style={[s.secondary, { marginTop: 14, paddingVertical: 14 }]} disabled={busy || loading} onPress={() => setConfirmBg(true)}>
-            <Text style={s.secondaryText}>✦ Arka planı kaldır</Text>
+            <Text style={s.secondaryText}> Arka planı kaldır</Text>
           </TouchableOpacity>
         )}
         {photo && !draft && (
@@ -217,7 +217,7 @@ export default function TryOnProfileScreen({ userId, onBack, recoveredCameraUri,
         )}
 
         <View style={s.guide}>
-          <Text style={s.guideTitle}>✦ Daha iyi sonuç için</Text>
+          <Text style={s.guideTitle}> Daha iyi sonuç için</Text>
           <Text style={s.guideText}>{['• Başın ve ayakların fotoğrafta bulunsun.', '• Net ışıkta, sade bir arka plan seç.', '• Günlük kıyafetler yeterli.', '• Fotoğrafını istediğin zaman değiştirebilir veya silebilirsin.'].join('\n')}</Text>
         </View>
         <Text style={s.privacy}>🔒 Fotoğrafın hesabına özel saklanır. Fotoğraf kontrolü ve arka plan kaldırma için seçtiğin görsel AI hizmetleriyle işlenir.</Text>

@@ -36,7 +36,7 @@ export default function TryOnPreviewModal({ visible, userId, item, onClose, onSe
       <View style={s.root}>
         <View style={s.header}>
           <TouchableOpacity onPress={onClose}><Text style={s.back}>‹ Gardıroba dön</Text></TouchableOpacity>
-          <Text style={s.headerTitle}>Sanal Deneme ✦</Text>
+          <Text style={s.headerTitle}>Sanal Deneme </Text>
         </View>
         <ScrollView contentContainerStyle={s.content}>
           <Text style={s.eyebrow}>PRİZMA FITTING ROOM</Text>
@@ -69,7 +69,7 @@ export default function TryOnPreviewModal({ visible, userId, item, onClose, onSe
             </TouchableOpacity>
           )}
           <View style={s.nextPanel}>
-            <Text style={s.nextTitle}>✦ Sonraki adım: AI sanal deneme</Text>
+            <Text style={s.nextTitle}> Sonraki adım: AI sanal deneme</Text>
             <Text style={s.nextText}>Bu ekran şu anda fotoğraf ve kıyafet seçimini test ediyor. Gerçek görsel üretimi henüz açık değil; bu ekranda herhangi bir AI hakkı harcanmaz veya ücretli istek gönderilmez.</Text>
           </View>
           <View style={[s.disabledButton]}>

@@ -102,6 +102,11 @@ Deno.serve(async (req) => {
     }
 
     const items = (data || []) as Item[];
+    const allowedIds = new Set(items.map(item=>item.id));
+    const requestedLocked = Array.isArray(body.locked_item_ids)
+      ? body.locked_item_ids.filter((id:unknown):id is string=>typeof id==='string'&&allowedIds.has(id)).slice(0,8)
+      : [];
+    const lockedIds=[...new Set(requestedLocked)];
 
     if (items.length < 2) {
       return reply({
@@ -185,15 +190,28 @@ Deno.serve(async (req) => {
       personalColors.join(", ") || "Belirtilmedi";
 
 
-    // Learn only from explicit, account-owned outfit ratings.
-    // Keep the prompt small and reference only items still in the wardrobe.
-    const { data: ratings, error: ratingsError } = await sb
-      .from("outfit_feedback")
-      .select("item_ids,sentiment,updated_at")
+    // Only read historical outfit ratings when the user opted in.
+    // Missing preference rows default to false; do not silently personalize.
+    const { data: aiPermissions, error: permissionsError } = await sb
+      .from("prizma_ai_preferences")
+      .select("learn_preferences")
       .eq("user_id", authData.user.id)
-      .order("updated_at", { ascending: false })
-      .limit(40);
-    if (ratingsError) console.warn("Outfit preferences not loaded:", ratingsError.message);
+      .maybeSingle();
+    if (permissionsError) {
+      console.warn("AI permission lookup failed:", permissionsError.message);
+    }
+    const allowedToLearn = !permissionsError && aiPermissions?.learn_preferences === true;
+    let ratings: { item_ids: string[]; sentiment: string }[] = [];
+    if (allowedToLearn) {
+      const { data: feedbackRows, error: ratingsError } = await sb
+        .from("outfit_feedback")
+        .select("item_ids,sentiment,updated_at")
+        .eq("user_id", authData.user.id)
+        .order("updated_at", { ascending: false })
+        .limit(40);
+      if (ratingsError) console.warn("Outfit preferences not loaded:", ratingsError.message);
+      else ratings = (feedbackRows || []) as { item_ids: string[]; sentiment: string }[];
+    }
     const itemIds = new Set(items.map(item => item.id));
     const preferenceExamples = (ratings || [])
       .filter((row: any) => row && (row.sentiment === "liked" || row.sentiment === "disliked") && Array.isArray(row.item_ids))
@@ -230,6 +248,9 @@ ${preferredColors}
 Kullanıcının GERÇEK gardırobu:
 ${JSON.stringify(wardrobe)}
 
+Kullanıcının SABİTLEDİĞİ parçaların ID listesi (hepsini önerilen her kombinde koru):
+${JSON.stringify(lockedIds)}
+
 Kullanıcının geçmişte açıkça beğendiği ve beğenmediği kombinlerdeki GERÇEK parça ID grupları:
 ${JSON.stringify(preferenceExamples)}
 Kayıtlı geri bildirim sayısı: ${likedCount} beğeni, ${dislikedCount} beğenmeme.
@@ -237,6 +258,7 @@ Bu geri bildirimler kullanıcının kendi tercih sinyalidir; bir parçaya kalıc
 
 Kurallar:
 - En fazla 3 farklı kombin öner.
+- Sabitlenmiş parça ID'lerinin hepsini her kombin içinde koru; kaldırma veya değiştirme.
 - Yalnızca verilen gardıroptaki ID'leri kullan.
 - Her kombin en az 2 farklı kıyafet içermeli.
 - Kombinler etkinliğe ve istenen tarza uygun olmalı.
@@ -358,6 +380,7 @@ Kurallar:
       })
       .filter((outfit: any) => {
         if (outfit.item_ids.length < 2) return false;
+        if (!lockedIds.every(id=>outfit.item_ids.includes(id))) return false;
 
         const signature = [...outfit.item_ids]
           .sort()

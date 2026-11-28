@@ -121,7 +121,7 @@ export default function SkinAnalysisScreen({ userId }: Props) {
       style={styles.container}
       contentContainerStyle={styles.content}
     >
-      <Text style={styles.eyebrow}>PRİZMA BEAUTY ✦</Text>
+      <Text style={styles.eyebrow}>PRİZMA BEAUTY </Text>
       <Text style={styles.title}>Cilt Profilim</Text>
       <Text style={styles.description}>
         Cilt tipini ve hassasiyetini istediğin zaman güncelleyebilirsin.
@@ -138,7 +138,7 @@ export default function SkinAnalysisScreen({ userId }: Props) {
             style={styles.guideButton}
             onPress={() => setShowGuide(false)}
           >
-            <Text style={styles.guideButtonText}>Anladım ✦</Text>
+            <Text style={styles.guideButtonText}>Anladım </Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -164,7 +164,7 @@ export default function SkinAnalysisScreen({ userId }: Props) {
               onPress={() => setShowGuide(true)}
             >
               <Text style={styles.guideButtonText}>
-                ✧ Cilt tipimi nasıl öğrenirim?
+                 Cilt tipimi nasıl öğrenirim?
               </Text>
             </TouchableOpacity>
           </View>
@@ -204,7 +204,7 @@ export default function SkinAnalysisScreen({ userId }: Props) {
             {saving ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.saveText}>Değişiklikleri Kaydet ✦</Text>
+              <Text style={styles.saveText}>Değişiklikleri Kaydet </Text>
             )}
           </TouchableOpacity>
         </>
@@ -212,7 +212,7 @@ export default function SkinAnalysisScreen({ userId }: Props) {
 
       {!loadError && !showGuide && (
         <View style={styles.card}>
-          <Text style={styles.question}>✦ Kişisel Ürün Önerileri</Text>
+          <Text style={styles.question}> Kişisel Ürün Önerileri</Text>
           <Text style={styles.hint}>
             {skinType && skinType !== 'Emin değilim'
               ? 'Cilt tipin belirlendi. Ürün önerileri, profilin kaydedildikten ve güvenlik kontrolleri tamamlandıktan sonra kullanılabilir.'
@@ -232,7 +232,7 @@ export default function SkinAnalysisScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF8FF' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { padding: 20, paddingBottom: 45, gap: 15 },
   center: { padding: 40, alignItems: 'center' },
   eyebrow: {
@@ -240,10 +240,10 @@ const styles = StyleSheet.create({
     fontWeight: '800', letterSpacing: 2,
   },
   title: {
-    color: '#39235F', fontSize: 28, fontWeight: '800',
+    color: '#242124', fontSize: 28, fontWeight: '800',
   },
   description: {
-    color: '#806B9B', fontSize: 14, lineHeight: 22,
+    color: '#6E6872', fontSize: 14, lineHeight: 22,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -251,23 +251,23 @@ const styles = StyleSheet.create({
   },
   question: {
     fontSize: 17, fontWeight: '800',
-    color: '#39235F', marginBottom: 5,
+    color: '#242124', marginBottom: 5,
   },
   hint: {
-    color: '#806B9B', fontSize: 12,
+    color: '#6E6872', fontSize: 12,
     lineHeight: 19, marginBottom: 6,
   },
   option: {
     padding: 15, borderRadius: 14,
-    backgroundColor: '#F6F0FF',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1, borderColor: 'transparent',
   },
   selected: {
-    backgroundColor: '#DDD0FA',
+    backgroundColor: '#F3EAF8',
     borderColor: '#8B5CF6',
   },
   optionText: {
-    color: '#563D7C', fontSize: 14, fontWeight: '600',
+    color: '#69318A', fontSize: 14, fontWeight: '600',
   },
   guideButton: {
     backgroundColor: '#EDE3FF',
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginTop: 8,
   },
   guideButtonText: {
-    color: '#6941A5', fontWeight: '700', fontSize: 14,
+    color: '#69318A', fontWeight: '700', fontSize: 14,
   },
   guideImage: {
     width: '100%',
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   saveButton: {
-    backgroundColor: '#8060AD',
+    backgroundColor: '#69318A',
     padding: 17, borderRadius: 17,
     alignItems: 'center',
   },
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', fontSize: 15, fontWeight: '800',
   },
   message: {
-    color: '#6941A5', fontSize: 13,
+    color: '#69318A', fontSize: 13,
     textAlign: 'center', marginTop: 8,
   },
 });

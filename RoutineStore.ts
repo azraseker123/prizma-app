@@ -50,3 +50,29 @@ export async function removeRoutineItem(userId: string, id: string) {
   const existing = await getRoutineItems(userId);
   await AsyncStorage.setItem(storageKey(userId), JSON.stringify(existing.filter(x => x.id !== id)));
 }
+
+export async function moveRoutineItem(userId:string,id:string,direction:-1|1):Promise<void>{
+  const list=await getRoutineItems(userId);
+  const index=list.findIndex(x=>x.id===id);
+  if(index<0)return;
+  const curr=list[index];
+  const candidates=list.map((x,i)=>({x,i})).filter(({x})=>x.period===curr.period&&(x.category||'skin')===(curr.category||'skin'));
+  const currGroupIndex=candidates.findIndex(({x})=>x.id===id);
+  const next=candidates[currGroupIndex+direction];
+  if(!next)return;
+  [list[index],list[next.i]]=[list[next.i],list[index]];
+  await AsyncStorage.setItem(storageKey(userId),JSON.stringify(list));
+}
+
+export async function renameRoutineItem(userId:string,id:string,title:string):Promise<void>{
+  const trimmed=title.trim().slice(0,100);
+  if(!trimmed)throw new Error('Rutin adımı boş olamaz.');
+  const list=await getRoutineItems(userId);
+  await AsyncStorage.setItem(storageKey(userId),JSON.stringify(list.map(x=>x.id===id?{...x,title:trimmed}:x)));
+}
+
+export async function changeRoutinePhoto(userId:string,id:string,imagePath?:string):Promise<void>{
+ const list=await getRoutineItems(userId);
+ if(!list.some(item=>item.id===id))throw new Error('Rutin adımı bulunamadı.');
+ await AsyncStorage.setItem(storageKey(userId),JSON.stringify(list.map(item=>item.id===id?{...item,imagePath}:item)));
+}

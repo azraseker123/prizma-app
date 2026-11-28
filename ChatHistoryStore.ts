@@ -75,3 +75,11 @@ export async function deleteChat(userId: string, chatId: string): Promise<void> 
     .delete().eq('id', chatId).eq('user_id', userId);
   if (error) throw error;
 }
+
+export async function renameChat(userId: string, chatId: string, title: string): Promise<void> {
+  const safe = title.trim().slice(0,80);
+  if(!safe)throw new Error('Sohbet başlığı boş olamaz.');
+  const {error}=await supabase.from('prizma_ai_chats').update({title:safe,updated_at:new Date().toISOString()})
+    .eq('id',chatId).eq('user_id',userId);
+  if(error)throw error;
+}

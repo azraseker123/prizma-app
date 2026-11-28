@@ -1,3 +1,5 @@
+import PrizmaProductDetail from './PrizmaProductDetail';
+import LicensedProductImage from './LicensedProductImage';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Image, Modal, ScrollView, StyleSheet,
@@ -8,7 +10,7 @@ import { addRoutineItem, getRoutineItems, type RoutinePeriod } from './RoutineSt
 import { selectBeautyPhoto, captureBeautyPhoto, removeBeautyBackground, uploadBeautyPhoto, getBeautyPhotoUrl, deleteBeautyPhoto, type BeautyPhoto } from './BeautyPhotoStore';
 
 type Category = 'skin' | 'hair' | 'makeup';
-type Status = 'want' | 'considering';
+type Status = 'want' | 'considering' | 'owned';
 type Source = 'manual' | 'ai';
 
 type Product = {
@@ -22,6 +24,15 @@ type Product = {
   notes: string;
   created_at: string;
   image_path?: string | null;
+  image_source_url?: string | null;
+  image_license_name?: string | null;
+  image_license_url?: string | null;
+  image_license_verified_at?: string | null;
+  image_source_page?: string | null;
+  inci_ingredients?: string | null;
+  usage_instructions?: string | null;
+  product_benefits?: string | null;
+  product_cautions?: string | null;
 };
 
 type Props = {
@@ -36,6 +47,13 @@ const categories: { key: Category; label: string }[] = [
 
 export default function BeautyCollectionScreen({ userId }: Props) {
   const [category, setCategory] = useState<Category>('skin');
+  const [categoryFilter,setCategoryFilter] = useState<Category|'all'>('all');
+  const [detailProduct,setDetailProduct]=useState<Product|null>(null);
+  const [lookupProduct,setLookupProduct]=useState<Product|null>(null);
+  const [lookupLoading,setLookupLoading]=useState(false);
+  const [lookupMessage,setLookupMessage]=useState('');
+  const [imageOptions,setImageOptions]=useState<{name:string;brand:string;image:string;source_page:string;license_name:string;license_url:string;inci:string}[]>([]);
+  const [shelf, setShelf] = useState<'owned' | 'wishlist'>('owned');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,6 +65,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
   const [status, setStatus] = useState<Status>('considering');
   const [message, setMessage] = useState('');
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<BeautyPhoto | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
@@ -92,7 +111,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     setName('');
     setBrand('');
     setNotes('');
-    setStatus('considering');
+    setStatus(shelf === 'owned' ? 'owned' : 'want');
     setSelectedPhoto(null);
     setRemovePhoto(false);
     setFormOpen(false);
@@ -105,6 +124,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     setBrand(product.brand);
     setNotes(product.notes);
     setStatus(product.status);
+    setShelf(product.status === 'owned' ? 'owned' : 'wishlist');
     setSelectedPhoto(null);
     setRemovePhoto(false);
     setFormOpen(true);
@@ -218,6 +238,43 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     await loadProducts();
   };
 
+  const findLicensedImage = async(product:Product)=>{
+    if(lookupLoading)return;
+    setLookupProduct(product);setLookupLoading(true);setLookupMessage('');setImageOptions([]);
+    try{
+      if(!product.brand.trim())throw new Error('Önce ürünün markasını düzenleyip kaydet.');
+      const {data,error}=await supabase.functions.invoke('lookup-beauty-image',{
+        body:{name:product.product_name,brand:product.brand},
+      });
+      if(error)throw new Error('Ürün görseli kataloğuna erişilemedi.');
+      if(data?.error)throw new Error(String(data.error));
+      const candidates=Array.isArray(data?.candidates)?data.candidates:[];
+      const safe=candidates.filter((item:any)=>item&&typeof item.name==='string'&&typeof item.image==='string'&&
+        /^https:\/\/images\.openbeautyfacts\.org\//.test(item.image)&&
+        typeof item.source_page==='string'&&item.source_page.startsWith('https://world.openbeautyfacts.org/product/'));
+      setImageOptions(safe);
+      if(!safe.length)setLookupMessage('Bu ürün için yeterince güvenilir eşleşme bulunamadı. Farklı bir ürün fotoğrafı kullanmak yerine boş bırakıyoruz.');
+    }catch(error){setLookupMessage(error instanceof Error?error.message:'Ürün görseli bulunamadı.');}
+    finally{setLookupLoading(false);}
+  };
+  const attachLicensedImage=async(candidate:{name:string;brand:string;image:string;source_page:string;license_name:string;license_url:string;inci:string})=>{
+    if(!lookupProduct||lookupLoading)return;
+    setLookupLoading(true);setLookupMessage('');
+    try{
+      const {error}=await supabase.from('beauty_collection').update({
+        image_source_url:candidate.image,
+        image_source_page:candidate.source_page,
+        image_license_name:candidate.license_name,
+        image_license_url:candidate.license_url,
+        image_license_verified_at:new Date().toISOString(),
+      }).eq('id',lookupProduct.id).eq('user_id',userId);
+      if(error)throw error;
+      setLookupProduct(null);setImageOptions([]);
+      await loadProducts();
+      setMessage('Kaynak bilgili ürün fotoğrafı kaydedildi. Görseldeki ambalajın aynı ürün olduğundan emin ol.');
+    }catch(error){setLookupMessage(error instanceof Error?error.message:'Görsel kaydedilemedi.');}
+    finally{setLookupLoading(false);}
+  };
   const addCollectionToRoutine = async (product: Product) => {
     const key = product.id + ':' + routinePeriod;
     if (routineBusy || routineSaved.includes(key)) return;
@@ -248,7 +305,8 @@ export default function BeautyCollectionScreen({ userId }: Props) {
     } finally { setRoutineBusy(null); }
   };
 
-  const visible = products.filter(p => p.category === category);
+  const visible = products.filter(p => (categoryFilter === 'all' || p.category === categoryFilter) && (shelf === 'owned' ? p.status === 'owned' : p.status !== 'owned'));
+  const shelfCount = (next: 'owned' | 'wishlist') => products.filter(p => next === 'owned' ? p.status === 'owned' : p.status !== 'owned').length;
 
   return (
     <ScrollView
@@ -256,35 +314,55 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.eyebrow}>PRİZMA BEAUTY ✦</Text>
-      <Text style={styles.title}>Bakım Koleksiyonum</Text>
+      <Text style={styles.eyebrow}>PRİZMA BEAUTY </Text>
+      <Text style={styles.title}>Ürün Koleksiyonum</Text>
       <Text style={styles.description}>
-        Almak istediğin, düşündüğün ve PRİZMA'nın önerdiği
-        güzellik ürünleri bir arada.
+        Sahip olduğun ve almak istediğin güzellik ürünlerini düzenle.
       </Text>
 
-      <View style={styles.tabs}>
-        {categories.map(item => (
-          <TouchableOpacity
-            key={item.key}
-            style={[
-              styles.tab,
-              category === item.key && styles.activeTab,
-            ]}
-            onPress={() => {
-              if (formOpen) resetForm();
-              setCategory(item.key);
-            }}
-          >
-            <Text style={[
-              styles.tabText,
-              category === item.key && styles.activeTabText,
-            ]}>
-              {item.label}
-            </Text>
+      <Modal visible={!!lookupProduct} transparent animationType="slide" onRequestClose={()=>setLookupProduct(null)}>
+        <View style={styles.lookupOverlay}>
+          <View style={styles.lookupSheet}>
+            <View style={styles.lookupHeading}>
+              <Text style={styles.lookupTitle}>Ürün Görseli Bul</Text>
+              <TouchableOpacity onPress={()=>setLookupProduct(null)} accessibilityRole="button"><Text style={styles.lookupClose}>×</Text></TouchableOpacity>
+            </View>
+            <Text style={styles.lookupInfo}>Yalnızca Open Beauty Facts kaynağından gelen görseller. Ürün ve ambalajın tam eşleştiğini kontrol et.</Text>
+            {lookupLoading&&<ActivityIndicator color="#69318A" style={{margin:16}}/>}
+            {!!lookupMessage&&<Text style={styles.lookupMessage}>{lookupMessage}</Text>}
+            <ScrollView style={{maxHeight:470}}>
+              {imageOptions.map((item,index)=><TouchableOpacity key={index} disabled={lookupLoading} onPress={()=>{void attachLicensedImage(item);}} style={styles.lookupCandidate}>
+                <Image source={{uri:item.image}} resizeMode="contain" style={styles.lookupPhoto}/>
+                <View style={{flex:1}}><Text style={styles.lookupCandidateTitle}>{item.brand}</Text>
+                  <Text style={styles.lookupCandidateSub} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.lookupCredit}>Open Beauty Facts · CC BY-SA 3.0</Text>
+                  <Text style={styles.lookupSelect}>Bu Görseli Kullan ›</Text></View>
+              </TouchableOpacity>)}
+            </ScrollView>
+            <Text style={styles.lookupTerms}>Kaynağı ve lisansı ürün detayında gösterilir. Görseldeki marka ambalajına ilişkin başka haklar bulunabilir.</Text>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={!!detailProduct} animationType="slide" onRequestClose={()=>setDetailProduct(null)}>
+        {detailProduct&&<PrizmaProductDetail product={detailProduct} photoUrl={photoUrls[detailProduct.id]}
+          onBack={()=>setDetailProduct(null)} onAddRoutine={()=>{void addCollectionToRoutine(detailProduct);}}
+          onAddCollection={()=>setDetailProduct(null)} onEdit={()=>{const p=detailProduct;setDetailProduct(null);startEdit(p);}}/>}
+      </Modal>
+      <View style={styles.shelfTabs}>
+        {([['owned','Sahip Olduklarım'],['wishlist','İstek Listem']] as const).map(([key,label])=>(
+          <TouchableOpacity key={key} accessibilityRole="tab" accessibilityState={{selected:shelf===key}}
+            style={[styles.shelfTab,shelf===key&&styles.shelfTabActive]}
+            onPress={()=>{if(formOpen)resetForm();setShelf(key);setStatus(key==='owned'?'owned':'want');}}>
+            <Text style={[styles.shelfLabel,shelf===key&&styles.shelfLabelActive]}>{label} ({shelfCount(key)})</Text>
           </TouchableOpacity>
         ))}
       </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryFilterRow}>
+        {([{key:'all',label:'Tümü'},...categories] as {key:Category|'all';label:string}[]).map(item=>(
+          <TouchableOpacity key={item.key} style={[styles.filterChip,categoryFilter===item.key&&styles.filterChipActive]} onPress={()=>setCategoryFilter(item.key)}>
+           <Text style={[styles.filterChipText,categoryFilter===item.key&&styles.filterChipTextActive]}>{item.label}</Text>
+          </TouchableOpacity>))}
+      </ScrollView>
 
       <View style={styles.routinePeriodRow}>
         {(['Sabah', 'Akşam'] as const).map(p => (
@@ -309,7 +387,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       {formOpen && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            {editing ? 'Ürünü Düzenle' : 'Yeni Ürün ✦'}
+            {editing ? 'Ürünü Düzenle' : 'Yeni Ürün '}
           </Text>
 
           <Text style={styles.label}>Ürün adı *</Text>
@@ -346,7 +424,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           {(selectedPhoto || (editing && editing.image_path && !removePhoto)) && (
             <View style={styles.photoActionRow}>
               <TouchableOpacity style={styles.backgroundButton} disabled={photoBusy || saving} onPress={() => void applyBackgroundRemoval()}>
-                <Text style={styles.backgroundButtonText}>✦ Arka Planı Kaldır</Text>
+                <Text style={styles.backgroundButtonText}> Arka Planı Kaldır</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.removePhotoButton} disabled={photoBusy || saving} onPress={() => { setSelectedPhoto(null); setRemovePhoto(true); }}>
                 <Text style={styles.removePhotoText}>Fotoğrafı Kaldır</Text>
@@ -357,8 +435,9 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           <Text style={styles.label}>Alışveriş durumun</Text>
           <View style={styles.statusRow}>
             {([
-              { key: 'want' as Status, label: 'Almak istiyorum' },
-              { key: 'considering' as Status, label: 'Almayı düşünüyorum' },
+              { key: 'owned' as Status, label: 'Sahibim' },
+              { key: 'want' as Status, label: 'İstek Listemde' },
+              { key: 'considering' as Status, label: 'Düşünüyorum' },
             ]).map(item => (
               <TouchableOpacity
                 key={item.key}
@@ -389,7 +468,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
           >
             {saving
               ? <ActivityIndicator color="#FFFFFF" />
-              : <Text style={styles.addButtonText}>Kaydet ✦</Text>}
+              : <Text style={styles.addButtonText}>Kaydet </Text>}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={resetForm}>
@@ -399,56 +478,41 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       )}
 
       {loading ? (
-        <ActivityIndicator color="#9673C2" size="large" />
+        <ActivityIndicator color="#69318A" size="large" />
       ) : visible.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.emptyIcon}>♡</Text>
-          <Text style={styles.cardTitle}>Henüz ürün eklemedin</Text>
-          <Text style={styles.description}>
-            Beğendiğin ürünleri burada biriktirebilirsin.
-          </Text>
+          <Text style={styles.emptyIcon}>▢</Text>
+          <Text style={styles.cardTitle}>Koleksiyonun henüz boş</Text>
+          <Text style={styles.description}>Beğendiğin ürünleri burada biriktirebilirsin.</Text>
         </View>
       ) : (
-        visible.map(product => (
-          <View key={product.id} style={styles.card}>
-            {photoUrls[product.id] && <Image source={{ uri: photoUrls[product.id] }} style={styles.productPhoto} resizeMode="contain" />}
-            <Text style={styles.productName}>
-              {product.product_name}
-            </Text>
-
-            {!!product.brand && (
-              <Text style={styles.description}>{product.brand}</Text>
-            )}
-
-            <Text style={styles.tag}>
-              {product.status === 'want'
-                ? '♡ Almak istiyorum'
-                : '✧ Almayı düşünüyorum'}
-            </Text>
-
-            <Text style={styles.source}>
-              {product.source === 'ai'
-                ? '✦ PRİZMA önerisi'
-                : 'Kendim ekledim'}
-            </Text>
-
-            {!!product.notes && (
-              <Text style={styles.description}>{product.notes}</Text>
-            )}
-
-            <TouchableOpacity style={styles.routineAddButton} disabled={!!routineBusy || routineSaved.includes(product.id + ':' + routinePeriod)} onPress={() => void addCollectionToRoutine(product)}>
-              <Text style={styles.routineAddText}>{routineSaved.includes(product.id + ':' + routinePeriod) ? '✓ Rutinime Eklendi' : routineBusy === product.id + ':' + routinePeriod ? 'Ekleniyor...' : '+ ' + routinePeriod + ' Rutinime Ekle'}</Text>
-            </TouchableOpacity>
-            <View style={styles.actions}>
-              <TouchableOpacity onPress={() => startEdit(product)}>
-                <Text style={styles.actionText}>Düzenle</Text>
+        <View style={styles.productGrid}>
+          {visible.map(product => (
+            <View key={product.id} style={styles.productCard}>
+              <View style={styles.cardTop}>
+                <Text style={styles.ownedBadge}>{product.status==='owned'?'✓ Sahip':'♡ İstek'}</Text>
+                <TouchableOpacity onPress={()=>setDetailProduct(product)} accessibilityLabel="Ürün detaylarını aç"><Text style={styles.cardHeart}>♡</Text></TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.productImageArea} onPress={()=>setDetailProduct(product)}>
+                {photoUrls[product.id]?<Image source={{uri:photoUrls[product.id]}} style={styles.productPhoto} resizeMode="contain"/>:
+                <LicensedProductImage alt={product.product_name} height={135} url={product.image_source_url}
+                  licenseStatus={product.image_source_url&&product.image_license_verified_at&&product.image_license_name&&product.image_license_url?'approved':'unknown'}/>}
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteProduct(product)}>
-                <Text style={styles.deleteText}>Sil</Text>
+              <Text style={styles.productBrand} numberOfLines={1}>{product.brand||'Ürün'}</Text>
+              <Text style={styles.productName} numberOfLines={2}>{product.product_name}</Text>
+              <TouchableOpacity style={styles.routineTileAction} disabled={!!routineBusy} onPress={()=>{void addCollectionToRoutine(product);}}>
+                <Text style={styles.routineTileText}>{routineSaved.includes(product.id+':'+routinePeriod)?'✓ Eklendi':'+ Rutine Ekle'}</Text>
               </TouchableOpacity>
+              {!photoUrls[product.id]&&!product.image_source_url&&<TouchableOpacity onPress={()=>{void findLicensedImage(product);}} style={styles.findImageAction}>
+                <Text style={styles.findImageText}>▧  Ürün Görseli Bul</Text>
+              </TouchableOpacity>}
+              <View style={styles.productActions}>
+                <TouchableOpacity style={styles.productAction} onPress={()=>startEdit(product)}><Text style={styles.actionText}>Düzenle</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.productAction} onPress={()=>deleteProduct(product)}><Text style={styles.deleteText}>Sil</Text></TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ))
+          ))}
+        </View>
       )}
 
       {!!message && <Text style={styles.description}>{message}</Text>}
@@ -463,7 +527,7 @@ export default function BeautyCollectionScreen({ userId }: Props) {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalSymbol}>✦</Text>
+            <Text style={styles.modalSymbol}></Text>
             <Text style={styles.modalTitle}>
               Ürünü koleksiyonundan kaldır?
             </Text>
@@ -498,24 +562,63 @@ export default function BeautyCollectionScreen({ userId }: Props) {
 }
 
 const styles = StyleSheet.create({
-  productPhoto: { width: '100%', height: 160, borderRadius: 12, backgroundColor: '#F6F0F9', marginBottom: 13 },
-  photoPreview: { width: '100%', height: 180, backgroundColor: '#F6F0F9', borderRadius: 14, marginBottom: 10 },
-  photoPlaceholder: { backgroundColor: '#F6F0F9', height: 88, justifyContent: 'center', alignItems: 'center', borderRadius: 14, marginBottom: 9 },
+  findImageAction:{minHeight:39,justifyContent:'center',marginTop:6},findImageText:{fontSize:11,color:'#69318A',fontWeight:'700',textAlign:'center'},
+  lookupOverlay:{flex:1,justifyContent:'flex-end',backgroundColor:'rgba(36,33,36,.35)'},
+  lookupSheet:{backgroundColor:'#FFFFFF',borderTopLeftRadius:25,borderTopRightRadius:25,padding:18,paddingBottom:30},
+  lookupHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  lookupTitle:{fontSize:20,fontWeight:'700',color:'#242124'},lookupClose:{fontSize:28,color:'#242124'},
+  lookupInfo:{fontSize:12,color:'#6E6872',lineHeight:19,marginVertical:13},
+  lookupMessage:{fontSize:12,color:'#69318A',paddingVertical:12},
+  lookupCandidate:{flexDirection:'row',gap:14,minHeight:123,borderWidth:1,borderColor:'#D8D6DC',borderRadius:15,marginBottom:9,padding:11,alignItems:'center'},
+  lookupPhoto:{height:105,width:93},lookupCandidateTitle:{fontSize:13,color:'#242124',fontWeight:'700'},
+  lookupCandidateSub:{fontSize:12,color:'#6E6872',marginTop:4},lookupCredit:{fontSize:10,color:'#6E6872',marginTop:6},
+  lookupSelect:{fontSize:12,fontWeight:'700',color:'#69318A',marginTop:8},
+  lookupTerms:{fontSize:10,lineHeight:17,color:'#6E6872',marginTop:10},
+
+  categoryFilterRow:{flexDirection:'row',gap:8,paddingBottom:11},
+  filterChip:{minHeight:39,paddingHorizontal:16,borderRadius:21,borderWidth:1,borderColor:'#D8D6DC',alignItems:'center',justifyContent:'center',backgroundColor:'#FFFFFF'},
+  filterChipActive:{borderColor:'#69318A'},filterChipText:{fontSize:12,color:'#242124'},filterChipTextActive:{color:'#69318A',fontWeight:'700'},
+  cardTop:{minHeight:27,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  ownedBadge:{fontSize:10,color:'#69318A',fontWeight:'700'},cardHeart:{fontSize:23,color:'#69318A'},
+  productImageArea:{width:'100%',height:139,alignItems:'center',justifyContent:'center',backgroundColor:'#FFFFFF'},
+  routineTileAction:{marginTop:10,minHeight:41,borderRadius:11,backgroundColor:'#69318A',alignItems:'center',justifyContent:'center'},
+  routineTileText:{fontSize:12,color:'#FFFFFF',fontWeight:'700'},
+
+  shelfTabs: { flexDirection:'row', gap:8, marginBottom:13 },
+  shelfTab: { flex:1,minHeight:48,backgroundColor:'#FFFFFF',borderRadius:13,borderWidth:1,borderColor:'#D8D6DC',alignItems:'center',justifyContent:'center' },
+  shelfTabActive: { backgroundColor:'#69318A',borderColor:'#69318A' },
+  shelfLabel: { fontSize:12,fontWeight:'700',color:'#6E6872' },
+  shelfLabelActive: { color:'#FFFFFF' },
+  expandButton:{minHeight:42,justifyContent:'center',marginTop:6},
+  expandText:{color:'#69318A',fontSize:11,fontWeight:'700'},
+  detailsPanel:{marginTop:5,paddingTop:9,borderTopWidth:1,borderColor:'#D8D6DC'},
+  detailsTitle:{fontSize:11,color:'#242124',fontWeight:'700',marginTop:8},
+  detailsText:{fontSize:11,color:'#6E6872',lineHeight:16,marginTop:4},
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
+  productCard: { width: '48%', minHeight: 285, borderWidth: 1, borderColor: '#D8D6DC', borderRadius: 15, padding: 10, backgroundColor: '#FFFFFF', marginBottom: 4 },
+  productBrand: { color: '#6E6872', fontSize: 11, marginTop: 4 },
+  productNote: { color: '#6E6872', fontSize: 11, marginTop: 6 },
+  productActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  productAction: { minHeight: 44, justifyContent: 'center' },
+
+  productPhoto: { width: '100%', height: 135, borderRadius: 12, backgroundColor: '#F3EAF8', marginBottom: 13 },
+  photoPreview: { width: '100%', height: 180, backgroundColor: '#F3EAF8', borderRadius: 14, marginBottom: 10 },
+  photoPlaceholder: { backgroundColor: '#F3EAF8', height: 88, justifyContent: 'center', alignItems: 'center', borderRadius: 14, marginBottom: 9 },
   photoPlaceholderText: { color: '#857A91', fontSize: 12 },
-  photoButton: { backgroundColor: '#EFE2F5', padding: 12, borderRadius: 13, alignItems: 'center', marginBottom: 9 },
+  photoButton: { backgroundColor: '#F3EAF8', padding: 12, borderRadius: 13, alignItems: 'center', marginBottom: 9 },
   photoButtonText: { color: '#5C3C78', fontWeight: '800', fontSize: 12 },
   photoActionRow: { flexDirection: 'row', gap: 7, flexWrap: 'wrap', marginBottom: 6 },
-  backgroundButton: { backgroundColor: '#79569A', borderRadius: 11, padding: 10 },
+  backgroundButton: { backgroundColor: '#69318A', borderRadius: 11, padding: 10 },
   backgroundButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
   removePhotoButton: { borderRadius: 11, padding: 10, borderWidth: 1, borderColor: '#DDCFEB' },
   removePhotoText: { color: '#624D74', fontSize: 11, fontWeight: '800' },
   photoTip: { color: '#857A91', fontSize: 10, lineHeight: 15, marginBottom: 13 },
   routinePeriodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 13 },
   routinePeriodChip: { paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#F0E8F7', borderRadius: 14 },
-  routinePeriodActive: { backgroundColor: '#79569A' },
+  routinePeriodActive: { backgroundColor: '#69318A' },
   routinePeriodLabel: { color: '#554365', fontSize: 12, fontWeight: '700' },
   routinePeriodLabelActive: { color: '#FFFFFF' },
-  routineAddButton: { backgroundColor: '#79569A', paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12, marginTop: 12 },
+  routineAddButton: { backgroundColor: '#69318A', paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12, marginTop: 12 },
   routineAddText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '800', fontSize: 12 },
   modalOverlay: {
     flex: 1,
@@ -530,19 +633,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalSymbol: {
-    color: '#9673C2',
+    color: '#69318A',
     fontSize: 35,
     marginBottom: 12,
   },
   modalTitle: {
-    color: '#39235F',
+    color: '#242124',
     fontSize: 21,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 12,
   },
   modalDescription: {
-    color: '#806B9B',
+    color: '#6E6872',
     fontSize: 14,
     lineHeight: 22,
     textAlign: 'center',
@@ -557,79 +660,79 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 15,
     borderRadius: 14,
-    backgroundColor: '#F2EDFA',
+    backgroundColor: '#F3EAF8',
     alignItems: 'center',
   },
   modalCancelText: {
-    color: '#563D7C',
+    color: '#69318A',
     fontWeight: '800',
   },
   modalDelete: {
     flex: 1,
     padding: 15,
     borderRadius: 14,
-    backgroundColor: '#8060AD',
+    backgroundColor: '#69318A',
     alignItems: 'center',
   },
   modalDeleteText: {
     color: '#FFFFFF',
     fontWeight: '800',
   },
-  container: { flex: 1, backgroundColor: '#FAF8FF' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { padding: 20, paddingBottom: 45, gap: 15 },
   eyebrow: {
     color: '#9A78C5', fontSize: 11,
     fontWeight: '800', letterSpacing: 2,
   },
-  title: { color: '#39235F', fontSize: 27, fontWeight: '800' },
-  description: { color: '#806B9B', fontSize: 13, lineHeight: 21 },
+  title: { color: '#242124', fontSize: 27, fontWeight: '800' },
+  description: { color: '#6E6872', fontSize: 13, lineHeight: 21 },
   tabs: { flexDirection: 'row', gap: 7 },
   tab: {
     flex: 1, backgroundColor: '#FFFFFF',
     paddingVertical: 14, borderRadius: 14,
     alignItems: 'center',
   },
-  activeTab: { backgroundColor: '#DDD0FA' },
-  tabText: { color: '#806B9B', fontWeight: '700' },
-  activeTabText: { color: '#563D7C' },
+  activeTab: { backgroundColor: '#F3EAF8' },
+  tabText: { color: '#6E6872', fontWeight: '700' },
+  activeTabText: { color: '#69318A' },
   card: {
     backgroundColor: '#FFFFFF', borderRadius: 20,
     padding: 18, gap: 10,
   },
-  cardTitle: { color: '#39235F', fontSize: 17, fontWeight: '800' },
+  cardTitle: { color: '#242124', fontSize: 17, fontWeight: '800' },
   addButton: {
-    backgroundColor: '#8060AD', padding: 16,
+    backgroundColor: '#69318A', padding: 16,
     borderRadius: 16, alignItems: 'center',
   },
   addButtonText: { color: '#FFFFFF', fontWeight: '800' },
-  label: { color: '#563D7C', fontWeight: '700', fontSize: 13 },
+  label: { color: '#69318A', fontWeight: '700', fontSize: 13 },
   input: {
-    backgroundColor: '#F6F0FF', borderRadius: 12,
-    padding: 13, color: '#39235F',
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    padding: 13, color: '#242124',
   },
   notesInput: { minHeight: 85, textAlignVertical: 'top' },
   statusRow: { flexDirection: 'row', gap: 8 },
   statusOption: {
     flex: 1, padding: 12, borderRadius: 12,
-    backgroundColor: '#F6F0FF', alignItems: 'center',
+    backgroundColor: '#FFFFFF', alignItems: 'center',
   },
-  selectedStatus: { backgroundColor: '#DDD0FA' },
+  selectedStatus: { backgroundColor: '#F3EAF8' },
   statusText: {
-    color: '#563D7C', fontSize: 12,
+    color: '#69318A', fontSize: 12,
     fontWeight: '700', textAlign: 'center',
   },
   cancelText: {
-    textAlign: 'center', color: '#806B9B',
+    textAlign: 'center', color: '#6E6872',
     padding: 10, fontWeight: '700',
   },
-  emptyIcon: { fontSize: 36, color: '#9673C2' },
-  productName: { color: '#39235F', fontSize: 17, fontWeight: '800' },
-  tag: { color: '#6941A5', fontSize: 12, fontWeight: '700' },
+  emptyIcon: { fontSize: 36, color: '#69318A' },
+  productName: { color: '#242124', fontSize: 17, fontWeight: '800' },
+  tag: { color: '#69318A', fontSize: 12, fontWeight: '700' },
   source: { color: '#9A78C5', fontSize: 12 },
   actions: {
     flexDirection: 'row', justifyContent: 'flex-end',
     gap: 25, marginTop: 8,
   },
-  actionText: { color: '#6941A5', fontWeight: '800' },
+  actionText: { color: '#69318A', fontWeight: '800' },
   deleteText: { color: '#C05B73', fontWeight: '800' },
 });

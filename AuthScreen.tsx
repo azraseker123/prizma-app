@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import * as ExpoLinking from 'expo-linking';
 import {
   SafeAreaView,
+  Linking,
+  Keyboard,
   View,
   Text,
   TextInput,
@@ -35,6 +38,10 @@ export default function AuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [keyboardOpen,setKeyboardOpen]=useState(false);
+  const scrollRef=useRef<any>(null);
+  useEffect(()=>{const show=Keyboard.addListener('keyboardDidShow',()=>setKeyboardOpen(true));const hide=Keyboard.addListener('keyboardDidHide',()=>setKeyboardOpen(false));return ()=>{show.remove();hide.remove();};},[]);
+  const keepVisible=()=>{setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),140);};
 
   const changeMode = (nextMode: ScreenMode) => {
     setMode(nextMode);
@@ -107,6 +114,38 @@ export default function AuthScreen() {
     }
   };
 
+  const handleGoogleLogin=async()=>{
+    if(loading)return;
+    setLoading(true);
+    try{
+      const redirectTo=ExpoLinking.createURL('auth/callback');
+      const {data,error}=await supabase.auth.signInWithOAuth({
+        provider:'google',options:{redirectTo,skipBrowserRedirect:true},
+      });
+      if(error)throw error;
+      if(!data?.url)throw new Error('Google giriş bağlantısı oluşturulamadı.');
+      await Linking.openURL(data.url);
+    }catch(error:any){
+      Alert.alert('Google girişi açılamadı',error?.message||'Google bağlantısı kontrol edilmeli.');
+    }finally{setLoading(false);}
+  };
+  useEffect(()=>{
+    const process=async(url:string)=>{
+      if(!url.includes('auth/callback'))return;
+      try{
+        const code=new URL(url).searchParams.get('code');
+        if(code){const {error}=await supabase.auth.exchangeCodeForSession(code);if(error)throw error;return;}
+        const hash=url.split('#')[1]||'';
+        const params=new URLSearchParams(hash);
+        const access_token=params.get('access_token'),refresh_token=params.get('refresh_token');
+        if(access_token&&refresh_token){const {error}=await supabase.auth.setSession({access_token,refresh_token});if(error)throw error;}
+      }catch(error:any){Alert.alert('Google oturumu açılamadı',error?.message||'Tekrar deneyebilirsin.');}
+    };
+    const subscription=Linking.addEventListener('url',event=>{void process(event.url);});
+    void Linking.getInitialURL().then(url=>{if(url)void process(url);});
+    return ()=>subscription.remove();
+  },[]);
+
   const handleResetPassword = async () => {
     const cleanEmail = email.trim();
 
@@ -171,13 +210,16 @@ export default function AuthScreen() {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+          ref={scrollRef}
+          keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.content,
             isWelcome && styles.welcomeContent,
+            !isWelcome && styles.formContent,
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -197,6 +239,7 @@ export default function AuthScreen() {
             style={[
               styles.brandSection,
               !isWelcome && styles.brandSectionCompact,
+                keyboardOpen && styles.brandSectionKeyboard,
             ]}
           >
             <Image
@@ -204,6 +247,7 @@ export default function AuthScreen() {
               style={[
                 styles.brandLogo,
                 !isWelcome && styles.brandLogoCompact,
+                keyboardOpen && styles.brandLogoKeyboard,
               ]}
               resizeMode="contain"
               accessible
@@ -328,6 +372,7 @@ export default function AuthScreen() {
                         placeholderTextColor="#AAA6C6"
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
+                        onFocus={keepVisible}
                         secureTextEntry={!showPassword}
                         autoComplete="new-password"
                         editable={!loading}
@@ -378,6 +423,9 @@ export default function AuthScreen() {
                 )}
               </TouchableOpacity>
 
+              {!isReset&&<TouchableOpacity style={styles.googleButton} disabled={loading} onPress={()=>{void handleGoogleLogin();}} accessibilityRole="button">
+                <Text style={styles.googleGlyph}>G</Text><Text style={styles.googleButtonLabel}>Google ile Devam Et</Text>
+              </TouchableOpacity>}
               <TouchableOpacity
                 style={styles.switchButton}
                 onPress={() =>
@@ -416,6 +464,10 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
+  formContent:{justifyContent:'flex-start',paddingTop:12,paddingBottom:180},
+  brandSectionKeyboard:{marginBottom:8,marginTop:0},brandLogoKeyboard:{height:75},
+  googleButton:{marginTop:15,minHeight:54,borderWidth:1,borderColor:'#D8D6DC',borderRadius:26,backgroundColor:'#FFFFFF',alignItems:'center',justifyContent:'center',flexDirection:'row',gap:13},
+  googleGlyph:{fontSize:21,fontWeight:'800',color:'#4285F4'},googleButtonLabel:{fontSize:14,color:'#242124',fontWeight:'700'},
   flex: {
     flex: 1,
   },

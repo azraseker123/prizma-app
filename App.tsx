@@ -1,3 +1,7 @@
+import PrizmaBeautyV2 from './PrizmaBeautyV2';
+import PrizmaNavIcon from './PrizmaNavIcon';
+import PrizmaHomeV2 from './PrizmaHomeV2';
+import PrizmaProfileScreen from './PrizmaProfileScreen';
 import RoutineScreen from './RoutineScreen';
 import { PrizmaHome, PrizmaStudio, PrizmaBeauty, PrizmaProfile, type PrizmaPage } from './PrizmaExperience';
 import PrizmaChatScreen from './PrizmaChatScreen';
@@ -54,7 +58,7 @@ type Tab =
 const tabs: { name: Tab; icon: string }[] = [
   { name: 'Ana Sayfa', icon: '⌂' },
   { name: 'Gardırop', icon: '♧' },
-  { name: 'Stil Stüdyosu', icon: '▦' },
+  { name: 'PRİZMA AI', icon: '◎' },
   { name: 'Güzellik', icon: '◉' },
   { name: 'Profil', icon: '○' },
 ];
@@ -428,7 +432,7 @@ export default function App() {
       const { error: signOutError } =
         await supabase.auth.signOut();
 
-      showNotice('success', 'Şifren yenilendi ✦',
+      showNotice('success', 'Şifren yenilendi ',
         signOutError
           ? 'Şifren değiştirildi. Çıkış yapıp yeni şifrenle giriş yap.'
           : 'Yeni şifrenle giriş yapabilirsin.');
@@ -448,7 +452,7 @@ export default function App() {
   };
 
   const comingSoon = () => {
-    showNotice('info', 'PRİZMA hazırlanıyor ✦',
+    showNotice('info', 'PRİZMA hazırlanıyor ',
       'Bu özelliği sonraki geliştirme adımlarında aktif edeceğiz.');
   };
 
@@ -492,6 +496,7 @@ export default function App() {
     return (
       <SafeAreaView style={styles.loadingScreen}>
       <PrizmaNotice
+        bottomOffset={82}
         visible={Boolean(notice)}
         type={notice?.type || 'info'}
         title={notice?.title || ''}
@@ -501,7 +506,7 @@ export default function App() {
 
         <ActivityIndicator size="large" color={C.lavender} />
         <Text style={styles.loadingText}>
-          PRİZMA hazırlanıyor ✦
+          PRİZMA hazırlanıyor 
         </Text>
       </SafeAreaView>
     );
@@ -511,6 +516,7 @@ export default function App() {
     return (
       <SafeAreaView style={styles.safe}>
       <PrizmaNotice
+        bottomOffset={82}
         visible={Boolean(notice)}
         type={notice?.type || 'info'}
         title={notice?.title || ''}
@@ -522,7 +528,7 @@ export default function App() {
           contentContainerStyle={styles.resetContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.resetBrand}>PRİZMA ✦</Text>
+          <Text style={styles.resetBrand}>PRİZMA </Text>
 
           <Text style={styles.pageTitle}>
             Yeni şifreni oluştur
@@ -579,7 +585,7 @@ export default function App() {
       <SafeAreaView style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={C.lavender} />
         <Text style={styles.loadingText}>
-          PRİZMA profilin hazırlanıyor ✦
+          PRİZMA profilin hazırlanıyor 
         </Text>
       </SafeAreaView>
     );
@@ -599,7 +605,7 @@ export default function App() {
           onPress={() => setProfileRetry(value => value + 1)}
         >
           <Text style={styles.primaryButtonText}>
-            Tekrar Dene ✦
+            Tekrar Dene 
           </Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -663,6 +669,7 @@ export default function App() {
         onConfirm={() => { void confirmLogout(); }}
       />
       <PrizmaNotice
+        bottomOffset={82}
         visible={Boolean(notice)}
         type={notice?.type || 'info'}
         title={notice?.title || ''}
@@ -684,12 +691,6 @@ export default function App() {
 
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.profileCircle}
-          onPress={() => open('Profil')}
-        >
-          <Text style={styles.profileCircleText}>○</Text>
-        </TouchableOpacity>
       </View>
 
       {tab === 'PRİZMA AI' ? (
@@ -701,6 +702,7 @@ export default function App() {
       ) : tab === 'Sanal Deneme' ? (
         <HomeTryOnScreen userId={session.user.id} onBack={() => open('Ana Sayfa')} onManagePhoto={() => open('Deneme Fotoğrafım')} recoveredCameraUri={recoveredCameraPurpose === 'garment' ? recoveredCameraUri : null} onRecoveredCameraHandled={() => setRecoveredCameraUri(null)} />
       ) : (
+      <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':'height'}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -708,7 +710,7 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === 'Ana Sayfa' && (
-          <PrizmaHome userId={session.user.id} displayName={typeof session.user.user_metadata?.full_name==='string'?session.user.user_metadata.full_name.split(' ')[0]:''} onOpen={(page:PrizmaPage)=>open(page)} onSoon={comingSoon}/>
+          <PrizmaHomeV2 userId={session.user.id} displayName={typeof session.user.user_metadata?.full_name==='string'?session.user.user_metadata.full_name.split(' ')[0]:''} onOpen={(page)=>open(page)}/>
         )}
 
         {tab === 'Stil Stüdyosu' && (
@@ -724,7 +726,7 @@ export default function App() {
 
         {/* GARDIROP */}
         {(tab === 'Gardırop' || tab === 'Kombin Oluştur') && (
-          <WardrobeScreen userId={session.user.id} initialTab={tab === 'Kombin Oluştur' ? 'ai' : 'clothes'} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} />
+          <WardrobeScreen userId={session.user.id} initialTab={tab === 'Kombin Oluştur' ? 'ai' : 'clothes'} onSetupTryOnPhoto={() => open('Deneme Fotoğrafım')} onOpenTryOn={() => open('Sanal Deneme')} />
         )}
 
         {/* CİLT ANALİZİ */}
@@ -746,20 +748,26 @@ export default function App() {
         )}
 
         {tab === 'Güzellik' && (
-          <PrizmaBeauty onOpen={(page:PrizmaPage)=>open(page)} onBeautyCategory={setBeautyCategory}/>
+          <PrizmaBeautyV2 userId={session.user.id} onOpen={(page:PrizmaPage)=>open(page)} onBeautyCategory={setBeautyCategory}/>
         )}
         {tab === 'Profil' && (
-          <PrizmaProfile email={session.user.email||emailName} onOpen={(page:PrizmaPage)=>open(page)}
-            onEdit={()=>{void openProfileEditor();}} onLogout={handleLogout} onSoon={comingSoon}/>
+          <PrizmaProfileScreen
+            userId={session.user.id}
+            email={session.user.email || emailName}
+            onEdit={() => { void openProfileEditor(); }}
+            onLogout={handleLogout}
+            editing={loadingEditProfile}
+          />
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
       )}
 
       {/* ALT MENÜ: klavye açıkken sohbet yazma alanına yer bırak */}
-      {!(tab === 'PRİZMA AI' && keyboardVisible) && <View style={styles.tabBar}>
+      {!keyboardVisible && <View style={styles.tabBar}>
         {tabs.map((item) => {
-          const active = tab === item.name || (tab === 'Kombin Oluştur' && item.name === 'Stil Stüdyosu');
-          const isAI = item.name === 'Stil Stüdyosu';
+          const active = tab === item.name || (tab === 'Kombin Oluştur' && item.name === 'Gardırop');
+          const isAI = item.name === 'PRİZMA AI';
 
           return (
             <TouchableOpacity
@@ -773,18 +781,10 @@ export default function App() {
                 style={[
                   styles.tabIconWrap,
                   active && !isAI && styles.tabIconWrapActive,
-                  isAI && active && styles.aiTabIconWrap,
+                  isAI && styles.aiTabIconWrap,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.tabIcon,
-                    active && styles.tabIconActive,
-                    isAI && active && styles.aiTabIcon,
-                  ]}
-                >
-                  {item.icon}
-                </Text>
+                <PrizmaNavIcon name={item.name as 'Ana Sayfa'|'Gardırop'|'PRİZMA AI'|'Güzellik'|'Profil'} color={active ? C.lavender : C.navy}/>
               </View>
 
               <Text
@@ -794,7 +794,7 @@ export default function App() {
                   active && styles.tabLabelActive,
                 ]}
               >
-                {item.name === 'Stil Stüdyosu' ? 'Stüdyo' : item.name}
+                {item.name}
               </Text>
             </TouchableOpacity>
           );
@@ -957,7 +957,7 @@ const styles = StyleSheet.create({
 
   safe: {
     flex: 1,
-    backgroundColor: '#FDFBFE',
+    backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? 4 : 0,
   },
 
@@ -967,8 +967,8 @@ const styles = StyleSheet.create({
   chatPage: {
     flex: 1,
     minHeight: 0,
-    paddingHorizontal: 23,
-    paddingTop: 18,
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
 
   loadingScreen: {
@@ -985,25 +985,28 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    backgroundColor: C.background,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 15,
+    paddingTop: Platform.OS === 'android' ? 20 : 17,
+    paddingBottom: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 0,
+    justifyContent: 'center',
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
 
   headerBrand: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    minHeight: 44,
   },
 
   brandText: {
-    color: C.navy,
-    fontSize: 25,
+    color: C.lavender,
+    fontSize: 24,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     letterSpacing: 4,
     fontWeight: '600',
@@ -1030,8 +1033,8 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    paddingHorizontal: 23,
-    paddingTop: 14,
+    paddingHorizontal: 15,
+    paddingTop: 12,
     paddingBottom: 45,
   },
 
@@ -1550,8 +1553,16 @@ const styles = StyleSheet.create({
   },
 
   aiTabIconWrap: {
-    backgroundColor: '#6F2A88',
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderColor: 'transparent',
+    borderWidth: 0,
+    width: 45,
+    height: 45,
+    borderRadius: 24,
+    shadowColor: '#69318A',
+    shadowOpacity: 0.36,
+    shadowRadius: 8,
+    elevation: 7,
   },
 
   tabIcon: {
@@ -1560,12 +1571,13 @@ const styles = StyleSheet.create({
   },
 
   tabIconActive: {
-    color: C.navy,
+    color: C.lavender,
   },
 
   aiTabIcon: {
-    color: '#FFFFFF',
-    fontSize: 22,
+    color: C.lavender,
+    fontSize: 27,
+    fontWeight: '700',
   },
 
   tabLabel: {
@@ -1575,7 +1587,7 @@ const styles = StyleSheet.create({
   },
 
   tabLabelActive: {
-    color: C.navy,
+    color: C.lavender,
     fontWeight: '700',
   },
 

@@ -83,10 +83,10 @@ type Analysis = {
 };
 
 const C = {
-  navy: '#0B1436',
-  purple: '#8050B5',
+  navy: '#242124',
+  purple: '#69318A',
   lilac: '#F0E7FC',
-  bg: '#FAF9FC',
+  bg: '#FFFFFF',
   muted: '#77728A',
 };
 
@@ -379,7 +379,7 @@ export default function ShoppingDecisionScreen({
         </TouchableOpacity>
       )}
 
-      <Text style={styles.eyebrow}>PRİZMA ✦ SMART SHOPPING</Text>
+      <Text style={styles.eyebrow}>PRİZMA  SMART SHOPPING</Text>
       <Text style={styles.title}>Almaya değer mi?</Text>
       <Text style={styles.subtitle}>
         Kıyafet, cilt, saç veya makyaj ürünü seç. PRİZMA,
@@ -462,7 +462,7 @@ export default function ShoppingDecisionScreen({
       />
 
       <View style={styles.questionsSection}>
-        <Text style={styles.questionsTitle}>✦ Satın Almadan Önce 5 Kısa Soru</Text>
+        <Text style={styles.questionsTitle}> Satın Almadan Önce 5 Kısa Soru</Text>
         <Text style={styles.questionsCaption}>Yanıtların değerlendirmeye eklenir. Emin değilsen bunu belirtebilirsin.</Text>
         {questions.map((question, index) => (
           <View key={question.key} style={styles.questionCard}>
@@ -490,7 +490,7 @@ export default function ShoppingDecisionScreen({
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.infoTitle}>{category === 'clothing' ? '✦ Gardırop bağlantısı' : '✦ Güzellik Koleksiyonum bağlantısı'}</Text>
+        <Text style={styles.infoTitle}>{category === 'clothing' ? ' Gardırop bağlantısı' : ' Güzellik Koleksiyonum bağlantısı'}</Text>
         <Text style={styles.infoText}>
           {category === 'clothing'
             ? 'PRİZMA, kayıtlı kıyafetlerinin metin bilgilerini karşılaştırmaya dahil eder. Gardırop fotoğrafları gönderilmez.'
@@ -506,7 +506,7 @@ export default function ShoppingDecisionScreen({
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>✦ PRİZMA AI İLE ANALİZ ET</Text>
+          <Text style={styles.buttonText}> PRİZMA AI İLE ANALİZ ET</Text>
         )}
       </TouchableOpacity>
 
@@ -530,10 +530,10 @@ export default function ShoppingDecisionScreen({
           {result.sections && (
             <View style={styles.analysisSections}>
               <Text style={styles.resultHeading}>
-                ✦ Detaylı Ürün Değerlendirmesi
+                 Detaylı Ürün Değerlendirmesi
               </Text>
               {([
-                ['✦', category === 'clothing' ? 'PRİZMA İmzan ile Uyumu' : 'İhtiyaçlarınla Uyumu', result.sections.signatureFit],
+                ['', category === 'clothing' ? 'PRİZMA İmzan ile Uyumu' : 'İhtiyaçlarınla Uyumu', result.sections.signatureFit],
                 ['◈', category === 'clothing' ? 'Dolap Uyumu' : 'Ürün Uygunluğu', result.sections.wardrobeFit],
                 ['◇', category === 'clothing' ? 'Benzer Ürün Kontrolü' : 'Koleksiyonunda Benzeri Var mı?', result.sections.similarItems],
                 ['◎', 'İhtiyaç Analizi', result.sections.needAnalysis],
@@ -555,7 +555,7 @@ export default function ShoppingDecisionScreen({
 
           <Text style={styles.resultHeading}>Neden?</Text>
           {result.reasons.map((r, i) => (
-            <Text key={i} style={styles.detail}>✦ {r}</Text>
+            <Text key={i} style={styles.detail}> {r}</Text>
           ))}
 
           {category === 'clothing' && result.outfits.length > 0 && (
@@ -600,7 +600,7 @@ export default function ShoppingDecisionScreen({
           </>
           )}
 
-          <Text style={styles.resultHeading}>PRİZMA'ya sor ✦</Text>
+          <Text style={styles.resultHeading}>PRİZMA'ya sor </Text>
           <Text style={styles.chatHint}>
             {category === 'clothing'
               ? 'Kombinleri değiştirebilir, farklı seçenekler sorabilir veya kararı tartışabilirsin.'
@@ -618,7 +618,7 @@ export default function ShoppingDecisionScreen({
               ]}
             >
               <Text style={styles.chatRole}>
-                {m.role === 'user' ? 'SEN' : 'PRİZMA ✦'}
+                {m.role === 'user' ? 'SEN' : 'PRİZMA '}
               </Text>
               <Text style={styles.chatText}>{m.text}</Text>
             </View>
@@ -648,13 +648,13 @@ export default function ShoppingDecisionScreen({
             disabled={!message.trim() || chatLoading}
             onPress={sendMessage}
           >
-            <Text style={styles.buttonText}>PRİZMA'YA GÖNDER ✦</Text>
+            <Text style={styles.buttonText}>PRİZMA'YA GÖNDER </Text>
           </TouchableOpacity>
         </View>
       )}
 
       <Text style={styles.footer}>
-        PRİZMA ✦ Daha bilinçli alışveriş
+        PRİZMA  Daha bilinçli alışveriş
       </Text>
     </ScrollView>
     </>
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
   evidenceText: { color: C.navy, fontSize: 12, lineHeight: 20, marginBottom: 4 },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
   categoryChip: { backgroundColor: '#F0E7FC', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 13 },
-  categoryActive: { backgroundColor: '#8050B5' },
+  categoryActive: { backgroundColor: '#69318A' },
   categoryText: { color: '#655578', fontWeight: '700', fontSize: 12 },
   categoryTextActive: { color: '#FFFFFF' },
   root: { flex: 1, backgroundColor: C.bg },
